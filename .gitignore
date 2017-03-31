@@ -1,0 +1,8 @@
+.cache/
+.idea/
+src/.cache/
+src/.tox/
+src/sdata.egg-info/
+src/sdata/__init__.pyc
+test/__pycache__/
+
