@@ -37,6 +37,7 @@ def test_io_csv():
     metadata = sdata.Metadata()
     metadata.update_value(name="otto", value="a")
     metadata.update_value(name="foo", value=2, unit="MPa", description="foo")
+    metadata.update_value(name="bar", value=2.2, unit="MPa", description="bar")
     print(metadata.data.head())
     filepath="/tmp/metadata.csv"
     metadata.to_csv(filepath)
@@ -46,6 +47,7 @@ def test_io_csv():
     print(metadata2.data.head())
     assert all(metadata.data.loc["otto"] == metadata2.data.loc["otto"])
     assert all(metadata.data.loc["foo"] == metadata2.data.loc["foo"])
+    assert all(metadata.data.loc["bar"] == metadata2.data.loc["bar"])
 
 if __name__ == '__main__':
     # test_metadata()
