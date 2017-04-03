@@ -26,12 +26,11 @@ def extract_version():
 
 setup_params = dict(
     name="sdata",
-    description = ("structure data"),
+    description = ("structured data"),
     version=extract_version(),
     author="Lepy",
     author_email="lepy@mailbox.org",
     url="https://github.com/lepy/sdata",
-    classifiers=["Invalid :: Do Not Upload"],
     license = "LGPL",
     keywords = "data, CDM, Common Data Model, open data, open science",
 
