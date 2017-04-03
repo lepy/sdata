@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 __revision__ = None
 __version_info__ = tuple([ int(num) for num in __version__.split('.')])
 
@@ -111,10 +111,10 @@ class Metadata(object):
     
     each Metadata entry has has a 
         * name (32)
-        * description (256)
-        * type (int, str, float)
         * value
         * unit
+        * description (256)
+        * type (int, str, float)
         """
 
     columns = ["name", "value", "unit", "dtype", "description"]
@@ -137,12 +137,6 @@ class Metadata(object):
         d0.update(dfd)
         self._data = pd.DataFrame.from_dict(d0, orient='index')
         self.fix_cols()
-        # d["dtype"] = type(d["value"]).__name__
-        # df = pd.DataFrame.from_dict({d["name"]:d}, orient="index")
-        # if len(df)>0:
-        #     df.set_index(df.name, inplace=1)
-        # self.data = pd.concat([self.data, df], axis=0)
-        # self.fix_cols()
 
     def _map_dtype(self, x):
         return type(x).__name__
@@ -165,24 +159,32 @@ class Metadata(object):
         self._data["unit"] = self._data["unit"].apply(self._map_unit)
 
     def from_dict(self, d):
-        """add/update metadata from dict
-        
-        """
+        """add/update metadata from dict"""
         d0 = self.data.to_dict(orient='index')
         d0.update(d)
         self._data = pd.DataFrame.from_dict(d0, orient='index')
         self.fix_cols()
-        # df0 = pd.DataFrame(columns=self.columns)
-        # df = pd.DataFrame.from_dict(d, orient="index")
-        # df = pd.concat([df0, df])
-        # if len(df)>0:
-        #     df.set_index(df.name, inplace=1)
-        # print(df)
-        # self._data = pd.concat([self.data, df], axis=0)
-        # self.data.update(df)
 
     def __str__(self):
         return "(Metadata\n%s)" % (self.data)
 
     def __repr__(self):
         return "(Metadata %d)" % (len(self.data))
+
+    def to_csv(self, filepath):
+        """serialize metadata to csv"""
+        with open(filepath, "w") as fh:
+            self.data.to_csv(fh, index=False, sep=";")
+        
+    def from_csv(self, filepath):
+        """serialize metadata to csv"""
+        self.data = pd.read_csv(filepath, sep=";")
+        self._data.set_index(self._data.name, inplace=True)
+        def fix_dtype(x):
+            if x["dtype"]=="int":
+                x["value"] = int(x["value"])
+            elif x["dtype"]=="float":
+                x["value"] = float(x["value"])
+            return x
+        self._data = self._data.apply(fix_dtype, axis=1)
+        self.fix_cols()
