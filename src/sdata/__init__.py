@@ -12,6 +12,8 @@ Docu not available
 import uuid
 from collections import OrderedDict
 import logging
+import numpy as np
+import pandas as pd
 
 class Data(object):
     """run object, e.g. single tension test simulation"""
@@ -61,7 +63,6 @@ class Group(Data):
         self._uuid = None
         self._group = OrderedDict()
         self.uuid = kwargs.get("uuid") or uuid.uuid4()
-
         self.metadata = kwargs.get("metadata") or {}
 
     def get_group(self):
@@ -70,11 +71,35 @@ class Group(Data):
 
     def add_data(self, data):
         if isinstance(data, Data):
-            self.group[data.uuid.hex] = data
+            self.group[data.uuid] = data
         else:
-            logging.warn("ignore run %s (wrong type!)" % data)
+            logging.warn("ignore data %s (wrong type!)" % data)
+    def get_data(self, uuid):
+        return self.group.get(uuid)
 
     def __str__(self):
         return "(group '%s':%s)" % (self.name, self.uuid)
 
     __repr__ = __str__
+
+
+class Metadata(object):
+    """Metadata container class
+    
+    each Metadata entry has has a 
+        * name (32)
+        * despription (256)
+        * type (int, str, float)
+        * value
+        * unit
+        """
+
+    def __init__(self):
+        """"""
+        self._data = pd.DataFrame()
+
+    def _get_data(self):
+        return self._data
+    def _set_data(self, data):
+        self._data = data
+    data = property(fget=_get_data, fset=_set_data)
