@@ -23,7 +23,7 @@ class Data(object):
         self._name = None
         self.uuid = kwargs.get("uuid") or uuid.uuid4()
         self.name = kwargs.get("name") or "N.N."
-        self.metadata = kwargs.get("metadata") or {}
+        self.metadata = kwargs.get("metadata") or Metadata()
 
     def _get_uuid(self):
         return self._uuid
@@ -63,7 +63,7 @@ class Table(Data):
         self._uuid = None
         self._group = OrderedDict()
         self.uuid = kwargs.get("uuid") or uuid.uuid4()
-        self.metadata = kwargs.get("metadata") or {}
+        self.metadata = kwargs.get("metadata") or Metadata()
         self._table = pd.DataFrame()
 
     def _get_table(self):
@@ -86,7 +86,7 @@ class Group(Data):
         self._uuid = None
         self._group = OrderedDict()
         self.uuid = kwargs.get("uuid") or uuid.uuid4()
-        self.metadata = kwargs.get("metadata") or {}
+        self.metadata = kwargs.get("metadata") or Metadata()
 
     def get_group(self):
         return self._group
@@ -181,3 +181,8 @@ class Metadata(object):
         # self._data = pd.concat([self.data, df], axis=0)
         # self.data.update(df)
 
+    def __str__(self):
+        return "(Metadata\n%s)" % (self.data)
+
+    def __repr__(self):
+        return "(Metadata %d)" % (len(self.data))
