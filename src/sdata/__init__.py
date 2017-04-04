@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.2.2'
+__version__ = '0.3.0'
 __revision__ = None
 __version_info__ = tuple([ int(num) for num in __version__.split('.')])
 
@@ -50,6 +50,9 @@ class Data(object):
 
     name = property(fget=_get_name, fset=_set_name)
 
+    def dir(self):
+        return (self.name)
+
     def __str__(self):
         return "(data '%s':%s)" % (self.name, self.uuid)
 
@@ -96,9 +99,12 @@ class Group(Data):
         if isinstance(data, Data):
             self.group[data.uuid] = data
         else:
-            logging.warn("ignore data %s (wrong type!)" % data)
+            logging.warning("ignore data %s (wrong type!)" % data)
     def get_data(self, uuid):
         return self.group.get(uuid)
+
+    def dir(self):
+        return [(x.name, x.dir()) for x in self.group.values()]
 
     def __str__(self):
         return "(group '%s':%s)" % (self.name, self.uuid)
@@ -188,3 +194,8 @@ class Metadata(object):
             return x
         self._data = self._data.apply(fix_dtype, axis=1)
         self.fix_cols()
+
+
+from sdata.test import Test
+from sdata.testseries import TestSeries
+from sdata.testprogram import TestProgram

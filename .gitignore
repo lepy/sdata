@@ -4,5 +4,6 @@ src/.cache/
 src/.tox/
 src/sdata.egg-info/
 src/sdata/__init__.pyc
+src/dist/*
 test/__pycache__/
-
+*.pyc
