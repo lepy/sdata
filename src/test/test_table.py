@@ -15,9 +15,9 @@ def test_table():
 
     table = sdata.Table()
     table.data = df
-    table.metadata.update_value(name="a", value="Column a", description="bar")
-    table.metadata.update_value(name="b", value="Column a", description="bar", unit="kN")
-    table.metadata.update_value(name="c", value="Column a", description="bar", unit="mm")
+    table.metadata.set_attr(name="a", value="Column a", description="bar")
+    table.metadata.set_attr(name="b", value="Column a", description="bar", unit="kN")
+    table.metadata.set_attr(name="c", value="Column a", description="bar", unit="mm")
     print(table.data)
     print(table.metadata)
 

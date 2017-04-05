@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.3.0'
+__version__ = '0.4.0'
 __revision__ = None
 __version_info__ = tuple([ int(num) for num in __version__.split('.')])
 
@@ -32,7 +32,7 @@ class Data(object):
             try:
                 self._uuid = uuid.UUID(value).hex
             except ValueError as exp:
-                logging.warn("data.uuid: %s" % exp)
+                logging.warning("data.uuid: %s" % exp)
         elif isinstance(value, uuid.UUID):
             self._uuid = value.hex
     uuid = property(fget=_get_uuid, fset=_set_uuid)
@@ -44,7 +44,7 @@ class Data(object):
             try:
                 self._name = value[:256]
             except ValueError as exp:
-                logging.warn("data.name: %s" % exp)
+                logging.warning("data.name: %s" % exp)
         else:
             self._name = str(value)[:256]
 
@@ -112,89 +112,7 @@ class Group(Data):
     __repr__ = __str__
 
 
-class Metadata(object):
-    """Metadata container class
-    
-    each Metadata entry has has a 
-        * name (32)
-        * value
-        * unit
-        * description (256)
-        * type (int, str, float)
-        """
-
-    columns = ["name", "value", "unit", "dtype", "description"]
-
-    def __init__(self, df=None):
-        """create metadata instance"""
-        self._data = pd.DataFrame(columns=self.columns)
-
-    def _get_data(self):
-        return self._data[self.columns]
-    def _set_data(self, data):
-        self._data = data
-    data = property(fget=_get_data, fset=_set_data)
-
-    def update_value(self, **kwargs):
-        """add/update metadata"""
-        d = {name:kwargs.get(name) for name in self.columns}
-        dfd = pd.DataFrame.from_dict({d["name"]:d}, orient="index").to_dict(orient='index')
-        d0 = self.data.to_dict(orient='index')
-        d0.update(dfd)
-        self._data = pd.DataFrame.from_dict(d0, orient='index')
-        self.fix_cols()
-
-    def _map_dtype(self, x):
-        return type(x).__name__
-
-    def _map_description(self, x):
-        if isinstance(x, str):
-            return x[:256]
-        else:
-            return ""
-
-    def _map_unit(self, x):
-        if isinstance(x, str):
-            return x[:256]
-        else:
-            return "-"
-
-    def fix_cols(self):
-        self._data["dtype"] = self._data["value"].apply(self._map_dtype)
-        self._data["description"] = self._data["description"].apply(self._map_description)
-        self._data["unit"] = self._data["unit"].apply(self._map_unit)
-
-    def from_dict(self, d):
-        """add/update metadata from dict"""
-        d0 = self.data.to_dict(orient='index')
-        d0.update(d)
-        self._data = pd.DataFrame.from_dict(d0, orient='index')
-        self.fix_cols()
-
-    def __str__(self):
-        return "(Metadata\n%s)" % (self.data)
-
-    def __repr__(self):
-        return "(Metadata %d)" % (len(self.data))
-
-    def to_csv(self, filepath):
-        """serialize metadata to csv"""
-        with open(filepath, "w") as fh:
-            self.data.to_csv(fh, index=False, sep=";")
-        
-    def from_csv(self, filepath):
-        """serialize metadata to csv"""
-        self.data = pd.read_csv(filepath, sep=";")
-        self._data.set_index(self._data.name, inplace=True)
-        def fix_dtype(x):
-            if x["dtype"]=="int":
-                x["value"] = int(x["value"])
-            elif x["dtype"]=="float":
-                x["value"] = float(x["value"])
-            return x
-        self._data = self._data.apply(fix_dtype, axis=1)
-        self.fix_cols()
-
+from sdata.metadata import Metadata
 
 from sdata.test import Test
 from sdata.testseries import TestSeries
