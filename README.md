@@ -8,12 +8,14 @@
 * support of standard metadata formats
 * support of standard data formats (hdf5, netcdf, csv, ...)
 * support of datacubes, tables, series
-* flexible data structure
-* easy defineable standards, e.g. for a uniaxial tension test (UT)
+* support of physical units
+* flexible data structure layout
+* extendable data structure
+* easy defineable (project) standards, e.g. for a uniaxial tension test (UT)
 * support of (de-)serialization of every data type (group, data, metadata)
 * transparent, optional data compression (zlib, blosc, ...)
 * (optional data encryption (gpg, ...))
-
+* change management support?
 
 ## Example data structure (brain storming)
 
