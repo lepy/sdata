@@ -1,19 +1,19 @@
-# sdata
+# Structured data format (sdata)
 
-structured data format
+## Design goals
 
-## design goals
-
-* open data format
+* open data format for open data and open science projects
 * self describing data
-    * support of standard metadata
-* support of a hierarchical data structure
+* hierarchical data structure
+* support of standard metadata formats
 * support of standard data formats (hdf5, netcdf, csv, ...)
 * support of datacubes, tables, series
 * flexible data structure
-* easy defineable standards, e.g. for a tension test
+* easy defineable standards, e.g. for a uniaxial tension test (UT)
+* support of (de-)serialization of every data type (group, data, metadata)
 * transparent, optional data compression (zlib, blosc, ...)
-* optional data encryption
+* (optional data encryption (gpg, ...))
+
 
 ## Example data structure (brain storming)
 
