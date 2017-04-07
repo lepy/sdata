@@ -2,42 +2,47 @@
 
 ## Design goals
 
-* open data format for open data and open science projects
+* open data format for open science projects
 * self describing data
-* hierarchical data structure
-* support of standard metadata formats
-* support of standard data formats (hdf5, netcdf, csv, ...)
-* support of datacubes, tables, series
-* support of physical units
 * flexible data structure layout
+    * hierarchical data structure (nesting groups, dictionaries)
+    * (posix path syntax support?)
 * extendable data structure
-* easy defineable (project) standards, e.g. for a uniaxial tension test (UT)
-* support of (de-)serialization of every data type (group, data, metadata)
+* platform independent
+* simple object model
+* support of standard metadata formats (key/value, ...)
+* support of standard dataset formats (hdf5, netcdf, csv, ...)
+* support of standard dataset types (datacubes, tables, series, ...)
+* support of physical units (conversion of units)
 * transparent, optional data compression (zlib, blosc, ...)
+* support of (de-)serialization of every dataset type (group, data, metadata)
+* easy defineable (project) standards, e.g. for a uniaxial tension test (UT)
 * (optional data encryption (gpg, ...))
 * change management support?
+* (single writer/ multiple reader (swmr) support)
+* (nested table support)
 
 ## Example data structure (brain storming)
 
 ```
-    testprogram_a
-    ├── metadata.csv
-    └── testseries_ut_a
-        ├── test_ut_a_001
-        │   ├── data
-        │   │   ├── fs.csv
-        │   │   ├── fs_metadata.csv
-        │   │   ├── gom.csv
-        │   │   ├── gom_metadata.csv
-        │   │   └── metadata.csv
-        │   ├── documents
-        │   │   ├── report.pdf
-        │   │   └── metadata.csv
-        │   ├── pictures
-        │   ├── movies
-        │   └── metadata.csv
-        └── test_ut_a_002
-            └── metadata.csv
+testprogram_a
+├── metadata.csv
+└── testseries_ut_a
+    ├── test_ut_a_001
+    │   ├── data
+    │   │   ├── fs.csv
+    │   │   ├── fs_metadata.csv
+    │   │   ├── gom.csv
+    │   │   ├── gom_metadata.csv
+    │   │   └── metadata.csv
+    │   ├── documents
+    │   │   ├── report.pdf
+    │   │   └── metadata.csv
+    │   ├── pictures
+    │   ├── movies
+    │   └── metadata.csv
+    └── test_ut_a_002
+        └── metadata.csv
 
 ```
 
