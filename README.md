@@ -19,6 +19,7 @@
 * easy defineable (project) standards, e.g. for a uniaxial tension test (UT)
 * (optional data encryption (gpg, ...))
 * change management support?
+* Enable use of data structures from existing tensor libraries transparently
 * (single writer/ multiple reader (swmr) support)
 * (nested table support)
 
