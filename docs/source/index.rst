@@ -13,7 +13,11 @@ Welcome to sdata's documentation!
    design_goals
 
 
-
+.. automodule:: sdata
+    :members:
+    :undoc-members:
+    :inherited-members:
+    :show-inheritance:
 
 Indices and tables
 ==================
