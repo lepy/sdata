@@ -40,7 +40,7 @@
 
 ---
 
-## Example data structure (brain storming)
+## Example data structure
 
 ```
 testprogram_a
