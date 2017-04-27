@@ -79,7 +79,7 @@ def test_timestamp():
 
     print(utc_offset)
 
-    print dir(datetime.tzinfo())
+    print(dir(datetime.tzinfo()))
     # print (datetime.tzinfo().tzname(utc_offset))
 
 
