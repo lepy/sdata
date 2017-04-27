@@ -1,8 +1,16 @@
+import sys
+import os
+
+modulepath = os.path.dirname(__file__)
+
+sys.path.insert(0, os.path.join(modulepath, "..", "..", "src"))
+
+
 import time
 import datetime
-import os
 import pytz
-import iso8601
+import sdata.timestamp
+import sdata.test
 
 
 def to_timestamp(dt, epoch=datetime.datetime(1970,1,1)):
@@ -13,7 +21,6 @@ def to_timestamp(dt, epoch=datetime.datetime(1970,1,1)):
     td = dt - epoch
     # return td.total_seconds()
     return (td.microseconds + (td.seconds + td.days * 86400.) * 10**6) / 10**6
-
 
 def local_tzname():
     #
@@ -58,53 +65,42 @@ def datetime2timestamp():
     assert localtime.astimezone(tz=pytz.timezone("UTC")).isoformat()=="2017-04-26T09:04:00.660000+00:00"
 
     timestr = "2017-04-26T09:04:00.660000+00:00"
-    time2 = iso8601.parse_date(timestr)
+    time2 = sdata.timestamp.parse_date(timestr)
     print(time2.astimezone(tz=pytz.timezone("UTC")).isoformat())
     print(timestr)
     assert timestr==time2.astimezone(tz=pytz.timezone("UTC")).isoformat()
 
-
-
-
 def test_timestamp():
-    #http://stackoverflow.com/questions/8777753/converting-datetime-date-to-utc-timestamp-in-python
-    ts = time.time()
-    # print os.environ.get('TZ')
-    print(time.timezone)
-    ts = 1493197440.66
-    print(ts, ts.strftime('%X %x %Z'))
 
+    timestr = "2017-04-26T09:04:00.660000+00:00"
+    utctime = sdata.timestamp.parse_date(timestr)
+    print(utctime.astimezone(tz=pytz.timezone("UTC")).isoformat())
+    print(timestr)
+    assert timestr==utctime.astimezone(tz=pytz.timezone("UTC")).isoformat()
 
-    utc_offset = datetime.datetime.fromtimestamp(ts) - datetime.datetime.utcfromtimestamp(ts)
+    utctime2 = sdata.timestamp.get_utc_timestamp(utctime)
+    print(utctime2.isoformat())
 
-    print(utc_offset)
+    localtime = sdata.timestamp.get_local_timestamp(utctime)
+    print(localtime.isoformat())
 
-    print(dir(datetime.tzinfo()))
-    # print (datetime.tzinfo().tzname(utc_offset))
+    localtimestr = '2017-04-26 11:04:00.660000+02:00'
+    localtime2 = sdata.timestamp.parse_date(localtimestr)
+    print(localtime2.isoformat())
+    utctime3 = sdata.timestamp.get_utc_timestamp(localtime2)
+    print(utctime3.isoformat())
+    assert timestr==sdata.timestamp.get_utc_timestamp(localtime2).isoformat()
 
+    timestr = "2017-04-26T09:04:00+00:00"
+    utctime = sdata.timestamp.parse_date(timestr)
+    print(utctime.isoformat())
 
-    tt  = datetime.datetime.fromtimestamp(ts)
-    ut = to_timestamp(tt)
-    print("UTC", ut, datetime.datetime.utcfromtimestamp(ut).strftime('%Y-%m-%d %H:%M:%S.%f+%z'))
-    print(tt.__str__())
-    print(tt.utcoffset())
-    print("utctimetuple", tt.utctimetuple())
-
-
-    st = tt.strftime('%Y-%m-%d %H:%M:%s')
-
-    print("strformat:{}".format(tt.strftime('%Y-%m-%d %H:%M:%S')))
-    print("isoformat:{}".format(tt.isoformat()))
-
-    assert tt.isoformat() == "2017-04-26T11:04:00.660000"
-    print(tt.strftime('%Y-%m-%d %H:%M:%S'))
-    assert tt.strftime('%Y-%m-%d %H:%M:%S') == "2017-04-26 11:04:00"
-    print(tt.strftime('%Y-%m-%d %H:%M:%S.%f'))
-    assert tt.strftime('%Y-%m-%d %H:%M:%S.%f') == "2017-04-26 11:04:00.660000"
-    print(tt.strftime('%Y-%m-%d %H:%M:%S.%f+%Z'))
-    assert tt.strftime('%Y-%m-%d %H:%M:%S.%f+%z') == "2017-04-26 11:04:00.660000"
+    timestr = "2017-04-26"
+    utctime = sdata.timestamp.parse_date(timestr)
+    print(utctime.isoformat())
+    print(sdata.timestamp.get_local_timestamp(utctime).isoformat())
 
 
 if __name__ == '__main__':
-    # test_timestamp()
-    datetime2timestamp()
+    test_timestamp()
+    # datetime2timestamp()

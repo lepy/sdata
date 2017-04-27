@@ -69,7 +69,35 @@ def test_metadata():
     assert m.get_attr("foo").name==m5.get_attr("foo").name
     assert m.get_attr("foo").value==m5.get_attr("foo").value
 
+def test_timestamp():
+    t = sdata.timestamp.TimeStamp()
+    print(t)
+    print("utc  ", t.utc)
+    print("local", t.local)
+
+    t2str = '2017-04-27T13:45:09.039244+02:00'
+    t2 = sdata.timestamp.TimeStamp(t2str)
+    print(t2)
+    print("utc  ", t2.utc)
+    print("local", t2.local)
+    assert t2.utc=='2017-04-27T11:45:09.039244+00:00'
+
+    t3str = '2017-04-27T13:45:09'
+    t3 = sdata.timestamp.TimeStamp(t3str)
+    print(t3)
+    print("utc  ", t3.utc)
+    print("local", t3.local)
+    assert t3.utc=='2017-04-27T13:45:09+00:00'
+
+    t4str = '2017-04-27'
+    t4 = sdata.timestamp.TimeStamp(t4str)
+    print(t4)
+    print("utc  ", t4.utc)
+    print("local", t4.local)
+    assert t4.utc=='2017-04-27T00:00:00+00:00'
+
 
 if __name__ == '__main__':
-    test_attribute()
-    test_metadata()
+    # test_attribute()
+    # test_metadata()
+    test_timestamp()

@@ -1,11 +1,13 @@
 import logging
 import collections
 import pandas as pd
+from sdata.timestamp import TimeStamp
+
 
 class Attribute(object):
     """Attribute class"""
 
-    DTYPES = {'float':float, 'int':int, 'str':str}
+    DTYPES = {'float':float, 'int':int, 'str':str, 'timestamp':TimeStamp}
 
     def __init__(self, name, value, **kwargs):
         self._name = None
