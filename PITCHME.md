@@ -65,7 +65,6 @@ testprogram_a
 
 ---
 
-
 ## Metadata
 
 ### Attributes
@@ -75,6 +74,8 @@ testprogram_a
 * dtype
 * unit
 * description
+
+---
 
 ### dtypes for attributes
 
