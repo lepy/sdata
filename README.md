@@ -49,6 +49,26 @@ testprogram_a
 
 ```
 
+## Metadata
+
+### Attributes
+
+* name
+* value
+* dtype
+* unit
+* description
+
+### dtypes for attributes
+
+* int
+* float
+* str
+* timestamp (datetime.isoformat with timezone)
+
+
+
+
 Each object has a metadata file.
 
 ## Data model

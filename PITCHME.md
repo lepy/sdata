@@ -63,6 +63,25 @@ testprogram_a
         └── metadata.csv
 ```
 
+----
+
+## Metadata
+
+### Attributes
+
+* name
+* value
+* dtype
+* unit
+* description
+
+### dtypes for attributes
+
+* int, (int32, int64)
+* float, (float32, float64, float128)
+* str, (unicode)
+* timestamp (= datetime.isoformat with timezone)
+
 ---
 
 # The End
