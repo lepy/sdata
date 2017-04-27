@@ -38,7 +38,7 @@ import re
 import pytz
 
 __all__ = ["parse_date", "ParseError", "UTC",
-           "FixedOffset"]
+           "FixedOffset", "TimeStamp"]
 
 if sys.version_info >= (3, 0, 0):
     _basestring = str
