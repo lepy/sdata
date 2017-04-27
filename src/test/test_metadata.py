@@ -96,8 +96,20 @@ def test_timestamp():
     print("local", t4.local)
     assert t4.utc=='2017-04-27T00:00:00+00:00'
 
+def test_attr_timestamp():
+    attr = sdata.metadata.Attribute(name="create", dtype="timestamp", value='2017-04-27', description="creation date")
+    print(attr)
+    print(type(attr.value))
+    print(attr.value.utc)
+    print(attr.value.local)
+    print(attr.to_dict())
+    print(type(attr.to_dict().get("value")))
+    assert attr.value.utc=='2017-04-27T00:00:00+00:00'
+    assert attr.value.local=='2017-04-27T02:00:00+02:00'
+
 
 if __name__ == '__main__':
     # test_attribute()
     # test_metadata()
-    test_timestamp()
+    # test_timestamp()
+    test_attr_timestamp()
