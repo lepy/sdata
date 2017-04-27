@@ -10,6 +10,9 @@ Welcome to sdata's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   design_goals
+
+
 
 
 Indices and tables
