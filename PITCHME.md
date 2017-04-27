@@ -4,7 +4,7 @@
 ## an open structured data format
 
 
-+++
+---
 
 ## Design goals I/III
 
