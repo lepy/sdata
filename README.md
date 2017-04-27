@@ -1,3 +1,5 @@
+[![GitPitch](https://gitpitch.com/assets/badge.svg)](https://gitpitch.com/lepy/sdata/master?grs=github&t=beige)
+
 # Structured data format (sdata)
 
 ## Design goals
