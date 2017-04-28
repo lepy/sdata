@@ -3,21 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to sdata's documentation!
-=================================
+sdata's documentation
+=====================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
    :caption: Contents:
 
+   motivation
    design_goals
-
-
-.. automodule:: sdata
-    :members:
-    :undoc-members:
-    :inherited-members:
-    :show-inheritance:
+   _dynamic/sdata
+   data_types
+   etc
 
 Indices and tables
 ==================
