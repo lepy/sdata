@@ -18,7 +18,7 @@ import pandas as pd
 
 
 
-from sdata.metadata import Metadata
+from sdata.metadata import Metadata, Attribute
 
 
 
@@ -92,6 +92,9 @@ class Table(Data):
 class Group(Data):
     """group object, e.g. single tension test simulation"""
 
+    #["name", "value", "dtype", "unit", "description"]
+    ATTR_NAMES = []
+
     def __init__(self, **kwargs):
         Data.__init__(self, **kwargs)
         self._uuid = None
@@ -114,10 +117,55 @@ class Group(Data):
     def dir(self):
         return [(x.name, x.dir()) for x in self.group.values()]
 
+    def verify_attributes(self):
+        """check mandatory attributes"""
+        invalid_attrs = []
+        for attr_defs in self.ATTR_NAMES:
+            attr = self.metadata.get_attr(attr_defs[0])
+            if attr.value is None:
+                invalid_attrs.append(attr.name)
+        return invalid_attrs
+
+
     def __str__(self):
         return "(group '%s':%s)" % (self.name, self.uuid)
 
     __repr__ = __str__
+
+class Part(Group):
+    """part object, e.g. test specimen (sheet) or a part of a specimen"""
+
+    #["name", "value", "dtype", "unit", "description"]
+    ATTR_NAMES = [["Material", None, "str", "-", "Material name"],
+                  ]
+
+    def __init__(self, **kwargs):
+        Group.__init__(self, **kwargs)
+        self._uuid = None
+        self._group = OrderedDict()
+        self.uuid = kwargs.get("uuid") or uuid.uuid4()
+        self.metadata = kwargs.get("metadata") or Metadata()
+
+    def get_group(self):
+        return self._group
+    group = property(get_group)
+
+    def add_data(self, data):
+        if isinstance(data, Data):
+            self.group[data.uuid] = data
+        else:
+            logging.warning("ignore data %s (wrong type!)" % data)
+    def get_data(self, uuid):
+        return self.group.get(uuid)
+
+    def dir(self):
+        return [(x.name, x.dir()) for x in self.group.values()]
+
+    def __str__(self):
+        return "(part '%s':%s)" % (self.name, self.uuid)
+
+    __repr__ = __str__
+
 
 from sdata.test import Test
 from sdata.testseries import TestSeries

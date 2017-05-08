@@ -276,8 +276,12 @@ class TimeStamp(object):
 
     @property
     def utc(self):
+        """returns the utc.isoformat string
+        :returns str"""
         return get_utc_timestamp(self._datetime).isoformat()
 
     @property
     def local(self):
+        """returns the datetime isoformat string for the local timezone
+        :returns str"""
         return get_local_timestamp(self._datetime).isoformat()

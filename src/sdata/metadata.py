@@ -43,7 +43,10 @@ class Attribute(object):
     def _set_value(self, value):
         try:
             dtype = self.DTYPES.get(self.dtype, str)
-            self._value = dtype(value)
+            if value is None:
+                self._value = None
+            else:
+                self._value = dtype(value)
         except ValueError as exp:
             print("error Attribute.value: %s" % exp)
             logging.warning("error Attribute.value: %s" % exp)
@@ -93,7 +96,7 @@ class Metadata(object):
         * type (int, str, float)
         """
 
-    ATTRIBUTEKEYS = ["name", "value", "unit", "dtype", "description"]
+    ATTRIBUTEKEYS = ["name", "value", "dtype", "unit", "description"]
 
     def __init__(self, **kwargs):
         """"""
@@ -106,11 +109,15 @@ class Metadata(object):
     attributes = property(fget=_get_attributes, fset=_set_attributes)
 
     def set_attr(self, name, value, **kwargs):
-        attr = Attribute(name, value, **kwargs)
+        attr = self.get_attr(name) or Attribute(name, value, **kwargs)
+        for key in  ["dtype", "unit", "description"]:
+            if key in kwargs:
+                setattr(attr, key, kwargs.get(key))
+        attr.value = value
         self._attributes[attr.name] = attr
 
     def get_attr(self, name):
-        return self._attributes.get(name)
+        return self._attributes.get(name, None)
 
     def to_dict(self):
         """serialize attributes to dict"""
