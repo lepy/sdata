@@ -51,9 +51,14 @@ def gen_dummy_testprogram():
     ts2 = sdata.testseries.TestSeries(name="testseries A2", uuid="c3c63f8094464325bd57623cb5bbe58f")
 
     t1b = sdata.test.Test(name="test 001b", uuid="bb507e40663d49cca8264c0ed6751692")
-    t2b = sdata.test.Test(name="test 002b", uuid="e574e000f1404f5ebb9aaceb4183dc4c")
+    t1b.add_result(get_dummy_table())
     ts2.add_test(t1b)
+    ts1.add_test(t3)
+
+    t2b = sdata.test.Test(name="test 002b", uuid="e574e000f1404f5ebb9aaceb4183dc4c")
+    # t2b.add_result(get_dummy_table())
     ts2.add_test(t2b)
+
     tp = sdata.testprogram.TestProgram(name="testprogram FOO", uuid="43880975d9b745f1b853c31b691e67a9")
     tp.add_series(ts1)
     tp.add_series(ts2)
@@ -66,34 +71,19 @@ def test_test():
     assert t.name=="test 001"
     t.to_folder("/tmp/mytest")
 
-
 def test_testseries():
     ts = sdata.testseries.TestSeries(name="testseries A1")
     print(ts)
     assert ts.name=="testseries A1"
 
 def test_testprogram():
-    # t1 = sdata.test.Test(name="test 001")
-    # t2 = sdata.test.Test(name="test 002")
-    # t3 = sdata.test.Test(name="test 003")
-    # ts1 = sdata.testseries.TestSeries(name="testseries A1")
-    # ts1.add_test(t1)
-    # ts1.add_test(t2)
-    # ts1.add_test(t3)
-    #
-    # t1b = sdata.test.Test(name="test 001b")
-    # t2b = sdata.test.Test(name="test 002b")
-    # ts2 = sdata.testseries.TestSeries(name="testseries A2")
-    # ts2.add_test(t1b)
-    # ts2.add_test(t2b)
-    # tp = sdata.testprogram.TestProgram(name="testprogram FOO")
-    # tp.add_series(ts1)
-    # tp.add_series(ts2)
     tp = gen_dummy_testprogram()
     print(tp)
     assert tp.name=="testprogram FOO"
     print(tp.dir())
-    tp.to_folder("/tmp/mytestprogram")
+    exportpath = "/tmp/mytestprogram"
+    tp.to_folder(exportpath)
+    tp.tree_folder(exportpath)
 
 if __name__ == '__main__':
     test_test()

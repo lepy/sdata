@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.5.2'
+__version__ = '0.5.3'
 __revision__ = None
 __version_info__ = tuple([ int(num) for num in __version__.split('.')])
 
@@ -159,15 +159,37 @@ class Group(Data):
 
     def to_folder(self, path):
         """export data to folder"""
-        # TestProgram.to_folder(self, path)
+        Data.to_folder(self, path)
         for data in self.group.values():
-            exportpath = os.path.join(path, data.uuid)
+            exportpath = os.path.join(path, "{}_{}".format(data.__class__.__name__.lower(), data.uuid))
+            print("!",data, exportpath)
             data.to_folder(exportpath)
 
     def __str__(self):
         return "(group '%s':%s)" % (self.name, self.uuid)
 
     __repr__ = __str__
+
+    def tree_folder(self, dir, padding="  ", print_files=True, hidden_files=False):
+        print(padding[:-1] + '+-' + os.path.basename(os.path.abspath(dir)) + '/')
+        padding = padding + ' '
+        files = []
+        if print_files:
+            files = [x for x in os.listdir(dir) if not x.startswith(".")]
+        else:
+            files = [x for x in os.listdir(dir) if os.path.isdir(dir + os.sep + x)]
+        count = 0
+        for file in files:
+            count += 1
+            print(padding + '|')
+            path = dir + os.sep + file
+            if os.path.isdir(path):
+                if count == len(files):
+                    self.tree_folder(path, padding + ' ', print_files)
+                else:
+                    self.tree_folder(path, padding + '|', print_files)
+            else:
+                print(padding + '+-' + file)
 
 class Part(Group):
     """part object, e.g. test specimen (sheet) or a part of a specimen"""
