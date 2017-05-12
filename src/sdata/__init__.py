@@ -151,6 +151,12 @@ class Group(Data):
                 invalid_attrs.append(attr.name)
         return invalid_attrs
 
+    def to_folder(self, path):
+        """export data to folder"""
+        # TestProgram.to_folder(self, path)
+        for data in self.group.values():
+            exportpath = os.path.join(path, data.uuid)
+            data.to_folder(exportpath)
 
     def __str__(self):
         return "(group '%s':%s)" % (self.name, self.uuid)

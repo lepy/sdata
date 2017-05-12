@@ -75,6 +75,7 @@ def test_testprogram():
     assert tp.name=="testprogram FOO"
     print(tp.dir())
     tp.to_folder("/tmp/mytestprogram")
+
 if __name__ == '__main__':
     test_test()
     test_testseries()
