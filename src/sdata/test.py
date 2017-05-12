@@ -7,13 +7,13 @@ class Test(sdata.Data):
         sdata.Data.__init__(self, **kwargs)
         self._results = {}
 
-    def _get_results(self):
+    def get_results(self):
         return self._results
 
-    def get_results(self, uuid):
+    def get_result(self, uuid):
         return self._results.get(uuid)
 
-    def set_result(self, data):
+    def add_result(self, data):
         self._results[data.uuid] = data
 
     def __str__(self):

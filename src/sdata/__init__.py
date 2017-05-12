@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.5.1'
+__version__ = '0.5.2'
 __revision__ = None
 __version_info__ = tuple([ int(num) for num in __version__.split('.')])
 
@@ -9,7 +9,7 @@ __version_info__ = tuple([ int(num) for num in __version__.split('.')])
 Docu not available
 '''
 
-
+import os
 import uuid
 from collections import OrderedDict
 import logging
@@ -56,9 +56,34 @@ class Data(object):
         else:
             self._name = str(value)[:256]
 
-    name = property(fget=_get_name, fset=_set_name)
+    name = property(fget=_get_name, fset=_set_name, doc="name of the object")
+
+    def to_folder(self, path):
+        """export data to folder"""
+        if not os.path.exists(path):
+            try:
+                os.makedirs(path)
+            except OSError as exp:
+                logging.error(exp)
+        metadata_filepath = os.path.join(path, "metadata.csv")
+        self.metadata.set_attr(name="class", value=self.__class__.__name__, description="object class", unit="-", dtype="str")
+        self.metadata.set_attr(name="uuid", value=self.uuid, description="object uuid", unit="-", dtype="str")
+        self.metadata.set_attr(name="name", value=self.name, description="object name", unit="-", dtype="str")
+        self.metadata.to_csv(metadata_filepath)
+
+    @classmethod
+    def from_folder(cls, path):
+        """generate data instance from folder structure"""
+        data = cls()
+        metadata_filepath = os.path.join(path, "metadata.csv")
+        if os.path.exists(metadata_filepath):
+            Metadata().from_csv(metadata_filepath)
+        else:
+            logging.error("no metadata '{}'".format(metadata_filepath))
+        return data
 
     def dir(self):
+        """list contents"""
         return (self.name)
 
     def __str__(self):
@@ -85,7 +110,7 @@ class Table(Data):
     data = property(fget=_get_table, fset=_set_table)
 
     def __str__(self):
-        return "(table '%s':%s(%d))" % (self.name, self.uuid, len(self.table))
+        return "(table '%s':%s(%d))" % (self.name, self.uuid, len(self._table))
 
     __repr__ = __str__
 

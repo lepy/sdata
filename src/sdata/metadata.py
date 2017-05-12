@@ -143,7 +143,7 @@ class Metadata(object):
         """create dataframe"""
         d = self.to_dict()
         df = pd.DataFrame.from_dict(d, orient="index")
-        return df
+        return df[self.ATTRIBUTEKEYS]
 
     @classmethod
     def from_dataframe(cls, df):
