@@ -1,20 +1,19 @@
 import sdata
 
-class Test(sdata.Data):
+class Test(sdata.Group):
     """Test Object, e.g. a single tension test"""
     def __init__(self, **kwargs):
         """"""
-        sdata.Data.__init__(self, **kwargs)
-        self._results = {}
+        sdata.Group.__init__(self, **kwargs)
 
     def get_results(self):
-        return self._results
+        return self.group
 
     def get_result(self, uuid):
-        return self._results.get(uuid)
+        return self.group.get(uuid)
 
     def add_result(self, data):
-        self._results[data.uuid] = data
+        self._group[data.uuid] = data
 
     def __str__(self):
         return "(Test '%s':%s)" % (self.name, self.uuid)

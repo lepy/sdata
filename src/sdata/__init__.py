@@ -109,6 +109,12 @@ class Table(Data):
             self._table = df
     data = property(fget=_get_table, fset=_set_table)
 
+    def to_folder(self, path):
+        """export data to folder"""
+        Data.to_folder(self, path)
+        exportpath = os.path.join(path, "{}.csv".format(self.uuid))
+        self._table.to_csv(exportpath, index=False)
+
     def __str__(self):
         return "(table '%s':%s(%d))" % (self.name, self.uuid, len(self._table))
 
