@@ -43,24 +43,17 @@
 ## Example data structure
 
 ```
-testprogram_a
-├── metadata.csv
-└── testseries_ut_a
-    ├── test_ut_a_001
-    │   ├── data
-    │   │   ├── fs.csv
-    │   │   ├── fs_metadata.csv
-    │   │   ├── gom.csv
-    │   │   ├── gom_metadata.csv
-    │   │   └── metadata.csv
-    │   ├── documents
-    │   │   ├── report.pdf
-    │   │   └── metadata.csv
-    │   ├── pictures
-    │   ├── movies
-    │   └── metadata.csv
-    └── test_ut_a_002
-        └── metadata.csv
+───testprogram_ks2a
+   |
+   ├─metadata.csv
+   |
+   └─testseries_d940f6977d8048cbbd7c611d5f2ec9fe
+     |
+     ├─metadata.csv
+     |
+     └─ks2_test_ddc82782f5f0455895145682fe0a70f2
+       |
+       └─metadata.csv
 ```
 
 ---

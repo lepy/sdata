@@ -1,4 +1,4 @@
-Modivation
+Motivation
 ==========
 
 To deal with experimental and simulation data is very often a pain due to an non existing standard data format.
