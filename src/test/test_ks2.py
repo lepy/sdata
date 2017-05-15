@@ -11,6 +11,14 @@ import pandas as pd
 import numpy as np
 
 def test_ks2():
+    mat1 = sdata.Material(name="HX340LAD")
+    mat1.metadata.set_attr("mattype", "steel")
+    print(mat1.metadata)
+    invalid_attrs = mat1.verify_attributes()
+    print(invalid_attrs)
+    assert len(invalid_attrs)==0
+    print(mat1.metadata.to_dataframe())
+
     part1 = sdata.experiments.ks2.KS2_Sheet(name="upper sheet")
     part2 = sdata.experiments.ks2.KS2_Sheet(name="bottom sheet")
     invalid_attrs = part1.verify_attributes()

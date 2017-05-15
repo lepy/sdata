@@ -1,12 +1,12 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.5.3'
+__version__ = '0.5.4'
 __revision__ = None
 __version_info__ = tuple([ int(num) for num in __version__.split('.')])
 
 '''
-Docu not available
+basic data types 
 '''
 
 import os
@@ -16,15 +16,11 @@ import logging
 import numpy as np
 import pandas as pd
 
-
-
 from sdata.metadata import Metadata, Attribute
-
-
-
 
 class Data(object):
     """run object, e.g. single tension test simulation"""
+    ATTR_NAMES = []
 
     def __init__(self, **kwargs):
         self._uuid = None
@@ -32,6 +28,11 @@ class Data(object):
         self.uuid = kwargs.get("uuid") or uuid.uuid4()
         self.name = kwargs.get("name") or "N.N."
         self.metadata = kwargs.get("metadata") or Metadata()
+        self.gen_default_attributes()
+
+    def gen_default_attributes(self):
+        for attr_name, value, dtype, unit, description, required in self.ATTR_NAMES:
+            self.metadata.set_attr(name=attr_name, value=value, dtype=dtype, description=description)
 
     def _get_uuid(self):
         return self._uuid
@@ -82,6 +83,21 @@ class Data(object):
             logging.error("no metadata '{}'".format(metadata_filepath))
         return data
 
+    def verify_attributes(self):
+        """check mandatory attributes"""
+        invalid_attrs = []
+        # attr_defs = ["name", "value", "dtype", "unit", "description", "required"]
+        for attr_defs in self.ATTR_NAMES:
+            required = attr_defs[5]
+            if required is False:
+                continue
+            attr = self.metadata.get_attr(attr_defs[0])
+            if attr is None:
+                invalid_attrs.append(attr_defs[0])
+            elif attr.value is None:
+                invalid_attrs.append(attr.name)
+        return invalid_attrs
+
     def dir(self):
         """list contents"""
         return (self.name)
@@ -93,6 +109,7 @@ class Data(object):
 
 class Table(Data):
     """table object"""
+    ATTR_NAMES = []
 
     def __init__(self, **kwargs):
         Data.__init__(self, **kwargs)
@@ -101,6 +118,8 @@ class Table(Data):
         self.uuid = kwargs.get("uuid") or uuid.uuid4()
         self.metadata = kwargs.get("metadata") or Metadata()
         self._table = pd.DataFrame()
+        self.gen_default_attributes()
+
 
     def _get_table(self):
         return self._table
@@ -132,6 +151,8 @@ class Group(Data):
         self._group = OrderedDict()
         self.uuid = kwargs.get("uuid") or uuid.uuid4()
         self.metadata = kwargs.get("metadata") or Metadata()
+        self.gen_default_attributes()
+
 
     def get_group(self):
         return self._group
@@ -147,15 +168,6 @@ class Group(Data):
 
     def dir(self):
         return [(x.name, x.dir()) for x in self.group.values()]
-
-    def verify_attributes(self):
-        """check mandatory attributes"""
-        invalid_attrs = []
-        for attr_defs in self.ATTR_NAMES:
-            attr = self.metadata.get_attr(attr_defs[0])
-            if attr.value is None:
-                invalid_attrs.append(attr.name)
-        return invalid_attrs
 
     def to_folder(self, path):
         """export data to folder"""
@@ -201,41 +213,41 @@ class Group(Data):
                     print(padding + '└─' + file)
                 else:
                     print(padding + '├─' + file)
-s
+
+
 class Part(Group):
     """part object, e.g. test specimen (sheet) or a part of a specimen"""
 
     #["name", "value", "dtype", "unit", "description"]
-    ATTR_NAMES = [["Material", None, "str", "-", "Material name"],
+    ATTR_NAMES = [["Material", None, "str", "-", "Material name", True],
                   ]
 
     def __init__(self, **kwargs):
         Group.__init__(self, **kwargs)
-        self._uuid = None
-        self._group = OrderedDict()
-        self.uuid = kwargs.get("uuid") or uuid.uuid4()
-        self.metadata = kwargs.get("metadata") or Metadata()
+        self.gen_default_attributes()
 
-    def get_group(self):
-        return self._group
-    group = property(get_group)
-
-    def add_data(self, data):
-        if isinstance(data, Data):
-            self.group[data.uuid] = data
-        else:
-            logging.warning("ignore data %s (wrong type!)" % data)
-    def get_data(self, uuid):
-        return self.group.get(uuid)
-
-    def dir(self):
-        return [(x.name, x.dir()) for x in self.group.values()]
 
     def __str__(self):
         return "(part '%s':%s)" % (self.name, self.uuid)
 
     __repr__ = __str__
 
+class Material(Group):
+    """material object, e.g. a steel material"""
+
+    #["name", "value", "dtype", "unit", "description"]
+    ATTR_NAMES = [["mattype", None, "str", "-", "Material type, e.g. alu|steel|plastic|wood|glas|foam|soil|...", True],
+                  ["grade", "-", "str", "-", "Material grade, e.g. T4", False],
+                  ]
+
+    def __init__(self, **kwargs):
+        Group.__init__(self, **kwargs)
+        self.gen_default_attributes()
+
+    def __str__(self):
+        return "(mat '%s':%s)" % (self.name, self.uuid)
+
+    __repr__ = __str__
 
 from sdata.test import Test
 from sdata.testseries import TestSeries
