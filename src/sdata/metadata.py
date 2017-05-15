@@ -36,7 +36,7 @@ class Attribute(object):
                 logging.warning("error Attribute.name: %s" % exp)
         else:
             self._name = str(value).strip()[:256]
-    name = property(fget=_get_name, fset=_set_name)
+    name = property(fget=_get_name, fset=_set_name, doc="Attribute name")
 
     def _get_value(self):
         return self._value
@@ -50,29 +50,29 @@ class Attribute(object):
         except ValueError as exp:
             print("error Attribute.value: %s" % exp)
             logging.warning("error Attribute.value: %s" % exp)
-
-    value = property(fget=_get_value, fset=_set_value)
+    value = property(fget=_get_value, fset=_set_value, doc="Attribute value")
 
     def _get_dtype(self):
         return self._dtype
     def _set_dtype(self, value):
         if value in self.DTYPES.keys():
             self._dtype = value
-    dtype = property(fget=_get_dtype, fset=_set_dtype)
+    dtype = property(fget=_get_dtype, fset=_set_dtype, doc="Attribute type")
 
     def _get_description(self):
         return self._description
     def _set_description(self, value):
         self._description = value
-    description = property(fget=_get_description, fset=_set_description)
+    description = property(fget=_get_description, fset=_set_description, doc="Attribute description")
 
     def _get_unit(self):
         return self._unit
     def _set_unit(self, value):
         self._unit = value
-    unit = property(fget=_get_unit, fset=_set_unit)
+    unit = property(fget=_get_unit, fset=_set_unit, doc="Attribute unit")
 
     def to_dict(self):
+        """:returns dict of attribute items"""
         return {'name':self.name,
                 'value':self.value,
                 'unit':self.unit,
@@ -106,9 +106,10 @@ class Metadata(object):
         return self._attributes
     def _set_attributes(self, value):
         self._attributes = value
-    attributes = property(fget=_get_attributes, fset=_set_attributes)
+    attributes = property(fget=_get_attributes, fset=_set_attributes, doc="returns Attributes")
 
     def set_attr(self, name, value, **kwargs):
+        """set Attribute"""
         attr = self.get_attr(name) or Attribute(name, value, **kwargs)
         for key in  ["dtype", "unit", "description"]:
             if key in kwargs:
@@ -117,6 +118,7 @@ class Metadata(object):
         self._attributes[attr.name] = attr
 
     def get_attr(self, name):
+        """get Attribute by name"""
         return self._attributes.get(name, None)
 
     def to_dict(self):

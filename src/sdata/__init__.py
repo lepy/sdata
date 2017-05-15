@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.5.4'
+__version__ = '0.5.5'
 __revision__ = None
 __version_info__ = tuple([ int(num) for num in __version__.split('.')])
 
@@ -44,7 +44,7 @@ class Data(object):
                 logging.warning("data.uuid: %s" % exp)
         elif isinstance(value, uuid.UUID):
             self._uuid = value.hex
-    uuid = property(fget=_get_uuid, fset=_set_uuid)
+    uuid = property(fget=_get_uuid, fset=_set_uuid, doc="uuid of the object")
 
     def _get_name(self):
         return self._name
@@ -74,6 +74,7 @@ class Data(object):
 
     @staticmethod
     def _load_metadata(path):
+        """load metadata from csv"""
         metadata_filepath = os.path.join(path, "metadata.csv")
         if os.path.exists(metadata_filepath):
             metadata = Metadata().from_csv(metadata_filepath)
@@ -83,6 +84,7 @@ class Data(object):
 
     @staticmethod
     def _get_class_from_metadata(metadata):
+        """get class object from metadata"""
         classattr = metadata.get_attr("class")
         if classattr is not None:
             sdataclassname = classattr.value
