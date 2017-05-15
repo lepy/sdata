@@ -302,7 +302,7 @@ class Part(Group):
 
 
     def __str__(self):
-        return "(part '%s':%s)" % (self.name, self.uuid)
+        return "(Part '%s':%s)" % (self.name, self.uuid)
 
     __repr__ = __str__
 
@@ -319,7 +319,7 @@ class Material(Group):
         self.gen_default_attributes()
 
     def __str__(self):
-        return "(mat '%s':%s)" % (self.name, self.uuid)
+        return "(Material '%s':%s)" % (self.name, self.uuid)
 
     __repr__ = __str__
 

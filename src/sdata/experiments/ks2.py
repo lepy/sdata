@@ -24,7 +24,7 @@ class KS2_Test(sdata.TestSeries):
     ATTR_NAMES = [["angle", None, "float", "deg", "loading angle", True],
                   ] + sdata.TestSeries.ATTR_NAMES
 
-    def __init__(self, parts, **kwargs):
+    def __init__(self, **kwargs):
         """KS2 Testseries"""
         sdata.TestSeries.__init__(self, **kwargs)
         self.gen_default_attributes()
