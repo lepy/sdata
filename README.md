@@ -30,24 +30,67 @@
 ## Example data structure (brain storming)
 
 ```
-testprogram_a
-├── metadata.csv
-└── testseries_ut_a
-    ├── test_ut_a_001
-    │   ├── data
-    │   │   ├── fs.csv
-    │   │   ├── fs_metadata.csv
-    │   │   ├── gom.csv
-    │   │   ├── gom_metadata.csv
-    │   │   └── metadata.csv
-    │   ├── documents
-    │   │   ├── report.pdf
-    │   │   └── metadata.csv
-    │   ├── pictures
-    │   ├── movies
-    │   └── metadata.csv
-    └── test_ut_a_002
-        └── metadata.csv
+ └─mytestprogram
+   |
+   ├─metadata.csv
+   |
+   ├─testseries_c3c63f8094464325bd57623cb5bbe58f
+   | |
+   | ├─metadata.csv
+   | |
+   | ├─test_bb507e40663d49cca8264c0ed6751692
+   | | |
+   | | ├─metadata.csv
+   | | |
+   | | └─table_d061d7a58b2341128dd95412ff6ab36f
+   | |   |
+   | |   ├─metadata.csv
+   | |   |
+   | |   └─d061d7a58b2341128dd95412ff6ab36f.csv
+   | |
+   | └─test_e574e000f1404f5ebb9aaceb4183dc4c
+   |   |
+   |   └─metadata.csv
+   |
+   └─testseries_a6fc7decdb1441518f762e3b5d798ba7
+     |
+     ├─metadata.csv
+     |
+     ├─test_b62195ac49b64c9e8cedb7dba52bd539
+     | |
+     | ├─metadata.csv
+     | |
+     | ├─table_6322a66775604c32af74039575221fe0
+     | | |
+     | | ├─metadata.csv
+     | | |
+     | | └─6322a66775604c32af74039575221fe0.csv
+     | |
+     | └─table_9bec8c67e09b456f96a9e23b04d9441a
+     |   |
+     |   ├─metadata.csv
+     |   |
+     |   └─9bec8c67e09b456f96a9e23b04d9441a.csv
+     |
+     ├─test_ddc82782f5f0455895145682fe0a70f2
+     | |
+     | ├─metadata.csv
+     | |
+     | └─table_ea4fa966bedb4104b9754a4f5f5d8a80
+     |   |
+     |   ├─metadata.csv
+     |   |
+     |   └─ea4fa966bedb4104b9754a4f5f5d8a80.csv
+     |
+     └─test_8796c35b2e3a4f8a82af181698c15861
+       |
+       ├─metadata.csv
+       |
+       └─table_60a90898f0c94b23984b174a74a2a47a
+         |
+         ├─metadata.csv
+         |
+         └─60a90898f0c94b23984b174a74a2a47a.csv
 
 ```
 
