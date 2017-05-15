@@ -72,15 +72,45 @@ class Data(object):
         self.metadata.set_attr(name="name", value=self.name, description="object name", unit="-", dtype="str")
         self.metadata.to_csv(metadata_filepath)
 
+    @staticmethod
+    def _load_metadata(path):
+        metadata_filepath = os.path.join(path, "metadata.csv")
+        if os.path.exists(metadata_filepath):
+            metadata = Metadata().from_csv(metadata_filepath)
+        else:
+            metadata = Metadata()
+        return metadata
+
+    @staticmethod
+    def _get_class_from_metadata(metadata):
+        classattr = metadata.get_attr("class")
+        if classattr is not None:
+            sdataclassname = classattr.value
+            sdatacls = SDATACLS.get(sdataclassname)
+            if sdataclassname not in SDATACLS:
+                logging.warn("unsupported cls '{}'".format(sdataclassname))
+                sdatacls = Data
+        else:
+            logging.warn("cls not defined '{}'".format(metadata))
+            sdatacls = None
+        return sdatacls
+
     @classmethod
     def from_folder(cls, path):
         """generate data instance from folder structure"""
-        data = cls()
-        metadata_filepath = os.path.join(path, "metadata.csv")
-        if os.path.exists(metadata_filepath):
-            Metadata().from_csv(metadata_filepath)
+        metadata = cls._load_metadata(path)
+        sdataclass = cls._get_class_from_metadata(metadata)
+        if sdataclass:
+            data = sdataclass()
+            data.metadata = metadata
+            print(sdataclass)
+            print("Metadata", metadata)
+            # assert sdataclass=="TestProgram", "unsupported data type {}".format(sdataclass)
+            data.uuid = data.metadata.get_attr("uuid").value
+            data.name = data.metadata.get_attr("name").value
         else:
-            logging.error("no metadata '{}'".format(metadata_filepath))
+            logging.error("no metadata '{}'".format(path))
+
         return data
 
     def verify_attributes(self):
@@ -103,7 +133,7 @@ class Data(object):
         return (self.name)
 
     def __str__(self):
-        return "(data '%s':%s)" % (self.name, self.uuid)
+        return "(Data '%s':%s)" % (self.name, self.uuid)
 
     __repr__ = __str__
 
@@ -120,6 +150,20 @@ class Table(Data):
         self._table = pd.DataFrame()
         self.gen_default_attributes()
 
+    @classmethod
+    def from_folder(cls, path):
+        print("import_table", path)
+        # data = Data.from_folder(path)
+        files = [x for x in os.listdir(path) if not os.path.isdir(os.path.join(path, x)) and not x.startswith("metadata")]
+        print("tablefiles", files, len(files))
+        assert len(files)==1
+        data = cls()
+        data.metadata = data._load_metadata(path)
+        data.uuid = data.metadata.get_attr("uuid").value
+        data.name = data.metadata.get_attr("name").value
+        importpath = os.path.join(path, files[0])
+        data._table = pd.read_csv(importpath)
+        return data
 
     def _get_table(self):
         return self._table
@@ -135,7 +179,7 @@ class Table(Data):
         self._table.to_csv(exportpath, index=False)
 
     def __str__(self):
-        return "(table '%s':%s(%d))" % (self.name, self.uuid, len(self._table))
+        return "(Table '%s':%s(%d))" % (self.name, self.uuid, len(self._table))
 
     __repr__ = __str__
 
@@ -153,6 +197,36 @@ class Group(Data):
         self.metadata = kwargs.get("metadata") or Metadata()
         self.gen_default_attributes()
 
+
+    @classmethod
+    def from_folder(cls, path):
+        """generate data instance from folder structure"""
+        metadata = cls._load_metadata(path)
+        sdataclass = cls._get_class_from_metadata(metadata)
+        if sdataclass:
+            data = sdataclass()
+            data.metadata = metadata
+            print(sdataclass)
+            print("Metadata", metadata)
+            # assert sdataclass=="TestProgram", "unsupported data type {}".format(sdataclass)
+            data.uuid = data.metadata.get_attr("uuid").value
+            data.name = data.metadata.get_attr("name").value
+        else:
+            logging.error("no metadata '{}'".format(path))
+
+        print("import_group", path)
+        folders = [x for x in os.listdir(path) if os.path.isdir(os.path.join(path, x))]
+        if hasattr(data, "group"):
+            # print("!!!", data, folders, os.listdir(path))
+            for folder in folders:
+                # print("!", folder)
+                subfolder = os.path.join(path, folder)
+                data_ = data.from_folder(subfolder)
+                print("!!!, data_", data_)
+                subdata = data_.from_folder(subfolder)
+                # print("subdata", subdata)
+                data.add_data(subdata)
+        return data
 
     def get_group(self):
         return self._group
@@ -174,7 +248,7 @@ class Group(Data):
         Data.to_folder(self, path)
         for data in self.group.values():
             exportpath = os.path.join(path, "{}_{}".format(data.__class__.__name__.lower(), data.uuid))
-            print("!",data, exportpath)
+            # print("!",data, exportpath)
             data.to_folder(exportpath)
 
     def __str__(self):
@@ -249,9 +323,35 @@ class Material(Group):
 
     __repr__ = __str__
 
+
 from sdata.test import Test
 from sdata.testseries import TestSeries
 from sdata.testprogram import TestProgram
 
+SDATACLS = {"Data":Data,
+            "Group":Group,
+            "Table":Table,
+            "Test":Test,
+            "TestSeries":TestSeries,
+            "TestProgram":TestProgram,
+            "Part":Part,
+            "Material":Material,
+            }
+
+# <class 'sdata.Data'>
+# <class 'sdata.Group'>
+# <class 'sdata.Material'>
+# <class 'sdata.Part'>
+# <class 'sdata.Table'>
+# <class 'sdata.test.Test'>
+# <class 'sdata.testprogram.TestProgram'>
+# <class 'sdata.testseries.TestSeries'>
+
 import sdata.timestamp as timestamp
 __all__ = ["Data", "Table", "Group", "Test", "TestProgram", "TestSeries"]
+
+import sys, inspect
+def print_classes():
+    for name, obj in inspect.getmembers(sys.modules[__name__]):
+        if inspect.isclass(obj):
+            print(obj)

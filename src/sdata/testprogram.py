@@ -12,7 +12,7 @@ class TestProgram(sdata.Group):
         self.add_data(test)
 
     def __str__(self):
-        return "(test '%s':%s)" % (self.name, self.uuid)
+        return "(TestProgram '%s':%s)" % (self.name, self.uuid)
 
     __repr__ = __str__
 

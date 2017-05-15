@@ -14,6 +14,6 @@ class TestSeries(sdata.Group):
         return [x.name for x in self.group.values()]
 
     def __str__(self):
-        return "(test '%s':%s)" % (self.name, self.uuid)
+        return "(TestSeries '%s':%s)" % (self.name, self.uuid)
 
     __repr__ = __str__

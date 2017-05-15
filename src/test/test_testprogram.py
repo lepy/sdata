@@ -84,8 +84,18 @@ def test_testprogram():
     exportpath = "/tmp/mytestprogram"
     tp.to_folder(exportpath)
     tp.tree_folder(exportpath)
+    tp2 = sdata.testprogram.TestProgram.from_folder(exportpath)
+    print(tp)
+    print(tp2)
+    print(tp2.metadata.to_dataframe())
+    exportpath2 = "/tmp/mytestprogram2"
+    tp2.to_folder(exportpath2)
+    tp2.tree_folder(exportpath2)
+    print()
 
 if __name__ == '__main__':
-    test_test()
-    test_testseries()
+    # test_test()
+    # test_testseries()
     test_testprogram()
+    sdata.print_classes()
+
