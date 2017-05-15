@@ -171,7 +171,7 @@ class Group(Data):
     __repr__ = __str__
 
     def tree_folder(self, dir, padding="  ", print_files=True, hidden_files=False, last=True):
-        """├─└"""
+        """print tree folder structure"""
         if last is False:
             print(padding[:-1] + '├─' + os.path.basename(os.path.abspath(dir)))
         else:
@@ -201,8 +201,7 @@ class Group(Data):
                     print(padding + '└─' + file)
                 else:
                     print(padding + '├─' + file)
-
-
+s
 class Part(Group):
     """part object, e.g. test specimen (sheet) or a part of a specimen"""
 
