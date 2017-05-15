@@ -219,7 +219,7 @@ class Part(Group):
     """part object, e.g. test specimen (sheet) or a part of a specimen"""
 
     #["name", "value", "dtype", "unit", "description"]
-    ATTR_NAMES = [["Material", None, "str", "-", "Material name", True],
+    ATTR_NAMES = [["material_uuid", None, "uuid", "-", "Material UUID", True],
                   ]
 
     def __init__(self, **kwargs):
@@ -236,8 +236,8 @@ class Material(Group):
     """material object, e.g. a steel material"""
 
     #["name", "value", "dtype", "unit", "description"]
-    ATTR_NAMES = [["mattype", None, "str", "-", "Material type, e.g. alu|steel|plastic|wood|glas|foam|soil|...", True],
-                  ["grade", "-", "str", "-", "Material grade, e.g. T4", False],
+    ATTR_NAMES = [["material_type", None, "str", "-", "Material type, e.g. alu|steel|plastic|wood|glas|foam|soil|...", True],
+                  ["material_grade", "-", "str", "-", "Material grade, e.g. T4", False],
                   ]
 
     def __init__(self, **kwargs):

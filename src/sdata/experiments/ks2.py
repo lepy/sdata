@@ -10,7 +10,7 @@ class KS2_Sheet(sdata.Part):
                   ["bi", None, "float", "mm", "inner width", True],
                   ["hi", None, "float", "mm", "inner height", True],
                   ["l", None, "float", "mm", "length", True],
-                  ]
+                  ] + sdata.Part.ATTR_NAMES
     def __init__(self, **kwargs):
         """KS2 Testseries"""
         sdata.Part.__init__(self, **kwargs)
