@@ -8,7 +8,7 @@ class TestSeries(sdata.Group):
 
     def add_test(self, test):
         """add test to test series"""
-        self.add_data(test)
+        sdata.Group.add_data(self, test)
 
     def dir(self):
         return [x.name for x in self.group.values()]

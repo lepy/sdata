@@ -103,14 +103,10 @@ class Data(object):
         if sdataclass:
             data = sdataclass()
             data.metadata = metadata
-            print(sdataclass)
-            print("Metadata", metadata)
-            # assert sdataclass=="TestProgram", "unsupported data type {}".format(sdataclass)
             data.uuid = data.metadata.get_attr("uuid").value
             data.name = data.metadata.get_attr("name").value
         else:
             logging.error("no metadata '{}'".format(path))
-
         return data
 
     def verify_attributes(self):
@@ -152,11 +148,9 @@ class Table(Data):
 
     @classmethod
     def from_folder(cls, path):
-        print("import_table", path)
         # data = Data.from_folder(path)
         files = [x for x in os.listdir(path) if not os.path.isdir(os.path.join(path, x)) and not x.startswith("metadata")]
-        print("tablefiles", files, len(files))
-        assert len(files)==1
+        assert len(files)==1, "to many files for Table"
         data = cls()
         data.metadata = data._load_metadata(path)
         data.uuid = data.metadata.get_attr("uuid").value
@@ -191,53 +185,51 @@ class Group(Data):
 
     def __init__(self, **kwargs):
         Data.__init__(self, **kwargs)
-        self._uuid = None
         self._group = OrderedDict()
-        self.uuid = kwargs.get("uuid") or uuid.uuid4()
-        self.metadata = kwargs.get("metadata") or Metadata()
         self.gen_default_attributes()
 
 
     @classmethod
     def from_folder(cls, path):
         """generate data instance from folder structure"""
+        if not os.path.exists(path):
+            return cls()
         metadata = cls._load_metadata(path)
         sdataclass = cls._get_class_from_metadata(metadata)
         if sdataclass:
             data = sdataclass()
             data.metadata = metadata
-            print(sdataclass)
-            print("Metadata", metadata)
-            # assert sdataclass=="TestProgram", "unsupported data type {}".format(sdataclass)
             data.uuid = data.metadata.get_attr("uuid").value
             data.name = data.metadata.get_attr("name").value
         else:
             logging.error("no metadata '{}'".format(path))
 
-        print("import_group", path)
         folders = [x for x in os.listdir(path) if os.path.isdir(os.path.join(path, x))]
         if hasattr(data, "group"):
-            # print("!!!", data, folders, os.listdir(path))
             for folder in folders:
-                # print("!", folder)
                 subfolder = os.path.join(path, folder)
                 data_ = data.from_folder(subfolder)
-                print("!!!, data_", data_)
                 subdata = data_.from_folder(subfolder)
-                # print("subdata", subdata)
                 data.add_data(subdata)
         return data
 
     def get_group(self):
         return self._group
-    group = property(get_group)
+    group = property(get_group, doc="get group")
 
     def add_data(self, data):
+        """add data, if data.name is unique"""
         if isinstance(data, Data):
+            names = [dat.name for uid, dat in self.group.items()]
+            if data.name in names:
+                logging.error("{}: name '{}' aready exists".format(data.__class__.__name__, data.name))
+                return
             self.group[data.uuid] = data
         else:
             logging.warning("ignore data %s (wrong type!)" % data)
+
     def get_data(self, uuid):
+        """get data by uuid"""
         return self.group.get(uuid)
 
     def dir(self):
@@ -300,6 +292,9 @@ class Part(Group):
         Group.__init__(self, **kwargs)
         self.gen_default_attributes()
 
+    def add_data(self, test):
+        """add test to test series"""
+        Group.add_data(self, test)
 
     def __str__(self):
         return "(Part '%s':%s)" % (self.name, self.uuid)
@@ -317,6 +312,10 @@ class Material(Group):
     def __init__(self, **kwargs):
         Group.__init__(self, **kwargs)
         self.gen_default_attributes()
+
+    def add_data(self, test):
+        """add test to test series"""
+        Group.add_data(self, test)
 
     def __str__(self):
         return "(Material '%s':%s)" % (self.name, self.uuid)

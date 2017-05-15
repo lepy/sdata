@@ -17,7 +17,7 @@ def _fixed_uuid():
 
 fixed_uuid =_fixed_uuid()
 
-def test_ks2():
+def test_ks2_full():
     mat1 = sdata.Material(name="HX340LAD")
     mat1.metadata.set_attr("material_type", "steel")
     print(mat1.metadata)
@@ -65,6 +65,7 @@ def test_ks2():
 
 
     ks2 = sdata.experiments.ks2.KS2_Test(name="KS2 testseries A1", parts=[part1, part2], uuid="ddc82782f5f0455895145682fe0a70f2")
+    ks2.name = "KS2 testseries A1"
     print(ks2)
     assert ks2.name=="KS2 testseries A1"
     print(ks2.metadata)
@@ -73,26 +74,38 @@ def test_ks2():
 
     print(part1.metadata.to_dataframe())
 
-    tp = sdata.testprogram.TestProgram(name="testprogram FOO", uuid="43880975d9b745f1b853c31b691e67a9")
-    ts1 = sdata.testseries.TestSeries(name="testseries A1", uuid="a6fc7decdb1441518f762e3b5d798ba7")
+    #tp = sdata.testprogram.TestProgram(name="testprogram FOO")
+    tp = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")
+    ts1 = sdata.testseries.TestSeries(name="testseries A1")
     tp.add_series(ts1)
     ts1.add_test(ks2)
 
     df = pd.DataFrame(np.random.random((10,3)), columns=["a", "b", "c"])
-    table = sdata.Table(uuid="bb507e40663d49cca8264c0ed6751692")
+    table = sdata.Table(name="table123")
     table.data = df
     table.metadata.set_attr(name="a", value="Column a", description="bar")
     table.metadata.set_attr(name="b", value="Column a", description="bar", unit="kN")
     table.metadata.set_attr(name="c", value="Column a", description="bar", unit="mm")
 
-    tp.add_data(mat1)
-    tp.add_data(mat2)
-    tp.add_data(part1)
-    tp.add_data(part2)
+    # tp.add_data(mat1)
+    # tp.add_data(mat2)
+    # tp.add_data(part1)
+    # tp.add_data(part2)
 
     tp.to_folder("/tmp/tp_ks2")
     tp2 = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")
     tp2.to_folder("/tmp/tp_ks2a")
     tp2.tree_folder("/tmp/tp_ks2a")
+
+def test_ks2():
+    tp = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")
+    tp.name = "KS2-testprogram"
+    tp.to_folder("/tmp/tp_ks2")
+
+    tp2 = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")
+    tp2.to_folder("/tmp/tp_ks2a")
+    tp2.tree_folder("/tmp/tp_ks2a")
+
+
 if __name__ == '__main__':
-    test_ks2()
+    test_ks2_full()

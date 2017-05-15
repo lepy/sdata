@@ -8,8 +8,8 @@ class TestProgram(sdata.Group):
         sdata.Group.__init__(self, **kwargs)
 
     def add_series(self, test):
-        """add test to test series"""
-        self.add_data(test)
+        """add data to testprogram"""
+        sdata.Group.add_data(self, test)
 
     def __str__(self):
         return "(TestProgram '%s':%s)" % (self.name, self.uuid)
