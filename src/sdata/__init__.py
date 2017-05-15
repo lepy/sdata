@@ -170,26 +170,38 @@ class Group(Data):
 
     __repr__ = __str__
 
-    def tree_folder(self, dir, padding="  ", print_files=True, hidden_files=False):
-        print(padding[:-1] + '+-' + os.path.basename(os.path.abspath(dir)) + '/')
+    def tree_folder(self, dir, padding="  ", print_files=True, hidden_files=False, last=True):
+        """├─└"""
+        if last is False:
+            print(padding[:-1] + '├─' + os.path.basename(os.path.abspath(dir)))
+        else:
+            print(padding[:-1] + '└─' + os.path.basename(os.path.abspath(dir)))
         padding = padding + ' '
         files = []
         if print_files:
             files = [x for x in os.listdir(dir) if not x.startswith(".")]
         else:
             files = [x for x in os.listdir(dir) if os.path.isdir(dir + os.sep + x)]
-        count = 0
-        for file in files:
-            count += 1
+
+        # metadata first
+        metafiles = [f for f in files if f.startswith("metadata")]
+        files = [x for x in files if x not in metafiles ]
+        files = metafiles + files
+
+        for count, file in enumerate(files):
             print(padding + '|')
             path = dir + os.sep + file
             if os.path.isdir(path):
-                if count == len(files):
-                    self.tree_folder(path, padding + ' ', print_files)
+                if count == (len(files)-1):
+                    self.tree_folder(path, padding + ' ', print_files, last=True)
                 else:
-                    self.tree_folder(path, padding + '|', print_files)
+                    self.tree_folder(path, padding + '|', print_files, last=False)
             else:
-                print(padding + '+-' + file)
+                if count==(len(files)-1):
+                    print(padding + '└─' + file)
+                else:
+                    print(padding + '├─' + file)
+
 
 class Part(Group):
     """part object, e.g. test specimen (sheet) or a part of a specimen"""
