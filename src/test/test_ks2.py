@@ -86,11 +86,12 @@ def test_ks2_full():
     table.metadata.set_attr(name="a", value="Column a", description="bar")
     table.metadata.set_attr(name="b", value="Column a", description="bar", unit="kN")
     table.metadata.set_attr(name="c", value="Column a", description="bar", unit="mm")
+    ks2.add_result(table)
 
-    # tp.add_data(mat1)
-    # tp.add_data(mat2)
-    # tp.add_data(part1)
-    # tp.add_data(part2)
+    tp.add_data(mat1)
+    tp.add_data(mat2)
+    tp.add_data(part1)
+    tp.add_data(part2)
 
     tp.to_folder("/tmp/tp_ks2")
     tp2 = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")

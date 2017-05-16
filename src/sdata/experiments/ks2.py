@@ -17,7 +17,7 @@ class KS2_Sheet(sdata.Part):
         self.gen_default_attributes()
 
 
-class KS2_Test(sdata.TestSeries):
+class KS2_TestSeries(sdata.TestSeries):
     """KS2-Test to determine connection properties"""
 
     #["name", "value", "dtype", "unit", "description", "required"]
@@ -28,6 +28,19 @@ class KS2_Test(sdata.TestSeries):
         """KS2 Testseries"""
         sdata.TestSeries.__init__(self, **kwargs)
         self.gen_default_attributes()
+
+class KS2_Test(sdata.Test):
+    """KS2-Test to determine connection properties"""
+
+    #["name", "value", "dtype", "unit", "description", "required"]
+    ATTR_NAMES = [["angle", None, "float", "deg", "loading angle", True],
+                  ] + sdata.Test.ATTR_NAMES
+
+    def __init__(self, **kwargs):
+        """KS2 Testseries"""
+        sdata.Test.__init__(self, **kwargs)
+        self.gen_default_attributes()
+
 
 sdata.SDATACLS["KS2_Sheet"] = KS2_Sheet
 sdata.SDATACLS["KS2_Test"] = KS2_Test
