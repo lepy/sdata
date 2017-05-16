@@ -15,7 +15,7 @@ from collections import OrderedDict
 import logging
 import numpy as np
 import pandas as pd
-
+import shutil
 from sdata.metadata import Metadata, Attribute
 
 class Data(object):
@@ -79,11 +79,33 @@ class Data(object):
                 os.makedirs(path)
             except OSError as exp:
                 logging.error(exp)
+        else:
+            self.clear_folder(path)
         metadata_filepath = os.path.join(path, "metadata.csv")
         self.metadata.set_attr(name="class", value=self.__class__.__name__, description="object class", unit="-", dtype="str")
         self.metadata.set_attr(name="uuid", value=self.uuid, description="object uuid", unit="-", dtype="str")
         self.metadata.set_attr(name="name", value=self.name, description="object name", unit="-", dtype="str")
         self.metadata.to_csv(metadata_filepath)
+
+    @staticmethod
+    def clear_folder(path):
+        """delete subfolder in export path"""
+        def is_valid(path):
+            prefix = path.split("-")[0]
+            if prefix in [x.lower() for x in SDATACLS.keys()]:
+                return True
+            else:
+                return False
+
+        subfolders = [x for x in os.listdir(path) if os.path.isdir(os.path.join(path, x))]
+        valid_subfolders = [x for x in subfolders if is_valid(x)]
+        for subfolder in valid_subfolders:
+            try:
+                subfolder = os.path.join(path, subfolder)
+                logging.error("rm {}".format(subfolder))
+                shutil.rmtree(subfolder)
+            except OSError as exp:
+                raise
 
     @staticmethod
     def _load_metadata(path):
@@ -237,6 +259,10 @@ class Group(Data):
         return self._group
     group = property(get_group, doc="get group")
 
+    def clear_group(self):
+        """clear group dict"""
+        self._group = OrderedDict()
+
     def add_data(self, data):
         """add data, if data.name is unique"""
         if isinstance(data, Data):
@@ -260,7 +286,6 @@ class Group(Data):
         Data.to_folder(self, path)
         for data in self.group.values():
             exportpath = os.path.join(path, "{}-{}".format(data.__class__.__name__.lower(), data.osname))
-            print("!!!",data, exportpath, data.name, data.osname, data.__class__)
             data.to_folder(exportpath)
 
     def __str__(self):

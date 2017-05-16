@@ -19,8 +19,9 @@ fixed_uuid =_fixed_uuid()
 
 def test_ks2_full():
 
+    # sdata.testprogram.TestProgram.clear_folder("/tmp/tp_ks2")
     tp = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")
-
+    tp.clear_group()
     # Material 1
     mat1 = sdata.Material(name="HX340LAD")
     mat1.metadata.set_attr("material_type", "steel")
@@ -73,7 +74,7 @@ def test_ks2_full():
     tp.add_data(part2)
 
     # KS2 Test Series 1
-    ts1 = sdata.experiments.ks2.KS2_TestSeries(name="KS2 Testseries A1")
+    ts1 = sdata.experiments.ks2.KS2_TestSeries(name="KS2 Series A1")
     tp.add_series(ts1)
 
     # KS2 Test 1
