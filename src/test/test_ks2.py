@@ -22,21 +22,26 @@ def test_ks2_full():
     # sdata.testprogram.TestProgram.clear_folder("/tmp/tp_ks2")
     tp = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")
     tp.clear_group()
+    tp.add_data(sdata.Materials(name="materials"))
+    tp.add_data(sdata.Parts(name="parts"))
+    materials = tp.get_data_by_name("materials")
+    parts = tp.get_data_by_name("parts")
+    print(parts)
     # Material 1
     mat1 = sdata.Material(name="HX340LAD")
     mat1.metadata.set_attr("material_type", "steel")
-    print(mat1.metadata)
+    # print(mat1.metadata)
     invalid_attrs = mat1.verify_attributes()
     print(invalid_attrs)
     assert len(invalid_attrs)==0
-    print(mat1.metadata.to_dataframe())
-    tp.add_data(mat1)
+    # print(mat1.metadata.to_dataframe())
+    materials.add_data(mat1)
 
     # Material 2
     mat2 = sdata.Material(name="AW6016")
     mat2.metadata.set_attr("material_type", "alu")
     mat2.metadata.set_attr("material_grade", "T4")
-    tp.add_data(mat2)
+    materials.add_data(mat2)
 
     # Part 1
     part1 = sdata.experiments.ks2.KS2_Sheet(name="upper sheet")
@@ -53,7 +58,7 @@ def test_ks2_full():
     invalid_attrs = part1.verify_attributes()
     print(invalid_attrs)
     assert len(invalid_attrs)==0
-    tp.add_data(part1)
+    parts.add_data(part1)
 
     # Part 2
     part2 = sdata.experiments.ks2.KS2_Sheet(name="bottom sheet")
@@ -71,7 +76,7 @@ def test_ks2_full():
     invalid_attrs = part2.verify_attributes()
     print(invalid_attrs)
     assert len(invalid_attrs)==0
-    tp.add_data(part2)
+    parts.add_data(part2)
 
     # KS2 Test Series 1
     ts1 = sdata.experiments.ks2.KS2_TestSeries(name="KS2 Series A1")

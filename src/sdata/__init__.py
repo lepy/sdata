@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.5.7'
+__version__ = '0.5.8'
 __revision__ = None
 __version_info__ = tuple([ int(num) for num in __version__.split('.')])
 
@@ -102,7 +102,7 @@ class Data(object):
         for subfolder in valid_subfolders:
             try:
                 subfolder = os.path.join(path, subfolder)
-                logging.error("rm {}".format(subfolder))
+                logging.debug("clear_folder: rm {}".format(subfolder))
                 shutil.rmtree(subfolder)
             except OSError as exp:
                 raise
@@ -274,9 +274,15 @@ class Group(Data):
         else:
             logging.warning("ignore data %s (wrong type!)" % data)
 
-    def get_data(self, uuid):
+    def get_data_by_uuid(self, uid):
         """get data by uuid"""
-        return self.group.get(uuid)
+        return self.group.get(uid)
+
+    def get_data_by_name(self, name):
+        """:return obj by name"""
+        d = dict([(obj.name, uid) for uid, obj in self.group.items()])
+        uid = d.get(name)
+        return self.get_data_by_uuid(uid)
 
     def dir(self):
         return [(x.name, x.dir()) for x in self.group.values()]
@@ -326,51 +332,9 @@ class Group(Data):
                     print(padding + '├─' + file)
 
 
-class Part(Group):
-    """part object, e.g. test specimen (sheet) or a part of a specimen"""
-
-    #["name", "value", "dtype", "unit", "description"]
-    ATTR_NAMES = [["material_uuid", None, "uuid", "-", "Material UUID", True],
-                  ]
-
-    def __init__(self, **kwargs):
-        Group.__init__(self, **kwargs)
-        self.gen_default_attributes()
-
-    def add_data(self, test):
-        """add test to test series"""
-        Group.add_data(self, test)
-
-    def __str__(self):
-        return "(Part '%s':%s)" % (self.name, self.uuid)
-
-    __repr__ = __str__
-
-class Material(Group):
-    """material object, e.g. a steel material"""
-
-    #["name", "value", "dtype", "unit", "description"]
-    ATTR_NAMES = [["material_type", None, "str", "-", "Material type, e.g. alu|steel|plastic|wood|glas|foam|soil|...", True],
-                  ["material_grade", "-", "str", "-", "Material grade, e.g. T4", False],
-                  ]
-
-    def __init__(self, **kwargs):
-        Group.__init__(self, **kwargs)
-        self.gen_default_attributes()
-
-    def add_data(self, test):
-        """add test to test series"""
-        Group.add_data(self, test)
-
-    def __str__(self):
-        return "(Material '%s':%s)" % (self.name, self.uuid)
-
-    __repr__ = __str__
-
-
 from sdata.test import Test
 from sdata.testseries import TestSeries
-from sdata.testprogram import TestProgram
+from sdata.testprogram import TestProgram, Part, Parts, Material, Materials
 
 SDATACLS = {"Data":Data,
             "Group":Group,
@@ -380,19 +344,12 @@ SDATACLS = {"Data":Data,
             "TestProgram":TestProgram,
             "Part":Part,
             "Material":Material,
+            "Parts":Parts,
+            "Materials":Materials,
             }
 
-# <class 'sdata.Data'>
-# <class 'sdata.Group'>
-# <class 'sdata.Material'>
-# <class 'sdata.Part'>
-# <class 'sdata.Table'>
-# <class 'sdata.test.Test'>
-# <class 'sdata.testprogram.TestProgram'>
-# <class 'sdata.testseries.TestSeries'>
-
 import sdata.timestamp as timestamp
-__all__ = ["Data", "Table", "Group", "Test", "TestProgram", "TestSeries"]
+__all__ = ["Data", "Table", "Group", "Test", "TestProgram", "TestSeries", "Part", "Parts", "Material", "Materials"]
 
 import sys, inspect
 def print_classes():
