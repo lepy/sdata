@@ -43,4 +43,5 @@ class KS2_Test(sdata.Test):
 
 
 sdata.SDATACLS["KS2_Sheet"] = KS2_Sheet
+sdata.SDATACLS["KS2_TestSeries"] = KS2_TestSeries
 sdata.SDATACLS["KS2_Test"] = KS2_Test

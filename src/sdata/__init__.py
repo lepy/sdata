@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.5.6'
+__version__ = '0.5.7'
 __revision__ = None
 __version_info__ = tuple([ int(num) for num in __version__.split('.')])
 
@@ -25,8 +25,10 @@ class Data(object):
     def __init__(self, **kwargs):
         self._uuid = None
         self._name = None
+        self._prefix = None
         self.uuid = kwargs.get("uuid") or uuid.uuid4()
         self.name = kwargs.get("name") or "N.N."
+        self.prefix = kwargs.get("prefix") or ""
         self.metadata = kwargs.get("metadata") or Metadata()
         self.gen_default_attributes()
 
@@ -56,8 +58,19 @@ class Data(object):
                 logging.warning("data.name: %s" % exp)
         else:
             self._name = str(value)[:256]
-
     name = property(fget=_get_name, fset=_set_name, doc="name of the object")
+
+    def _get_prefix(self):
+        return self._prefix
+    def _set_prefix(self, value):
+        if isinstance(value, str):
+            try:
+                self._prefix = value[:256]
+            except ValueError as exp:
+                logging.warning("data.prefix: %s" % exp)
+        else:
+            self._prefix = str(value)[:256]
+    prefix = property(fget=_get_prefix, fset=_set_prefix, doc="prefix of the object name")
 
     def to_folder(self, path):
         """export data to folder"""
@@ -110,6 +123,11 @@ class Data(object):
         else:
             logging.error("no metadata '{}'".format(path))
         return data
+
+    @property
+    def osname(self):
+        """:return os compatible name"""
+        return self.name.replace(" ","_").lower()
 
     def verify_attributes(self):
         """check mandatory attributes"""
@@ -171,7 +189,7 @@ class Table(Data):
     def to_folder(self, path):
         """export data to folder"""
         Data.to_folder(self, path)
-        exportpath = os.path.join(path, "{}.csv".format(self.uuid))
+        exportpath = os.path.join(path, "{}.csv".format(self.osname))
         self._table.to_csv(exportpath, index=False)
 
     def __str__(self):
@@ -222,8 +240,8 @@ class Group(Data):
     def add_data(self, data):
         """add data, if data.name is unique"""
         if isinstance(data, Data):
-            names = [dat.name for uid, dat in self.group.items()]
-            if data.name in names:
+            names = [dat.name.lower() for uid, dat in self.group.items()]
+            if data.name.lower() in names:
                 logging.error("{}: name '{}' aready exists".format(data.__class__.__name__, data.name))
                 return
             self.group[data.uuid] = data
@@ -241,8 +259,8 @@ class Group(Data):
         """export data to folder"""
         Data.to_folder(self, path)
         for data in self.group.values():
-            exportpath = os.path.join(path, "{}_{}".format(data.__class__.__name__.lower(), data.uuid))
-            # print("!",data, exportpath)
+            exportpath = os.path.join(path, "{}-{}".format(data.__class__.__name__.lower(), data.osname))
+            print("!!!",data, exportpath, data.name, data.osname, data.__class__)
             data.to_folder(exportpath)
 
     def __str__(self):
@@ -269,7 +287,7 @@ class Group(Data):
         files = metafiles + files
 
         for count, file in enumerate(files):
-            print(padding + '|')
+            # print(padding + '|')
             path = dir + os.sep + file
             if os.path.isdir(path):
                 if count == (len(files)-1):

@@ -18,6 +18,10 @@ def _fixed_uuid():
 fixed_uuid =_fixed_uuid()
 
 def test_ks2_full():
+
+    tp = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")
+
+    # Material 1
     mat1 = sdata.Material(name="HX340LAD")
     mat1.metadata.set_attr("material_type", "steel")
     print(mat1.metadata)
@@ -25,15 +29,17 @@ def test_ks2_full():
     print(invalid_attrs)
     assert len(invalid_attrs)==0
     print(mat1.metadata.to_dataframe())
+    tp.add_data(mat1)
 
+    # Material 2
     mat2 = sdata.Material(name="AW6016")
     mat2.metadata.set_attr("material_type", "alu")
     mat2.metadata.set_attr("material_grade", "T4")
+    tp.add_data(mat2)
 
+    # Part 1
     part1 = sdata.experiments.ks2.KS2_Sheet(name="upper sheet")
     part1.metadata.set_attr("material_uuid", mat1.uuid)
-    part2 = sdata.experiments.ks2.KS2_Sheet(name="bottom sheet")
-    part2.metadata.set_attr("material_uuid", mat1.uuid)
     invalid_attrs = part1.verify_attributes()
     print(invalid_attrs)
     assert len(invalid_attrs)>0
@@ -46,9 +52,12 @@ def test_ks2_full():
     invalid_attrs = part1.verify_attributes()
     print(invalid_attrs)
     assert len(invalid_attrs)==0
+    tp.add_data(part1)
 
-
-
+    # Part 2
+    part2 = sdata.experiments.ks2.KS2_Sheet(name="bottom sheet")
+    print("!!!", part2.osname)
+    part2.metadata.set_attr("material_uuid", mat1.uuid)
     print(part2.metadata.get_attr("t"))
     part2.metadata.set_attr("material_uuid", mat2.uuid)
     part2.metadata.set_attr("rd", 0)
@@ -61,37 +70,32 @@ def test_ks2_full():
     invalid_attrs = part2.verify_attributes()
     print(invalid_attrs)
     assert len(invalid_attrs)==0
+    tp.add_data(part2)
 
+    # KS2 Test Series 1
+    ts1 = sdata.experiments.ks2.KS2_TestSeries(name="KS2 Testseries A1")
+    tp.add_series(ts1)
 
-
-    ks2 = sdata.experiments.ks2.KS2_Test(name="KS2 testseries A1", parts=[part1, part2], uuid="ddc82782f5f0455895145682fe0a70f2")
-    ks2.name = "KS2 testseries A1"
+    # KS2 Test 1
+    ks2 = sdata.experiments.ks2.KS2_Test(name="KS2 test A1", parts=[part1, part2], uuid="ddc82782f5f0455895145682fe0a70f2")
+    ks2.name = "KS2 Test A1"
     print(ks2)
-    assert ks2.name=="KS2 testseries A1"
+    assert ks2.name=="KS2 Test A1"
     print(ks2.metadata)
     ks2.metadata.set_attr("angle", 30.)
     print(ks2.metadata.get_attr("t3"))
-
-    print(part1.metadata.to_dataframe())
-
-    #tp = sdata.testprogram.TestProgram(name="testprogram FOO")
-    tp = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")
-    ts1 = sdata.testseries.TestSeries(name="testseries A1")
-    tp.add_series(ts1)
     ts1.add_test(ks2)
 
+    # Test Result Table for KS2 Test 1
     df = pd.DataFrame(np.random.random((10,3)), columns=["a", "b", "c"])
-    table = sdata.Table(name="table123")
+    table = sdata.Table(name="Fs", desciption="Force Displacement Relation")
     table.data = df
     table.metadata.set_attr(name="a", value="Column a", description="bar")
     table.metadata.set_attr(name="b", value="Column a", description="bar", unit="kN")
     table.metadata.set_attr(name="c", value="Column a", description="bar", unit="mm")
     ks2.add_result(table)
 
-    tp.add_data(mat1)
-    tp.add_data(mat2)
-    tp.add_data(part1)
-    tp.add_data(part2)
+
 
     tp.to_folder("/tmp/tp_ks2")
     tp2 = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")
