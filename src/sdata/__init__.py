@@ -109,7 +109,9 @@ class Data(object):
 
     @staticmethod
     def _load_metadata(path):
-        """load metadata from csv"""
+        """load metadata from csv
+        
+        :returns: Metadata instance"""
         metadata_filepath = os.path.join(path, "metadata.csv")
         if os.path.exists(metadata_filepath):
             metadata = Metadata().from_csv(metadata_filepath)
@@ -119,7 +121,9 @@ class Data(object):
 
     @staticmethod
     def _get_class_from_metadata(metadata):
-        """get class object from metadata"""
+        """get class object from metadata
+        
+        :returns: relevant sdata class object"""
         classattr = metadata.get_attr("class")
         if classattr is not None:
             sdataclassname = classattr.value
@@ -134,7 +138,9 @@ class Data(object):
 
     @classmethod
     def from_folder(cls, path):
-        """generate data instance from folder structure"""
+        """generate data instance from folder structure
+        
+        :returns: sdata objebt instance"""
         metadata = cls._load_metadata(path)
         sdataclass = cls._get_class_from_metadata(metadata)
         if sdataclass:
@@ -148,7 +154,7 @@ class Data(object):
 
     @property
     def osname(self):
-        """:return os compatible name"""
+        """:returns: os compatible name (ascii?)"""
         return self.name.replace(" ","_").lower()
 
     def verify_attributes(self):
@@ -190,6 +196,7 @@ class Table(Data):
 
     @classmethod
     def from_folder(cls, path):
+        """:returns: sdata object instance"""
         # data = Data.from_folder(path)
         files = [x for x in os.listdir(path) if not os.path.isdir(os.path.join(path, x)) and not x.startswith("metadata")]
         assert len(files)==1, "to many files for Table"

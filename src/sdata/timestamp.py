@@ -1,9 +1,10 @@
 """ISO 8601 date time string parsing
 
 Basic usage:
+
 >>> parse_date("2007-01-25T12:00:00Z")
+
 datetime.datetime(2007, 1, 25, 12, 0, tzinfo=<iso8601.Utc ...>)
->>>
 
 MIT License
 

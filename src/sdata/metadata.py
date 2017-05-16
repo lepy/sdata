@@ -10,6 +10,13 @@ class Attribute(object):
     DTYPES = {'float':float, 'int':int, 'str':str, 'timestamp':TimeStamp}
 
     def __init__(self, name, value, **kwargs):
+        """Attribute
+        :param name
+        :param value
+        :param dtype ['float', 'int', 'str', 'timestamp', 'uuid?', 'unicode?']
+        :param description
+        :param unit
+        """
         self._name = None
         self._value = None
         self._unit = "-"
@@ -19,7 +26,7 @@ class Attribute(object):
         self.dtype = kwargs.get("dtype", "str")
         self.description = kwargs.get("description", "")
         self.unit = kwargs.get("unit", "-")
-        #set tdype first!
+        #set dtype first!
         self.value = value
 
     def _get_name(self):
