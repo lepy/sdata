@@ -30,10 +30,14 @@ class Data(object):
         self.name = kwargs.get("name") or "N.N."
         self.prefix = kwargs.get("prefix") or ""
         self.metadata = kwargs.get("metadata") or Metadata()
-        self.gen_default_attributes()
+        self._gen_default_attributes(kwargs.get("default_attributes") or self.ATTR_NAMES)
+        self._group = OrderedDict()
+        self._table = pd.DataFrame()
 
-    def gen_default_attributes(self):
-        for attr_name, value, dtype, unit, description, required in self.ATTR_NAMES:
+
+    def _gen_default_attributes(self, default_attributes):
+        """create default Attributes in data.metadata"""
+        for attr_name, value, dtype, unit, description, required in default_attributes:
             self.metadata.set_attr(name=attr_name, value=value, dtype=dtype, description=description)
 
     def _get_uuid(self):
@@ -72,6 +76,13 @@ class Data(object):
             self._prefix = str(value)[:256]
     prefix = property(fget=_get_prefix, fset=_set_prefix, doc="prefix of the object name")
 
+    def _get_table(self):
+        return self._table
+    def _set_table(self, df):
+        if isinstance(df, pd.DataFrame):
+            self._table = df
+    table = property(fget=_get_table, fset=_set_table, doc="table object(pandas.DataFrame)")
+
     def to_folder(self, path):
         """export data to folder"""
         if not os.path.exists(path):
@@ -86,6 +97,54 @@ class Data(object):
         self.metadata.set_attr(name="uuid", value=self.uuid, description="object uuid", unit="-", dtype="str")
         self.metadata.set_attr(name="name", value=self.name, description="object name", unit="-", dtype="str")
         self.metadata.to_csv(metadata_filepath)
+
+        # table export
+        if isinstance(self._table, pd.DataFrame) and len(self._table)>0:
+            exportpath = os.path.join(path, "{}.csv".format(self.osname))
+            self._table.to_csv(exportpath, index=False)
+
+        # group export
+        for data in self.group.values():
+            exportpath = os.path.join(path, "{}-{}".format(data.__class__.__name__.lower(), data.osname))
+            data.to_folder(exportpath)
+
+    @classmethod
+    def from_folder(cls, path):
+        """:returns: sdata object instance"""
+        # data = Data.from_folder(path)
+
+        data = cls()
+        if not os.path.exists(path):
+            logging.error("from_folder error: path '{}' not exists.".format(path))
+            return data
+
+        data.metadata = data._load_metadata(path)
+        data.uuid = data.metadata.get_attr("uuid").value
+        data.name = data.metadata.get_attr("name").value
+
+        # table import
+        files = [x for x in os.listdir(path) if not os.path.isdir(os.path.join(path, x)) and not x.startswith("metadata")]
+        if len(files)==1:
+            assert len(files)==1, "invalid number of files for Table '{}'".format(files)
+            importpath = os.path.join(path, files[0])
+            print("read table {}".format(importpath))
+            # data._table = pd.read_csv(importpath)
+
+        if not os.path.exists(path):
+            return cls()
+        metadata = cls._load_metadata(path)
+        data = cls()
+        data.metadata = metadata
+        data.uuid = data.metadata.get_attr("uuid").value
+        data.name = data.metadata.get_attr("name").value
+
+        folders = [x for x in os.listdir(path) if os.path.isdir(os.path.join(path, x))]
+        for folder in folders:
+            subfolder = os.path.join(path, folder)
+            data_ = data.from_folder(subfolder)
+            subdata = data_.from_folder(subfolder)
+            data.add_data(subdata)
+        return data
 
     @staticmethod
     def clear_folder(path):
@@ -136,22 +195,6 @@ class Data(object):
             sdatacls = None
         return sdatacls
 
-    @classmethod
-    def from_folder(cls, path):
-        """generate data instance from folder structure
-        
-        :returns: sdata objebt instance"""
-        metadata = cls._load_metadata(path)
-        sdataclass = cls._get_class_from_metadata(metadata)
-        if sdataclass:
-            data = sdataclass()
-            data.metadata = metadata
-            data.uuid = data.metadata.get_attr("uuid").value
-            data.name = data.metadata.get_attr("name").value
-        else:
-            logging.error("no metadata '{}'".format(path))
-        return data
-
     @property
     def osname(self):
         """:returns: os compatible name (ascii?)"""
@@ -172,95 +215,10 @@ class Data(object):
                 invalid_attrs.append(attr.name)
         return invalid_attrs
 
-    def dir(self):
-        """list contents"""
-        return (self.name)
-
     def __str__(self):
         return "(Data '%s':%s)" % (self.name, self.uuid)
 
     __repr__ = __str__
-
-class Table(Data):
-    """table object"""
-    ATTR_NAMES = []
-
-    def __init__(self, **kwargs):
-        Data.__init__(self, **kwargs)
-        self._uuid = None
-        self._group = OrderedDict()
-        self.uuid = kwargs.get("uuid") or uuid.uuid4()
-        self.metadata = kwargs.get("metadata") or Metadata()
-        self._table = pd.DataFrame()
-        self.gen_default_attributes()
-
-    @classmethod
-    def from_folder(cls, path):
-        """:returns: sdata object instance"""
-        # data = Data.from_folder(path)
-        files = [x for x in os.listdir(path) if not os.path.isdir(os.path.join(path, x)) and not x.startswith("metadata")]
-        assert len(files)==1, "to many files for Table"
-        data = cls()
-        data.metadata = data._load_metadata(path)
-        data.uuid = data.metadata.get_attr("uuid").value
-        data.name = data.metadata.get_attr("name").value
-        importpath = os.path.join(path, files[0])
-        data._table = pd.read_csv(importpath)
-        return data
-
-    def _get_table(self):
-        return self._table
-    def _set_table(self, df):
-        if isinstance(df, pd.DataFrame):
-            self._table = df
-    data = property(fget=_get_table, fset=_set_table)
-
-    def to_folder(self, path):
-        """export data to folder"""
-        Data.to_folder(self, path)
-        exportpath = os.path.join(path, "{}.csv".format(self.osname))
-        self._table.to_csv(exportpath, index=False)
-
-    def __str__(self):
-        return "(Table '%s':%s(%d))" % (self.name, self.uuid, len(self._table))
-
-    __repr__ = __str__
-
-class Group(Data):
-    """group object, e.g. single tension test simulation"""
-
-    #["name", "value", "dtype", "unit", "description"]
-    ATTR_NAMES = []
-
-    def __init__(self, **kwargs):
-        Data.__init__(self, **kwargs)
-        self._group = OrderedDict()
-        self.gen_default_attributes()
-
-
-    @classmethod
-    def from_folder(cls, path):
-        """generate data instance from folder structure"""
-        if not os.path.exists(path):
-            return cls()
-        metadata = cls._load_metadata(path)
-        sdataclass = cls._get_class_from_metadata(metadata)
-        if sdataclass:
-            data = sdataclass()
-            data.metadata = metadata
-            data.uuid = data.metadata.get_attr("uuid").value
-            data.name = data.metadata.get_attr("name").value
-        else:
-            logging.error("no metadata '{}'".format(path))
-
-        folders = [x for x in os.listdir(path) if os.path.isdir(os.path.join(path, x))]
-        if hasattr(data, "group"):
-            for folder in folders:
-                subfolder = os.path.join(path, folder)
-                data_ = data.from_folder(subfolder)
-                subdata = data_.from_folder(subfolder)
-                data.add_data(subdata)
-        return data
 
     def get_group(self):
         return self._group
@@ -290,21 +248,6 @@ class Group(Data):
         d = dict([(obj.name, uid) for uid, obj in self.group.items()])
         uid = d.get(name)
         return self.get_data_by_uuid(uid)
-
-    def dir(self):
-        return [(x.name, x.dir()) for x in self.group.values()]
-
-    def to_folder(self, path):
-        """export data to folder"""
-        Data.to_folder(self, path)
-        for data in self.group.values():
-            exportpath = os.path.join(path, "{}-{}".format(data.__class__.__name__.lower(), data.osname))
-            data.to_folder(exportpath)
-
-    def __str__(self):
-        return "(group '%s':%s)" % (self.name, self.uuid)
-
-    __repr__ = __str__
 
     def tree_folder(self, dir, padding="  ", print_files=True, hidden_files=False, last=True):
         """print tree folder structure"""
@@ -338,25 +281,14 @@ class Group(Data):
                 else:
                     print(padding + '├─' + file)
 
-
-from sdata.test import Test
-from sdata.testseries import TestSeries
-from sdata.testprogram import TestProgram, Part, Parts, Material, Materials
+    def dir(self):
+        return [(x.name, x.dir()) for x in self.group.values()]
 
 SDATACLS = {"Data":Data,
-            "Group":Group,
-            "Table":Table,
-            "Test":Test,
-            "TestSeries":TestSeries,
-            "TestProgram":TestProgram,
-            "Part":Part,
-            "Material":Material,
-            "Parts":Parts,
-            "Materials":Materials,
             }
 
 import sdata.timestamp as timestamp
-__all__ = ["Data", "Table", "Group", "Test", "TestProgram", "TestSeries", "Part", "Parts", "Material", "Materials"]
+__all__ = ["Data"]
 
 import sys, inspect
 def print_classes():
