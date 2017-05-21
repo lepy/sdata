@@ -35,11 +35,11 @@ def test_group():
     group1.add_data(data2)
     group1.add_data(data3)
     print(group1.group)
-    data1a = group1.get_data(uuid="38b26864e7794f5182d38459bab8584f")
+    data1a = group1.get_data_by_uuid(uid="38b26864e7794f5182d38459bab8584f")
     assert data1a.name == "data1"
     assert data1a.uuid == "38b26864e7794f5182d38459bab8584f"
 
-    data3a = group1.get_data(uuid="664577c2d3134b598bc4d6c13f20b71a")
+    data3a = group1.get_data_by_uuid(uid="664577c2d3134b598bc4d6c13f20b71a")
     assert data3a.name == "data3"
     assert data3a.uuid == "664577c2d3134b598bc4d6c13f20b71a"
 

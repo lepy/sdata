@@ -1,4 +1,10 @@
-from sdata.experiments.ks2 import KS2_Sheet, KS2_Test
-from sdata.experiments.lapshear import Lapshear_Sheet, Lapshear_Test
+import sdata.experiments.ks2
+import sdata.experiments.lapshear
+import sdata.experiments.material
 
-__all__ = [KS2_Sheet, KS2_Test, Lapshear_Sheet, Lapshear_Test]
+# ["name", "default_value", "dtype", "unit", "description", "required"]
+part_default_attributes = [
+    ["part_id", None, "str", "-", "Part ID", True],
+  ]
+
+__all__ = []
