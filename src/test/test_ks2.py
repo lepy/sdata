@@ -6,27 +6,32 @@ modulepath = os.path.dirname(__file__)
 sys.path.insert(0, os.path.join(modulepath, "..", "..", "src"))
 
 #["name", "value", "dtype", "unit", "description", "required"]
-ks2specimen_default_attributes = [["rd", None, "float", "deg", "rolling direction", True],
-                              ["t", None, "float", "mm", "thickness sheet", True],
-                              ["r", None, "float", "mm", "bending radius sheet", True],
-                              ["bi", None, "float", "mm", "inner width", True],
-                              ["hi", None, "float", "mm", "inner height", True],
-                              ["l", None, "float", "mm", "length", True],
-                              ]
+ks2specimen_default_attributes = [
+    ["rd", None, "float", "deg", "rolling direction", True],
+    ["t", None, "float", "mm", "thickness sheet", True],
+    ["r", None, "float", "mm", "bending radius sheet", True],
+    ["bi", None, "float", "mm", "inner width", True],
+    ["hi", None, "float", "mm", "inner height", True],
+    ["l", None, "float", "mm", "length", True],
+    ]
 
 #["name", "value", "dtype", "unit", "description", "required"]
-ks2test_default_attributes = [["angle", None, "float", "deg", "loading angle", True],
-                  ]
+ks2test_default_attributes = [
+    ["angle", None, "float", "deg", "loading angle", True],
+    ]
 
 #["name", "value", "dtype", "unit", "description"]
-material_default_attributes = [["material_type", None, "str", "-", "Material type, e.g. alu|steel|plastic|wood|glas|foam|soil|...", True],
-                  ["material_grade", "-", "str", "-", "Material grade, e.g. T4", False],
-                  ]
+material_default_attributes = [
+    ["material_type", None, "str", "-", "Material type, e.g. alu|steel|plastic|wood|glas|foam|soil|...", True],
+    ["material_grade", "-", "str", "-", "Material grade, e.g. T4", False],
+    ]
 
-material_default_attributes = [["rd", None, "float", "deg", "rolling direction", True],
-                  ["t", None, "float", "mm", "thickness sheet", True],
-                  ["l", None, "float", "mm", "length", True],
-                  ["w", None, "float", "mm", "width", True],
+material_default_attributes = [
+    ["rd", None, "float", "deg", "rolling direction", True],
+    ["t", None, "float", "mm", "thickness sheet", True],
+    ["l", None, "float", "mm", "length", True],
+    ["w", None, "float", "mm", "width", True],
+]
 
 import sdata
 # import sdata.test
