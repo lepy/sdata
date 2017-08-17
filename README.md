@@ -1,7 +1,5 @@
-[![readthedocs](https://readthedocs.org/projects/sdata/badge/?version=latest)](http://sdata.readthedocs.io/en/latest/)
-
-[![saythanks.io/to/lepy](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/lepy)
-
+[![readthedocs](https://readthedocs.org/projects/sdata/badge/?version=latest)](http://sdata.readthedocs.io/en/latest/) 
+[![saythanks.io/to/lepy](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/lepy) 
 [![GitPitch](https://gitpitch.com/assets/badge.svg)](https://gitpitch.com/lepy/sdata/master?grs=github&t=beige)
 
 # Structured data format (sdata)
