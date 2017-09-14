@@ -129,3 +129,4 @@ The data model is orientated to the common data model, cp. https://www.unidata.u
 
 * http://semver.org
 * https://docs.python.org/2/library/mimetypes.html
+* https://wiki.asam.net/display/STANDARDS/ASAM+ODS
