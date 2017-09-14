@@ -124,3 +124,8 @@ Each object has a metadata file.
 The data model is orientated to the common data model, cp. https://www.unidata.ucar.edu/software/thredds/current/netcdf-java/CDM/
 
 * http://datashape.pydata.org/overview.html
+
+## Links
+
+* http://semver.org
+* https://docs.python.org/2/library/mimetypes.html
