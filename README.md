@@ -1,6 +1,6 @@
 
 [![PyPI version](https://badge.fury.io/py/sdata.svg)](https://badge.fury.io/py/sdata)
-[![PyPI](https://img.shields.io/pypi/pyversions/sdata.svg)](https://pypi.python.org/pypi/sdata/)
+[![PyPI](https://img.shields.io/pypi/v/sdata.svg?style=flat-square)](https://pypi.python.org/pypi/sdata/)
 [![readthedocs](https://readthedocs.org/projects/sdata/badge/?version=latest)](http://sdata.readthedocs.io/en/latest/) 
 [![saythanks.io/to/lepy](https://img.shields.io/badge/Say%20Thanks-!-1EAEDB.svg)](https://saythanks.io/to/lepy) 
 [![GitPitch](https://gitpitch.com/assets/badge.svg)](https://gitpitch.com/lepy/sdata/master?grs=github&t=beige)
