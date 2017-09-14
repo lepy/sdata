@@ -13,7 +13,7 @@ def test_table():
 
     df = pd.DataFrame(np.random.random((10,3)), columns=["a", "b", "c"])
 
-    table = sdata.Table()
+    table = sdata.Data()
     table.data = df
     table.metadata.set_attr(name="a", value="Column a", description="bar")
     table.metadata.set_attr(name="b", value="Column a", description="bar", unit="kN")

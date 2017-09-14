@@ -29,7 +29,7 @@ def test_group():
     data2 = sdata.Data(name="data2", uuid="b1fd2643-af55-4b33-b044-22070a0dc7c7")
     data3 = sdata.Data(name="data3", uuid=uuid.UUID("664577c2d3134b598bc4d6c13f20b71a"))
 
-    group1 = sdata.Group(name="group1", uuid="dbc894745fb04f7e87a990bdd4ba97c4")
+    group1 = sdata.Data(name="group1", uuid="dbc894745fb04f7e87a990bdd4ba97c4")
     print(group1)
     group1.add_data(data1)
     group1.add_data(data2)
