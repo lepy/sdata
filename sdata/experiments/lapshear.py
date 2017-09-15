@@ -5,4 +5,4 @@ lapshear_specimen_default_attributes = [
     ["t", None, "float", "mm", "thickness sheet", True],
     ["l", None, "float", "mm", "length", True],
     ["w", None, "float", "mm", "width", True],
-   ]
+]
