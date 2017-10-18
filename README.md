@@ -135,3 +135,4 @@ The data model is orientated to the common data model, cp. https://www.unidata.u
 * https://docs.python.org/2/library/mimetypes.html
 * https://wiki.asam.net/display/STANDARDS/ASAM+ODS
 * http://www.bioinformatics.org/bradstuff/bc/IntroPythonClient.pdf
+* https://datahub.io/docs/data-packages/publish-faq#examples
