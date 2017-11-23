@@ -1,0 +1,34 @@
+@startuml
+package "question" as question {
+database "?" as data
+}
+
+package "design" as design {
+component "planing" as planing
+}
+
+package "execution" as execution {
+component "collecting" as collecting
+component "storing" as storing
+component "managing" as managing
+component "describing" as describing
+}
+
+package "analysis" as analysis {
+component "interpreting" as interpreting
+component "combining" as combining
+component "anonymising" as anonymising
+}
+
+package "publication" as publication {
+component "sharing" as sharing
+component "citation" as citation
+component "reuse" as reuse
+}
+
+question -right-> design
+design --> execution
+execution --> analysis
+analysis -up-> publication
+publication --> question
+@enduml
