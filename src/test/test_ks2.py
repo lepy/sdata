@@ -140,11 +140,11 @@ def test_ks2_full():
     print(tp.dir())
 
 def test_ks2():
-    tp = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")
+    tp = sdata.Data.from_folder("/tmp/tp_ks2")
     tp.name = "KS2-testprogram"
     tp.to_folder("/tmp/tp_ks2")
 
-    tp2 = sdata.testprogram.TestProgram.from_folder("/tmp/tp_ks2")
+    tp2 = sdata.Data.from_folder("/tmp/tp_ks2")
     tp2.to_folder("/tmp/tp_ks2a")
     tp2.tree_folder("/tmp/tp_ks2a")
 

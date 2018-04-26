@@ -10,7 +10,7 @@ import time
 import datetime
 import pytz
 import sdata.timestamp
-import sdata.test
+# import sdata.test
 
 
 def to_timestamp(dt, epoch=datetime.datetime(1970,1,1)):
