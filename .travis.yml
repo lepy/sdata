@@ -1,13 +1,18 @@
+# Config file for automatic testing at travis-ci.org
+
 language: python
 python:
-  - "2.7"
-  - "3.6"
-# command to install dependencies
-install:
-  - pip install -r requirements.txt
-# command to run tests
-script:
-  - py.test
-#  - tox
-#  - pytest # or py.test for Python versions 3.5 and below
-  
+  - 3.6
+  - 3.5
+  - 2.7
+
+# Command to install dependencies, e.g. pip install -r requirements.txt --use-mirrors
+install: pip install -U tox-travis
+install: pip install -r requirements.txt
+
+# Command to run tests, e.g. python setup.py test
+script: py.test
+
+#notifications:
+#  webhooks: https://coveralls.io/webhook?repo_token=lTgEF94FlDkvXVwvjcIRZiNsES446BFxe
+#
