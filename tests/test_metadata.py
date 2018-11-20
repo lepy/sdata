@@ -107,9 +107,24 @@ def test_attr_timestamp():
     assert attr.value.utc=='2017-04-27T00:00:00+00:00'
     # assert attr.value.local=='2017-04-27T02:00:00+02:00'
 
+def test_attr_bool():
+    ok = sdata.metadata.Attribute(name="valid", dtype="bool", value='True', description="1/0")
+    print(ok)
+    print(type(ok.value))
+    print(ok.value)
+    assert ok.value is True
+    ok.value = 1
+    assert ok.value is True
+    nio = sdata.metadata.Attribute(name="invalid", dtype="bool", value='False', description="1/0")
+    print(nio)
+    assert nio.value is False
+    nio.value=0
+    assert nio.value is False
+    print(nio.to_dict())
 
 if __name__ == '__main__':
     # test_attribute()
     # test_metadata()
     # test_timestamp()
-    test_attr_timestamp()
+    # test_attr_timestamp()
+    test_attr_bool()
