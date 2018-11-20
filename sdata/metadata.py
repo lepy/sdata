@@ -7,7 +7,7 @@ from sdata.timestamp import TimeStamp
 class Attribute(object):
     """Attribute class"""
 
-    DTYPES = {'float':float, 'int':int, 'str':str, 'timestamp':TimeStamp}
+    DTYPES = {'float':float, 'int':int, 'str':str, 'timestamp':TimeStamp, "bool":bool}
 
     def __init__(self, name, value, **kwargs):
         """Attribute
