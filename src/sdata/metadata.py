@@ -15,11 +15,14 @@ class Attribute(object):
         :param value
         :param dtype ['float', 'int', 'str', 'bool', 'timestamp', 'uuid?', 'unicode?']
         :param description
+        :param dimension e.g. force, length, strain, count, energy
         :param unit
+
         """
         self._name = None
         self._value = None
         self._unit = "-"
+        self._dimension = kwargs.get("dimension", "?")
         self._description = ""
         self._dtype = "str"
         self.name = name
