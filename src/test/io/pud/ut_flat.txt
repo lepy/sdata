@@ -1,0 +1,33 @@
+WERKSTOFF_NORM_NAME                    = HC340LA
+WERKSTOFFNUMMER_NORM                   =
+MATERIALNAME                           = HC340LA
+PRUEFUNG                               = FLIESSKURVE
+PROBENIDENTNUMMER                      = id0815
+PROBENGEOMETRIE                        =
+ENTNAHMERICHTUNG                       = Quer (90deg)
+VORVERFORMUNG_SOLL <%>                 = 0
+VORVERFORMUNG_IST  <%>                 =
+VORVERFORMUNGSRICHTUNG                 = Unverformt
+WAERMEBEHANDLUNG                       = O
+PROBENBREITE_IST <mm>                  = 20.104
+PROBENDICKE_IST <mm>                   = 0.754
+MESSLAENGE_IST <mm>                    = 80.0
+MESSLAENGE_IST_FD <mm>                 = 80.0
+PRUEFTEMPERATUR_SOLL <K>               = 293
+PRUEFGESCHWINDIGKEIT_SOLL  <mm/s>      = 0.33
+PRUEFGESCHWINDIGKEIT_IST   <mm/s>      = 0.33
+DEHNRATE_SOLL <1/s>                    = 0.005
+DEHNRATE_IST  <1/s>                    = 0.005
+AUFTRAG                                =
+PRUEFDATUM  <tt.mm.jjjj>               = 19.03.2017
+PRUEFER                                = Otto
+PRUEFSTELLE                            = Lab1
+BEMERKUNG                              = no comment
+DATEN                                  =
+ZEIT <s>; KRAFT <N>; WEG <mm>; BREITENAENDERUNG <mm>; WEG_FD <mm>
+1.2372;192.181;-0.0235;0.0012;-0.0235
+1.2772;198.325;-0.0231;0.0012;-0.0231
+1.2972;201.397;-0.0227;0.0012;-0.0227
+1.3172;205.152;-0.0224;0.0013;-0.0224
+1.3572;211.638;-0.022;0.0013;-0.022
+1.3972;218.123;-0.0213;0.0013;-0.0213
