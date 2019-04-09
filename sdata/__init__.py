@@ -13,8 +13,8 @@ import os
 import uuid
 from collections import OrderedDict
 import logging
-# import numpy as np
-# import pandas as pd
+import numpy as np
+import pandas as pd
 import shutil
 from sdata.metadata import Metadata, Attribute
 
@@ -32,7 +32,7 @@ class Data(object):
         self.metadata = kwargs.get("metadata") or Metadata()
         self._gen_default_attributes(kwargs.get("default_attributes") or self.ATTR_NAMES)
         self._group = OrderedDict()
-        self._table = None#pd.DataFrame()
+        self._table = pd.DataFrame()
 
 
     def _gen_default_attributes(self, default_attributes):
@@ -258,16 +258,16 @@ class Data(object):
         padding = padding + ' '
         files = []
         if print_files:
-            files = [x for x in sorted(os.listdir(dir)) if not x.startswith(".")]
+            files = [x for x in os.listdir(dir) if not x.startswith(".")]
         else:
-            files = [x for x in sorted(os.listdir(dir)) if os.path.isdir(dir + os.sep + x)]
+            files = [x for x in os.listdir(dir) if os.path.isdir(dir + os.sep + x)]
 
         # metadata first
         metafiles = [f for f in files if f.startswith("metadata")]
-        files = [x for x in files if x not in metafiles]
-        files = metafiles + sorted(files)
+        files = [x for x in files if x not in metafiles ]
+        files = metafiles + files
 
-        for count, file in enumerate(sorted(files)):
+        for count, file in enumerate(files):
             # print(padding + '|')
             path = dir + os.sep + file
             if os.path.isdir(path):

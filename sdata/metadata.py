@@ -7,22 +7,19 @@ from sdata.timestamp import TimeStamp
 class Attribute(object):
     """Attribute class"""
 
-    DTYPES = {'float':float, 'int':int, 'str':str, 'timestamp':TimeStamp, 'bool':bool}
+    DTYPES = {'float':float, 'int':int, 'str':str, 'timestamp':TimeStamp}
 
     def __init__(self, name, value, **kwargs):
         """Attribute
         :param name
         :param value
-        :param dtype ['float', 'int', 'str', 'bool', 'timestamp', 'uuid?', 'unicode?']
+        :param dtype ['float', 'int', 'str', 'timestamp', 'uuid?', 'unicode?']
         :param description
-        :param dimension e.g. force, length, strain, count, energy
         :param unit
-
         """
         self._name = None
         self._value = None
         self._unit = "-"
-        self._dimension = kwargs.get("dimension", "?")
         self._description = ""
         self._dtype = "str"
         self.name = name
@@ -55,10 +52,6 @@ class Attribute(object):
             dtype = self.DTYPES.get(self.dtype, str)
             if value is None:
                 self._value = None
-            elif dtype.__name__=="bool" and value in [0, "0", "False", "false"]:
-                self._value = False
-            elif dtype.__name__=="bool" and value in [1, "1", "true", "True"]:
-                self._value = True
             else:
                 self._value = dtype(value)
         except ValueError as exp:

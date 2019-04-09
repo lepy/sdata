@@ -46,7 +46,6 @@ if sys.version_info >= (3, 0, 0):
 else:
     _basestring = basestring
 
-
 # Adapted from http://delete.me.uk/2005/03/iso8601.html
 ISO8601_REGEX = re.compile(
     r"""
@@ -92,11 +91,15 @@ ISO8601_REGEX = re.compile(
     re.VERBOSE
 )
 
+
 class ParseError(Exception):
     """Raised when there is a problem parsing a date string"""
 
+
 if sys.version_info >= (3, 2, 0):
     UTC = datetime.timezone.utc
+
+
     def FixedOffset(offset_hours, offset_minutes, name):
         return datetime.timezone(
             datetime.timedelta(
@@ -105,10 +108,13 @@ if sys.version_info >= (3, 2, 0):
 else:
     # Yoinked from python docs
     ZERO = datetime.timedelta(0)
+
+
     class Utc(datetime.tzinfo):
         """UTC Timezone
 
         """
+
         def utcoffset(self, dt):
             return ZERO
 
@@ -121,12 +127,15 @@ else:
         def __repr__(self):
             return "<iso8601.Utc>"
 
+
     UTC = Utc()
+
 
     class FixedOffset(datetime.tzinfo):
         """Fixed offset in hours and minutes from UTC
 
         """
+
         def __init__(self, offset_hours, offset_minutes, name):
             self.__offset_hours = offset_hours  # Keep for later __getinitargs__
             self.__offset_minutes = offset_minutes  # Keep for later __getinitargs__
@@ -175,6 +184,7 @@ def to_int(d, key, default_to_zero=False, default=None, required=True):
     else:
         return int(value)
 
+
 def parse_timezone(matches, default_timezone=UTC):
     """Parses ISO 8601 time zone specs into tzinfo offsets
 
@@ -195,6 +205,7 @@ def parse_timezone(matches, default_timezone=UTC):
         hours = -hours
         minutes = -minutes
     return FixedOffset(hours, minutes, description)
+
 
 def parse_date(datestring, default_timezone=UTC):
     """Parses ISO 8601 dates into datetime objects
@@ -238,6 +249,7 @@ def parse_date(datestring, default_timezone=UTC):
     except Exception as e:
         raise ParseError(e)
 
+
 def local_tzname():
     """determine 'Etc/GMT%+d', e.g. 'Etc/GMT-2'"""
     if time.daylight:
@@ -246,19 +258,23 @@ def local_tzname():
         offsetHour = time.timezone / 3600
     return 'Etc/GMT%+d' % offsetHour
 
+
 def get_utc_timestamp(dt):
     """datetime --> 2017-04-26T09:04:00.660000+00:00"""
     if not isinstance(dt, datetime.datetime):
         return
     return dt.astimezone(tz=pytz.UTC)
 
+
 def get_local_timestamp(dt):
     """datetime --> 2017-04-26T09:04:00.660000+02:00"""
     tzname = local_tzname()
     return dt.astimezone(tz=pytz.timezone(tzname))
 
+
 class TimeStamp(object):
     """2017-04-26T09:04:00.660000+00:00"""
+
     def __init__(self, datetimestr=None):
         """'2017-04-26T09:04:00.660000+00:00' --> datetime"""
         if datetimestr is None:

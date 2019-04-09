@@ -7,7 +7,7 @@ modulepath = os.path.dirname(__file__)
 
 sys.path.insert(0, os.path.join(modulepath, "..", "..", "src"))
 
-import sdata
+import sdata.test
 import pandas as pd
 import numpy as np
 
@@ -25,7 +25,7 @@ fixed_uuid =_fixed_uuid()
 
 def get_dummy_table(dim=(10,3)):
     df = pd.DataFrame(np.random.random((10,3)), columns=["a", "b", "c"])
-    table = sdata.Data(uuid=six.next(fixed_uuid))
+    table = sdata.Table(uuid=six.next(fixed_uuid))
     table.data = df
     table.metadata.set_attr(name="a", value="Column a", description="bar")
     table.metadata.set_attr(name="b", value="Column a", description="bar", unit="kN")
@@ -33,46 +33,46 @@ def get_dummy_table(dim=(10,3)):
     return table
 
 def gen_dummy_testprogram():
-    ts1 = sdata.Data(name="testseries A1", uuid="a6fc7decdb1441518f762e3b5d798ba7")
-    t1 = sdata.Data(name="test 001", uuid="8796c35b2e3a4f8a82af181698c15861")
-    ts1.add_data(t1)
-    t1.add_data(get_dummy_table())
-    print(t1.get_group())
+    ts1 = sdata.testseries.TestSeries(name="testseries A1", uuid="a6fc7decdb1441518f762e3b5d798ba7")
+    t1 = sdata.test.Test(name="test 001", uuid="8796c35b2e3a4f8a82af181698c15861")
+    ts1.add_test(t1)
+    t1.add_result(get_dummy_table())
+    print(t1.get_results())
 
-    t2 = sdata.Data(name="test 002", uuid="b62195ac49b64c9e8cedb7dba52bd539")
-    t2.add_data(get_dummy_table())
-    t2.add_data(get_dummy_table())
-    ts1.add_data(t2)
+    t2 = sdata.test.Test(name="test 002", uuid="b62195ac49b64c9e8cedb7dba52bd539")
+    t2.add_result(get_dummy_table())
+    t2.add_result(get_dummy_table())
+    ts1.add_test(t2)
 
-    t3 = sdata.Data(name="test 003", uuid="ddc82782f5f0455895145682fe0a70f2")
-    t3.add_data(get_dummy_table())
-    ts1.add_data(t3)
+    t3 = sdata.test.Test(name="test 003", uuid="ddc82782f5f0455895145682fe0a70f2")
+    t3.add_result(get_dummy_table())
+    ts1.add_test(t3)
 
-    ts2 = sdata.Data(name="testseries A2", uuid="c3c63f8094464325bd57623cb5bbe58f")
+    ts2 = sdata.testseries.TestSeries(name="testseries A2", uuid="c3c63f8094464325bd57623cb5bbe58f")
 
-    t1b = sdata.Data(name="test 001b", uuid="bb507e40663d49cca8264c0ed6751692")
-    t1b.add_data(get_dummy_table())
-    ts2.add_data(t1b)
-    ts1.add_data(t3)
+    t1b = sdata.test.Test(name="test 001b", uuid="bb507e40663d49cca8264c0ed6751692")
+    t1b.add_result(get_dummy_table())
+    ts2.add_test(t1b)
+    ts1.add_test(t3)
 
-    t2b = sdata.Data(name="test 002b", uuid="e574e000f1404f5ebb9aaceb4183dc4c")
+    t2b = sdata.test.Test(name="test 002b", uuid="e574e000f1404f5ebb9aaceb4183dc4c")
     # t2b.add_result(get_dummy_table())
-    ts2.add_data(t2b)
+    ts2.add_test(t2b)
 
-    tp = sdata.Data(name="testprogram FOO", uuid="43880975d9b745f1b853c31b691e67a9")
-    tp.add_data(ts1)
-    tp.add_data(ts2)
+    tp = sdata.testprogram.TestProgram(name="testprogram FOO", uuid="43880975d9b745f1b853c31b691e67a9")
+    tp.add_series(ts1)
+    tp.add_series(ts2)
 
     return tp
 
 def test_test():
-    t = sdata.Data(name="test 001")
+    t = sdata.test.Test(name="test 001")
     print(t)
     assert t.name=="test 001"
     t.to_folder("/tmp/mytest")
 
 def test_testseries():
-    ts = sdata.Data(name="testseries A1")
+    ts = sdata.testseries.TestSeries(name="testseries A1")
     print(ts)
     assert ts.name=="testseries A1"
 
@@ -84,7 +84,7 @@ def test_testprogram():
     exportpath = "/tmp/mytestprogram"
     tp.to_folder(exportpath)
     tp.tree_folder(exportpath)
-    tp2 = sdata.Data.from_folder(exportpath)
+    tp2 = sdata.testprogram.TestProgram.from_folder(exportpath)
     print(tp)
     print(tp2)
     print(tp2.metadata.to_dataframe())
