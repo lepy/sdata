@@ -1,45 +1,36 @@
 sdata package
 =============
 
+Subpackages
+-----------
+
+.. toctree::
+
+    sdata.experiments
+
 Submodules
 ----------
 
-sdata\.metadata module
-----------------------
+sdata.metadata module
+---------------------
 
 .. automodule:: sdata.metadata
     :members:
     :undoc-members:
     :show-inheritance:
 
-sdata\.test module
-------------------
-
-.. automodule:: sdata.test
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-sdata\.testprogram module
--------------------------
-
-.. automodule:: sdata.testprogram
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-sdata\.testseries module
-------------------------
-
-.. automodule:: sdata.testseries
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-sdata\.timestamp module
------------------------
+sdata.timestamp module
+----------------------
 
 .. automodule:: sdata.timestamp
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+sdata.tools module
+------------------
+
+.. automodule:: sdata.tools
     :members:
     :undoc-members:
     :show-inheritance:

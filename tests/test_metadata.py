@@ -111,7 +111,7 @@ def test_attr_bool():
     ok = sdata.metadata.Attribute(name="valid", dtype="bool", value='True', description="1/0")
     print(ok)
     print(type(ok.value))
-    print(ok.value)
+    print("!", ok.value, ok.value is True)
     assert ok.value is True
     ok.value = 1
     assert ok.value is True

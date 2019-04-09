@@ -3,7 +3,7 @@ from __future__ import division
 
 __version__ = '0.5.8'
 __revision__ = None
-__version_info__ = tuple([ int(num) for num in __version__.split('.')])
+__version_info__ = tuple([int(num) for num in __version__.split('.')])
 
 '''
 basic data types 
@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import shutil
 from sdata.metadata import Metadata, Attribute
+
 
 class Data(object):
     """run object, e.g. single tension test simulation"""
@@ -32,8 +33,7 @@ class Data(object):
         self.metadata = kwargs.get("metadata") or Metadata()
         self._gen_default_attributes(kwargs.get("default_attributes") or self.ATTR_NAMES)
         self._group = OrderedDict()
-        self._table = pd.DataFrame()
-
+        self._table = None#pd.DataFrame()
 
     def _gen_default_attributes(self, default_attributes):
         """create default Attributes in data.metadata"""
@@ -42,6 +42,7 @@ class Data(object):
 
     def _get_uuid(self):
         return self._uuid
+
     def _set_uuid(self, value):
         if isinstance(value, str):
             try:
@@ -50,10 +51,12 @@ class Data(object):
                 logging.warning("data.uuid: %s" % exp)
         elif isinstance(value, uuid.UUID):
             self._uuid = value.hex
+
     uuid = property(fget=_get_uuid, fset=_set_uuid, doc="uuid of the object")
 
     def _get_name(self):
         return self._name
+
     def _set_name(self, value):
         if isinstance(value, str):
             try:
@@ -62,10 +65,12 @@ class Data(object):
                 logging.warning("data.name: %s" % exp)
         else:
             self._name = str(value)[:256]
+
     name = property(fget=_get_name, fset=_set_name, doc="name of the object")
 
     def _get_prefix(self):
         return self._prefix
+
     def _set_prefix(self, value):
         if isinstance(value, str):
             try:
@@ -74,13 +79,16 @@ class Data(object):
                 logging.warning("data.prefix: %s" % exp)
         else:
             self._prefix = str(value)[:256]
+
     prefix = property(fget=_get_prefix, fset=_set_prefix, doc="prefix of the object name")
 
     def _get_table(self):
         return self._table
+
     def _set_table(self, df):
         if isinstance(df, pd.DataFrame):
             self._table = df
+
     table = property(fget=_get_table, fset=_set_table, doc="table object(pandas.DataFrame)")
 
     def to_folder(self, path):
@@ -93,13 +101,14 @@ class Data(object):
         else:
             self.clear_folder(path)
         metadata_filepath = os.path.join(path, "metadata.csv")
-        self.metadata.set_attr(name="class", value=self.__class__.__name__, description="object class", unit="-", dtype="str")
+        self.metadata.set_attr(name="class", value=self.__class__.__name__, description="object class", unit="-",
+                               dtype="str")
         self.metadata.set_attr(name="uuid", value=self.uuid, description="object uuid", unit="-", dtype="str")
         self.metadata.set_attr(name="name", value=self.name, description="object name", unit="-", dtype="str")
         self.metadata.to_csv(metadata_filepath)
 
         # table export
-        if isinstance(self._table, pd.DataFrame) and len(self._table)>0:
+        if isinstance(self._table, pd.DataFrame) and len(self._table) > 0:
             exportpath = os.path.join(path, "{}.csv".format(self.osname))
             self._table.to_csv(exportpath, index=False)
 
@@ -123,9 +132,10 @@ class Data(object):
         data.name = data.metadata.get_attr("name").value
 
         # table import
-        files = [x for x in os.listdir(path) if not os.path.isdir(os.path.join(path, x)) and not x.startswith("metadata")]
-        if len(files)==1:
-            assert len(files)==1, "invalid number of files for Table '{}'".format(files)
+        files = [x for x in os.listdir(path) if
+                 not os.path.isdir(os.path.join(path, x)) and not x.startswith("metadata")]
+        if len(files) == 1:
+            assert len(files) == 1, "invalid number of files for Table '{}'".format(files)
             importpath = os.path.join(path, files[0])
             print("read table {}".format(importpath))
             # data._table = pd.read_csv(importpath)
@@ -149,6 +159,7 @@ class Data(object):
     @staticmethod
     def clear_folder(path):
         """delete subfolder in export path"""
+
         def is_valid(path):
             prefix = path.split("-")[0]
             if prefix in [x.lower() for x in SDATACLS.keys()]:
@@ -198,7 +209,7 @@ class Data(object):
     @property
     def osname(self):
         """:returns: os compatible name (ascii?)"""
-        return self.name.replace(" ","_").lower()
+        return self.name.replace(" ", "_").lower()
 
     def verify_attributes(self):
         """check mandatory attributes"""
@@ -222,6 +233,7 @@ class Data(object):
 
     def get_group(self):
         return self._group
+
     group = property(get_group, doc="get group")
 
     def clear_group(self):
@@ -258,25 +270,29 @@ class Data(object):
         padding = padding + ' '
         files = []
         if print_files:
-            files = [x for x in os.listdir(dir) if not x.startswith(".")]
+            files = [x for x in sorted(os.listdir(dir)) if not x.startswith(".")]
         else:
-            files = [x for x in os.listdir(dir) if os.path.isdir(dir + os.sep + x)]
+            files = [x for x in sorted(os.listdir(dir)) if os.path.isdir(dir + os.sep + x)]
 
         # metadata first
         metafiles = [f for f in files if f.startswith("metadata")]
-        files = [x for x in files if x not in metafiles ]
+        files = [x for x in files if x not in metafiles]
+<<<<<<< Temporary merge branch 1:sdata/__init__.py
         files = metafiles + files
+=======
+        files = metafiles + sorted(files)
+>>>>>>> Temporary merge branch 2:src/sdata/__init__.py
 
-        for count, file in enumerate(files):
+        for count, file in enumerate(sorted(files)):
             # print(padding + '|')
             path = dir + os.sep + file
             if os.path.isdir(path):
-                if count == (len(files)-1):
+                if count == (len(files) - 1):
                     self.tree_folder(path, padding + ' ', print_files, last=True)
                 else:
                     self.tree_folder(path, padding + '|', print_files, last=False)
             else:
-                if count==(len(files)-1):
+                if count == (len(files) - 1):
                     print(padding + '└─' + file)
                 else:
                     print(padding + '├─' + file)
@@ -284,13 +300,17 @@ class Data(object):
     def dir(self):
         return [(x.name, x.dir()) for x in self.group.values()]
 
-SDATACLS = {"Data":Data,
+
+SDATACLS = {"Data": Data,
             }
 
 import sdata.timestamp as timestamp
+
 __all__ = ["Data"]
 
 import sys, inspect
+
+
 def print_classes():
     for name, obj in inspect.getmembers(sys.modules[__name__]):
         if inspect.isclass(obj):
