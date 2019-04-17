@@ -277,11 +277,7 @@ class Data(object):
         # metadata first
         metafiles = [f for f in files if f.startswith("metadata")]
         files = [x for x in files if x not in metafiles]
-<<<<<<< Temporary merge branch 1:sdata/__init__.py
-        files = metafiles + files
-=======
         files = metafiles + sorted(files)
->>>>>>> Temporary merge branch 2:src/sdata/__init__.py
 
         for count, file in enumerate(sorted(files)):
             # print(padding + '|')

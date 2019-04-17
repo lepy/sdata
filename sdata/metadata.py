@@ -135,13 +135,14 @@ class Metadata(object):
 
     attributes = property(fget=_get_attributes, fset=_set_attributes, doc="returns Attributes")
 
-    def set_attr(self, name, value, **kwargs):
+    def set_attr(self, name, value=None, **kwargs):
         """set Attribute"""
         attr = self.get_attr(name) or Attribute(name, value, **kwargs)
         for key in ["dtype", "unit", "description"]:
             if key in kwargs:
                 setattr(attr, key, kwargs.get(key))
-        attr.value = value
+        if value is not None:
+            attr.value = value
         self._attributes[attr.name] = attr
 
     def get_attr(self, name):
