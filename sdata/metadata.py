@@ -2,7 +2,7 @@ import logging
 import collections
 import pandas as pd
 from sdata.timestamp import TimeStamp
-
+import json
 
 class Attribute(object):
     """Attribute class"""
@@ -195,6 +195,21 @@ class Metadata(object):
         """create metadata from dataframe"""
         df = pd.read_csv(filepath)
         metadata = cls.from_dataframe(df)
+        return metadata
+
+    def to_json(self, filepath):
+        """create dataframe"""
+        d = self.to_dict()
+        with open(filepath, "w") as fh:
+            json.dump(d, fh)
+        return json.dumps(d)
+
+    @classmethod
+    def from_json(cls, filepath):
+        """create metadata from dataframe"""
+        with open(filepath, "r") as fh:
+            j = json.load(fh)
+        metadata = cls.from_dict(j)
         return metadata
 
     def __repr__(self):

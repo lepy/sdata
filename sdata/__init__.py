@@ -296,6 +296,59 @@ class Data(object):
     def dir(self):
         return [(x.name, x.dir()) for x in self.group.values()]
 
+    def to_xlsx(self, filepath):
+        """export atrributes and data to excel
+
+        :param filepath:
+        :return:
+        """
+
+        def adjust_col_width(sheetname, df, writer, width=40):
+            worksheet = writer.sheets[sheetname]  # pull worksheet object
+            worksheet.set_column(0, 0, width)
+            for idx, col in enumerate(df):  # loop through all columns
+                # series = df[col]
+                # max_len = max((
+                #     series.astype(str, raise_on_error=False).map(len).max(),  # len of largest item
+                #     len(str(series.name))  # len of column name/header
+                #     )) + 1  # adding a little extra space
+                worksheet.set_column(idx+1, idx+1, width)
+
+        with pd.ExcelWriter(filepath) as writer:
+
+            # metadata
+            # dfm = pd.DataFrame.from_dict(self.metadata, orient="index", columns=["value"])
+            dfm = self.metadata.to_dataframe()
+
+            dfm = dfm.sort_index()
+            dfm.index.name = "key"
+            dfm.to_excel(writer, sheet_name='metadata')
+            adjust_col_width('metadata', dfm, writer)
+
+            # data
+            if self.table is not None:
+                self.table.index.name = "index"
+                self.table.to_excel(writer, sheet_name='table')
+                adjust_col_width('table', self.table, writer, width=15)
+
+            # # raw data
+            # self.df_raw.index.name = "index"
+            # self.df_raw.to_excel(writer, sheet_name='df_raw')
+            # adjust_col_width('df_raw', self.df_raw, writer, width=15)
+
+    @classmethod
+    def from_xlsx(cls, filepath):
+        """save table as xlsx
+
+        :param filepath:
+        :return:
+        """
+        tt = cls(name=filepath)
+        tt.table = pd.read_excel(filepath, sheet_name="table")
+        dfm = pd.read_excel(filepath, sheet_name="metadata")
+        dfm = dfm.set_index("key")
+        tt.metadata = tt.metadata.from_dataframe(dfm)
+        return tt
 
 SDATACLS = {"Data": Data,
             }
