@@ -69,6 +69,15 @@ def test_metadata():
     assert m.get_attr("foo").name==m5.get_attr("foo").name
     assert m.get_attr("foo").value==m5.get_attr("foo").value
 
+    filepath = "/tmp/metadata.json"
+    meta_json = m4.to_json(filepath)
+    print("meta_json", meta_json)
+    m6 = sdata.metadata.Metadata.from_json(filepath)
+    print(m6)
+    assert m.get_attr("foo").name==m6.get_attr("foo").name
+    assert m.get_attr("foo").value==m6.get_attr("foo").value
+    print(m.to_dataframe())
+
 def test_timestamp():
     t = sdata.timestamp.TimeStamp()
     print(t)
@@ -124,7 +133,7 @@ def test_attr_bool():
 
 if __name__ == '__main__':
     # test_attribute()
-    # test_metadata()
+    test_metadata()
     # test_timestamp()
     # test_attr_timestamp()
-    test_attr_bool()
+    # test_attr_bool()

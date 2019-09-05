@@ -14,6 +14,7 @@ sdata's documentation
    design_goals
    _dynamic/sdata
    data_types
+   api
    etc
 
 Indices and tables

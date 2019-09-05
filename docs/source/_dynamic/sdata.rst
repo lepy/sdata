@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
 
     sdata.experiments
+    sdata.io
 
 Submodules
 ----------
