@@ -16,7 +16,7 @@ def test_table():
 
     df = pd.DataFrame(np.random.random((10, 3)), columns=["a", "b", "c"])
 
-    table = sdata.Data(name="Table1", uuid="a6fc7decdb1441518f762e3b5d798ba9")
+    table = sdata.Data(name="Table2", uuid="a6fc7decdb1441518f762e3b5d798ba9")
     table.table = df
     table.data = df
     table.metadata.set_attr(name="a", value="Column a", description="bar")
@@ -37,7 +37,7 @@ def test_table():
     print("table2", table2)
     print(table2.metadata.to_dataframe())
 
-    print(ts.tree_folder())
+    print(ts.tree_folder("/tmp/sdata_table"))
 
 if __name__ == '__main__':
     test_table()

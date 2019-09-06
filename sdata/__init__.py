@@ -91,8 +91,10 @@ class Data(object):
 
     table = property(fget=_get_table, fset=_set_table, doc="table object(pandas.DataFrame)")
 
-    def to_folder(self, path):
+    def to_folder(self, path, dtype="xlsx"):
         """export data to folder"""
+        if dtype not in ["csv", "xlsx"]:
+            dtype = "xlsx"
         if not os.path.exists(path):
             try:
                 os.makedirs(path)
@@ -100,22 +102,30 @@ class Data(object):
                 logging.error(exp)
         else:
             self.clear_folder(path)
-        metadata_filepath = os.path.join(path, "metadata.csv")
+
         self.metadata.set_attr(name="class", value=self.__class__.__name__, description="object class", unit="-",
                                dtype="str")
         self.metadata.set_attr(name="uuid", value=self.uuid, description="object uuid", unit="-", dtype="str")
         self.metadata.set_attr(name="name", value=self.name, description="object name", unit="-", dtype="str")
-        self.metadata.to_csv(metadata_filepath)
 
-        # table export
-        if isinstance(self._table, pd.DataFrame) and len(self._table) > 0:
-            exportpath = os.path.join(path, "{}.csv".format(self.osname))
-            self._table.to_csv(exportpath, index=False)
+        if dtype == "csv":
+            print("Export csv")
+            metadata_filepath = os.path.join(path, "metadata.csv")
+            self.metadata.to_csv(metadata_filepath)
 
+            # table export
+            if isinstance(self._table, pd.DataFrame) and len(self._table) > 0:
+                exportpath = os.path.join(path, "{}.csv".format(self.osname))
+                self._table.to_csv(exportpath, index=False)
+        if dtype == "xlsx":
+            if not isinstance(self._table, pd.DataFrame):
+                self.table = pd.DataFrame()
+            exportpath = os.path.join(path, "{}.xlsx".format(self.osname))
+            self.to_xlsx(exportpath)
         # group export
         for data in self.group.values():
             exportpath = os.path.join(path, "{}-{}".format(data.__class__.__name__.lower(), data.osname))
-            data.to_folder(exportpath)
+            data.to_folder(exportpath, dtype=dtype)
 
     @classmethod
     def from_folder(cls, path):
