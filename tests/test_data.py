@@ -43,6 +43,11 @@ def test_group():
     assert data3a.name == "data3"
     assert data3a.uuid == "664577c2d3134b598bc4d6c13f20b71a"
 
+def test_filename():
+    data = sdata.Data(name="data1#2/3!4")
+    print(data.filename)
+    assert data.filename=="data1_2_3_4"
+
 if __name__ == '__main__':
     test_data()
     test_group()

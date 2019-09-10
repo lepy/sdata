@@ -135,7 +135,7 @@ class Metadata(object):
 
     attributes = property(fget=_get_attributes, fset=_set_attributes, doc="returns Attributes")
 
-    def set_attr(self, name, value=None, **kwargs):
+    def set_attr(self, name="N.N.", value=None, **kwargs):
         """set Attribute"""
         attr = self.get_attr(name) or Attribute(name, value, **kwargs)
         for key in ["dtype", "unit", "description"]:
@@ -172,7 +172,10 @@ class Metadata(object):
     def to_dataframe(self):
         """create dataframe"""
         d = self.to_dict()
-        df = pd.DataFrame.from_dict(d, orient="index")
+        if len(d)==0:
+            df = pd.DataFrame(columns=self.ATTRIBUTEKEYS)
+        else:
+            df = pd.DataFrame.from_dict(d, orient="index")
         return df[self.ATTRIBUTEKEYS]
 
     @classmethod

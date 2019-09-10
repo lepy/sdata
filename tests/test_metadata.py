@@ -131,9 +131,14 @@ def test_attr_bool():
     assert nio.value is False
     print(nio.to_dict())
 
+def test_empty_metadata():
+    m = sdata.metadata.Metadata()
+    print(m.to_dataframe())
+
 if __name__ == '__main__':
     # test_attribute()
-    test_metadata()
+    # test_metadata()
     # test_timestamp()
     # test_attr_timestamp()
     # test_attr_bool()
+    test_empty_metadata()
