@@ -413,11 +413,10 @@ class DataFrame(Blob):
     blob = property(fget=_get_blob, fset=_set_blob, doc="blob object")
 
     def guess_columns(self):
-        """extract column names from dataframe"""
+        """extract column names and dtypes from dataframe"""
         if self.blob is not None:
             for icol, col in enumerate(self.blob.columns):
-                print(self.blob[col].dtype)
-                self.columns.set_attr(col, value=icol, dtype=self.blob[col].dtype)
+                self.columns.set_attr(col, value=icol, dtype=self.blob[col].dtype.name)
 
     def to_xlsx(self, path, **kwargs):
         """export atrributes and data to excel
@@ -435,9 +434,6 @@ class DataFrame(Blob):
                 worksheet.set_column(idx+1, idx+1, width)
 
         with pd.ExcelWriter(filepath) as writer:
-
-
-            print(self.metadata.to_dict())
             dfm = self.metadata.to_dataframe()
             dfm = dfm.sort_index()
             dfm.index.name = "key"

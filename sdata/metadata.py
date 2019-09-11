@@ -4,10 +4,11 @@ import pandas as pd
 from sdata.timestamp import TimeStamp
 import json
 
+
 class Attribute(object):
     """Attribute class"""
 
-    DTYPES = {'float':float, 'int':int, 'str':str, 'timestamp':TimeStamp, "bool":bool}
+    DTYPES = {'float': float, 'int': int, 'str': str, 'timestamp': TimeStamp, "bool": bool}
 
     def __init__(self, name, value, **kwargs):
         """Attribute
@@ -58,9 +59,9 @@ class Attribute(object):
             dtype = self.DTYPES.get(self.dtype, str)
             if value is None:
                 self._value = None
-            elif dtype.__name__=="bool" and value in [0, "0", "False", "false"]:
+            elif dtype.__name__ == "bool" and value in [0, "0", "False", "false"]:
                 self._value = False
-            elif dtype.__name__=="bool" and value in [1, "1", "true", "True"]:
+            elif dtype.__name__ == "bool" and value in [1, "1", "true", "True"]:
                 self._value = True
             else:
                 self._value = dtype(value)
@@ -74,6 +75,10 @@ class Attribute(object):
         return self._dtype
 
     def _set_dtype(self, value):
+        if "float" in value:
+            value = "float"
+        elif "int" in value:
+            value = "int"
         if value in self.DTYPES.keys():
             self._dtype = value
 
@@ -172,10 +177,11 @@ class Metadata(object):
     def to_dataframe(self):
         """create dataframe"""
         d = self.to_dict()
-        if len(d)==0:
+        if len(d) == 0:
             df = pd.DataFrame(columns=self.ATTRIBUTEKEYS)
         else:
             df = pd.DataFrame.from_dict(d, orient="index")
+        df.index.name = "key"
         return df[self.ATTRIBUTEKEYS]
 
     @classmethod
