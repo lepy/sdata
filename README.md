@@ -19,6 +19,7 @@
     * hierarchical data structure (nesting groups, dictionaries)
     * (posix path syntax support?)
 * extendable data structure
+   * data format versions
 * platform independent
 * simple object model
 * support of standard metadata formats (key/value, ...)
@@ -32,7 +33,7 @@
 * change management support?
 * Enable use of data structures from existing tensor libraries transparently
 * (single writer/ multiple reader (swmr) support)
-* (nested table support)
+* (nested data support)
 
 ## Example data structure (brain storming)
 
