@@ -1,3 +1,4 @@
-numpy>=1.10
-pandas>=0.18
+numpy>=1.17
+pandas>=1.0
 pytz>=2017.2
+openpyxl>=3.0

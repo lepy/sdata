@@ -19,7 +19,10 @@ import shutil
 from sdata.metadata import Metadata, Attribute
 import sdata.timestamp as timestamp
 import sys, inspect
-
+try:
+    import openpyxl
+except:
+    logging.warning("openpyxl is not available -> no xlsx import")
 
 class Data(object):
     """run object, e.g. single tension test simulation"""
@@ -126,8 +129,8 @@ class Data(object):
         self.metadata.set_attr(name="name", value=self.name, description="object name", unit="-", dtype="str")
 
         if dtype == "csv":
-            print("Export csv")
             metadata_filepath = os.path.join(path, "metadata.csv")
+            logging.debug("export meta csv '{}'".format(metadata_filepath))
             self.metadata.to_csv(metadata_filepath)
 
             # table export
@@ -143,6 +146,7 @@ class Data(object):
         for data in self.group.values():
             exportpath = os.path.join(path, "{}-{}".format(data.__class__.__name__.lower(), data.osname))
             data.to_folder(exportpath, dtype=dtype)
+        return path
 
     @classmethod
     def from_folder(cls, path):
@@ -263,6 +267,27 @@ class Data(object):
 
     group = property(get_group, doc="get group")
 
+    def keys(self):
+        """
+
+        :return:
+        """
+        return list(self.group.keys())
+
+    def values(self):
+        """
+
+        :return:
+        """
+        return list(self.group.values())
+
+    def items(self):
+        """
+
+        :return:
+        """
+        return list(self.group.items())
+
     def clear_group(self):
         """clear group dict"""
         self._group = OrderedDict()
@@ -370,12 +395,25 @@ class Data(object):
         :param filepath:
         :return:
         """
-        tt = cls(name=filepath)
-        tt.table = pd.read_excel(filepath, sheet_name="table")
-        dfm = pd.read_excel(filepath, sheet_name="metadata")
-        dfm = dfm.set_index("key")
-        tt.metadata = tt.metadata.from_dataframe(dfm)
-        return tt
+        try:
+            if os.path.exists(filepath):
+                wb = openpyxl.load_workbook(filename=filepath)
+                # sheetname = u'Übergabedaten VWD für BFA'
+                sheetnames = wb.get_sheet_names()
+
+                tt = cls(name=filepath)
+                if "table" in sheetnames:
+                    tt.table = pd.read_excel(filepath, sheet_name="table")
+                else:
+                    logging.info("no table data in '{}'".format(filepath))
+                dfm = pd.read_excel(filepath, sheet_name="metadata")
+                dfm = dfm.set_index("key")
+                tt.metadata = tt.metadata.from_dataframe(dfm)
+                return tt
+            else:
+                raise Exception("excel file '{}' not available".format(filepath))
+        except Exception as exp:
+            raise
 
 
 class Blob(Data):
