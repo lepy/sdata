@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.6.1'
+__version__ = '0.6.2'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -24,6 +24,9 @@ try:
 except:
     logging.warning("openpyxl is not available -> no xlsx import")
 
+def uuid_from_str(name):
+    return uuid.uuid3(uuid.NAMESPACE_DNS, name)
+
 class Data(object):
     """run object, e.g. single tension test simulation"""
     ATTR_NAMES = []
@@ -39,6 +42,7 @@ class Data(object):
         self._gen_default_attributes(kwargs.get("default_attributes") or self.ATTR_NAMES)
         self._group = OrderedDict()
         self._table = None#pd.DataFrame()
+        self.table = kwargs.get("table", None)
 
     def _gen_default_attributes(self, default_attributes):
         """create default Attributes in data.metadata"""
@@ -108,8 +112,10 @@ class Data(object):
     def _set_table(self, df):
         if isinstance(df, pd.DataFrame):
             self._table = df
+            self._table.index.name = "index"
 
     table = property(fget=_get_table, fset=_set_table, doc="table object(pandas.DataFrame)")
+    df = table
 
     def to_folder(self, path, dtype="xlsx"):
         """export data to folder"""
@@ -403,7 +409,7 @@ class Data(object):
 
                 tt = cls(name=filepath)
                 if "table" in sheetnames:
-                    tt.table = pd.read_excel(filepath, sheet_name="table")
+                    tt.table = pd.read_excel(filepath, sheet_name="table", index_col='index')
                 else:
                     logging.info("no table data in '{}'".format(filepath))
                 dfm = pd.read_excel(filepath, sheet_name="metadata")
