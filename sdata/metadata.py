@@ -1,6 +1,7 @@
 import logging
 import collections
 import pandas as pd
+import numpy as np
 from sdata.timestamp import TimeStamp
 import json
 
@@ -56,7 +57,10 @@ class Attribute(object):
 
     def _set_value(self, value):
         try:
-            dtype = self.DTYPES.get(self.dtype, str)
+            # dtype = self.DTYPES.get(self.dtype, str)
+            dtype = self._guess_dtype(value)
+            self.dtype = dtype.__name__
+            # print(self.dtype, dtype.__name__)
             if value is None:
                 self._value = None
             elif dtype.__name__ == "bool" and value in [0, "0", "False", "false"]:
@@ -66,23 +70,48 @@ class Attribute(object):
             else:
                 self._value = dtype(value)
         except ValueError as exp:
-            print("error Attribute.value: %s" % exp)
-            logging.warning("error Attribute.value: %s" % exp)
+            logging.error("error Attribute.value: {}".format(exp))
 
     value = property(fget=_get_value, fset=_set_value, doc="Attribute value")
+
+    def _guess_dtype(self, value):
+        """returns dtype class
+
+        :param value:
+        :return: __class__
+        """
+        if isinstance(value, (int, np.int)):
+            return value.__class__
+        elif isinstance(value, (float, np.float)):
+            return value.__class__
+        elif isinstance(value, (str)):
+            return value.__class__
+        else:
+            return str
 
     def _get_dtype(self):
         return self._dtype
 
     def _set_dtype(self, value):
+        """set dtype str
+s
+        :param value:
+        :return:
+        """
         if "float" in value:
             value = "float"
         elif "int" in value:
             value = "int"
         if value in self.DTYPES.keys():
             self._dtype = value
+        # todo: cast self.value to new dtype
+        # if self._value is not None:
+        #     try:
+        #         self._value = self.DTYPES[self.dtype](self.value)
+        #     except Exception as exp:
+        #         logging.error("_set_dtype:{}:{}-{}".format(self.dtype, exp, exp.__class__.__name__))
 
-    dtype = property(fget=_get_dtype, fset=_set_dtype, doc="Attribute type")
+    dtype = property(fget=_get_dtype, fset=_set_dtype, doc="Attribute type str")
 
     def _get_description(self):
         return self._description
@@ -109,6 +138,25 @@ class Attribute(object):
                 'description': self.description,
                 }
 
+    def to_list(self):
+        return [self.name, self.value, self.unit, self.dtype, self.description]
+
+    def to_csv(self, prefix="", sep=",", quote=None):
+        """export Attribute to csv
+
+        :param prefix:
+        :param sep:
+        :param quote:
+        :return:
+        """
+        xs = []
+        for x in self.to_list():
+            if x is None:
+                xs.append("")
+            else:
+                xs.append(str(x))
+        return "{}{}".format(prefix, sep.join(xs))
+
     def __str__(self):
         return "(Attr'%s':%s(%s))" % (self.name, self.value, self.dtype)
 
@@ -123,14 +171,26 @@ class Metadata(object):
         * value
         * unit
         * description
-        * type (int, str, float)
+        * type (int, str, float, bool, timestamp)
         """
 
     ATTRIBUTEKEYS = ["name", "value", "dtype", "unit", "description"]
 
     def __init__(self, **kwargs):
-        """"""
+        """Metadata class
+
+        :param kwargs:
+        """
         self._attributes = collections.OrderedDict()
+        self._name = "N.N."
+
+    def _get_name(self):
+        return self._name
+
+    def _set_name(self, value):
+        self._name = str(value)
+
+    name = property(fget=_get_name, fset=_set_name, doc="Name of the Metadata")
 
     def _get_attributes(self):
         return self._attributes
@@ -142,7 +202,10 @@ class Metadata(object):
 
     def set_attr(self, name="N.N.", value=None, **kwargs):
         """set Attribute"""
-        attr = self.get_attr(name) or Attribute(name, value, **kwargs)
+        if isinstance(name, Attribute):
+            attr = name
+        else:
+            attr = self.get_attr(name) or Attribute(name, value, **kwargs)
         for key in ["dtype", "unit", "description"]:
             if key in kwargs:
                 setattr(attr, key, kwargs.get(key))
@@ -184,6 +247,11 @@ class Metadata(object):
         df.index.name = "key"
         return df[self.ATTRIBUTEKEYS]
 
+    @property
+    def df(self):
+        """create dataframe"""
+        return self.to_dataframe()
+
     @classmethod
     def from_dataframe(cls, df):
         """create metadata from dataframe"""
@@ -191,11 +259,28 @@ class Metadata(object):
         metadata = cls.from_dict(d)
         return metadata
 
-    def to_csv(self, filepath):
+    def to_csv(self, filepath=None, sep=","):
         """serialize to csv"""
         try:
             df = self.to_dataframe()
-            df.to_csv(filepath, index=None)
+            df.to_csv(filepath, index=None, sep=sep)
+            return df.to_csv(filepath, index=None)
+        except OSError as exp:
+            logging.error("metadata.to_csv error: %s" % (exp))
+
+    def to_csv_header(self, prefix="#", sep=",", filepath=None):
+        """serialize to csv"""
+        try:
+            lines = []
+            for attr in self.attributes.values():
+                lines.append(attr.to_csv(prefix=prefix, sep=sep)+"\n")
+
+            alines = "".join(lines)
+            if filepath:
+                logging.info("export '{}'".format(filepath))
+                with open(filepath, "w") as fh:
+                    fh.write(alines)
+            return alines
         except OSError as exp:
             logging.error("metadata.to_csv error: %s" % (exp))
 
@@ -206,11 +291,12 @@ class Metadata(object):
         metadata = cls.from_dataframe(df)
         return metadata
 
-    def to_json(self, filepath):
+    def to_json(self, filepath=None):
         """create dataframe"""
         d = self.to_dict()
-        with open(filepath, "w") as fh:
-            json.dump(d, fh)
+        if filepath:
+            with open(filepath, "w") as fh:
+                json.dump(d, fh)
         return json.dumps(d)
 
     @classmethod
@@ -222,7 +308,47 @@ class Metadata(object):
         return metadata
 
     def __repr__(self):
-        return "(Metadata:%d)" % (len(self.attributes))
+        return "(Metadata'%s':%d)" % (self.name, len(self.attributes))
 
     def __str__(self):
-        return "(Metadata:%d %s)" % (len(self.attributes), [x for x in self.attributes])
+        return "(Metadata'%s':%d %s)" % (self.name, len(self.attributes), [x for x in self.attributes])
+
+    def add(self, name, value=None, **kwargs):
+        """add Attribute
+
+        :param name:
+        :param value:
+        :param kwargs:
+        :return:
+        """
+        self.set_attr(name, value, **kwargs)
+
+    def get(self, name, default=None):
+        if self._attributes.get(name) is not None:
+            return self._attributes.get(name)
+        else:
+            return default
+
+    def keys(self):
+        """
+
+        :return: list of Attribute names
+        """
+        return list(self._attributes.keys())
+
+    def values(self):
+        """
+
+        :return: list of Attribute values
+        """
+        return list(self._attributes.values())
+
+    def items(self):
+        """
+
+        :return: list of Attribute items (keys, values)
+        """
+        return list(self._attributes.items())
+
+    def __getitem__(self, name):
+        return self.get(name)
