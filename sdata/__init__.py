@@ -32,13 +32,19 @@ class Data(object):
     ATTR_NAMES = []
 
     def __init__(self, **kwargs):
-        self._uuid = None
-        self._name = None
+        # self._uuid = None
+        # self._name = None
         self._prefix = None
-        self.uuid = kwargs.get("uuid") or uuid.uuid4()
-        self.name = kwargs.get("name") or "N.N."
-        self.prefix = kwargs.get("prefix") or ""
+        #ToDo: add getter and setter for metadata
         self.metadata = kwargs.get("metadata") or Metadata()
+        _uuid = kwargs.get("uuid") or uuid.uuid4()
+        _name = kwargs.get("name") or "N.N."
+        self.metadata.add("name", _name)
+        self.metadata.add("uuid", _uuid)
+
+        # self.uuid = kwargs.get("uuid") or uuid.uuid4()
+        # self.name = kwargs.get("name") or "N.N."
+        self.prefix = kwargs.get("prefix") or ""
         self._gen_default_attributes(kwargs.get("default_attributes") or self.ATTR_NAMES)
         self._group = OrderedDict()
         self._table = None#pd.DataFrame()
@@ -50,7 +56,8 @@ class Data(object):
             self.metadata.set_attr(name=attr_name, value=value, dtype=dtype, description=description)
 
     def _get_uuid(self):
-        return self._uuid
+        return self.metadata.get("uuid").value
+        # return self._uuid
 
     def _set_uuid(self, value):
         if isinstance(value, str):
@@ -59,21 +66,24 @@ class Data(object):
             except ValueError as exp:
                 logging.warning("data.uuid: %s" % exp)
         elif isinstance(value, uuid.UUID):
-            self._uuid = value.hex
+            self.metadata.set_attr("uuid", value.hex)
+            # self._uuid = value.hex
 
     uuid = property(fget=_get_uuid, fset=_set_uuid, doc="uuid of the object")
 
     def _get_name(self):
-        return self._name
+        # return self._name
+        return self.metadata.get("name").value
 
     def _set_name(self, value):
         if isinstance(value, str):
             try:
-                self._name = value[:256]
+                self.metadata.set_attr("name", str(value)[:256])
             except ValueError as exp:
                 logging.warning("data.name: %s" % exp)
         else:
-            self._name = str(value)[:256]
+            # self._name = str(value)[:256]
+            self.metadata.set_attr("name", str(value)[:256])
 
     name = property(fget=_get_name, fset=_set_name, doc="name of the object")
 
@@ -236,7 +246,7 @@ class Data(object):
             sdataclassname = classattr.value
             sdatacls = SDATACLS.get(sdataclassname)
             if sdataclassname not in SDATACLS:
-                logging.warn("unsupported cls '{}'".format(sdataclassname))
+                logging.warning("unsupported cls '{}'".format(sdataclassname))
                 sdatacls = Data
         else:
             logging.warn("cls not defined '{}'".format(metadata))

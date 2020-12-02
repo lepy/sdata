@@ -21,5 +21,5 @@ def test_table():
     assert sdf.filename == "table_s_"
     print(sdf.columns.to_dataframe())
 
-    sdf.to_xlsx(path="/tmp")
+    # sdf.to_xlsx(path="/tmp")
 
