@@ -56,7 +56,7 @@ datetime.datetime.now().strftime("%d.%m.%Y")
 
 # General information about the project.
 project = 'sdata'
-copyright = '2017-%s, LGPL like'.format(datetime.datetime.now().strftime("%Y")
+copyright = '2017-{}, LGPL like'.format(datetime.datetime.now().strftime("%Y")
 )
 author = 'lepy'
 

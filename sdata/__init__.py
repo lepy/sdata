@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.6.2'
+__version__ = '0.7.0'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -19,13 +19,16 @@ import shutil
 from sdata.metadata import Metadata, Attribute
 import sdata.timestamp as timestamp
 import sys, inspect
+
 try:
     import openpyxl
 except:
     logging.warning("openpyxl is not available -> no xlsx import")
 
+
 def uuid_from_str(name):
     return uuid.uuid3(uuid.NAMESPACE_DNS, name)
+
 
 class Data(object):
     """run object, e.g. single tension test simulation"""
@@ -35,7 +38,7 @@ class Data(object):
         # self._uuid = None
         # self._name = None
         self._prefix = None
-        #ToDo: add getter and setter for metadata
+        # ToDo: add getter and setter for metadata
         self.metadata = kwargs.get("metadata") or Metadata()
         _uuid = kwargs.get("uuid") or uuid.uuid4()
         _name = kwargs.get("name") or "N.N."
@@ -47,8 +50,10 @@ class Data(object):
         self.prefix = kwargs.get("prefix") or ""
         self._gen_default_attributes(kwargs.get("default_attributes") or self.ATTR_NAMES)
         self._group = OrderedDict()
-        self._table = None#pd.DataFrame()
+        self._table = None  # pd.DataFrame()
         self.table = kwargs.get("table", None)
+        self._comment = ""
+        self.comment = kwargs.get("comment", "")
 
     def _gen_default_attributes(self, default_attributes):
         """create default Attributes in data.metadata"""
@@ -86,6 +91,20 @@ class Data(object):
             self.metadata.set_attr("name", str(value)[:256])
 
     name = property(fget=_get_name, fset=_set_name, doc="name of the object")
+
+    def _get_comment(self):
+        return self._comment
+
+    def _set_comment(self, value):
+        if isinstance(value, str):
+            try:
+                self._comment = str(value)
+            except ValueError as exp:
+                logging.warning("data.name: %s" % exp)
+        else:
+            self._comment = str(value)
+
+    comment = property(fget=_get_comment, fset=_set_comment, doc="comments of the object")
 
     @property
     def filename(self):
@@ -380,7 +399,7 @@ class Data(object):
                 #     series.astype(str, raise_on_error=False).map(len).max(),  # len of largest item
                 #     len(str(series.name))  # len of column name/header
                 #     )) + 1  # adding a little extra space
-                worksheet.set_column(idx+1, idx+1, width)
+                worksheet.set_column(idx + 1, idx + 1, width)
 
         with pd.ExcelWriter(filepath) as writer:
 
@@ -398,6 +417,18 @@ class Data(object):
                 self.table.index.name = "index"
                 self.table.to_excel(writer, sheet_name='table')
                 adjust_col_width('table', self.table, writer, width=15)
+            else:
+                df = pd.DataFrame()
+                df.index.name = "index"
+                df.to_excel(writer, sheet_name='table')
+                adjust_col_width('table', df, writer, width=15)
+
+            df_comment = pd.DataFrame(self.comment.splitlines())
+            # add scace in ervery empty line
+            # if len(df_comment)>0:
+            #     df_comment[0][df_comment[0].str.len() == 0] = "_"
+            df_comment.to_excel(writer, sheet_name='comment', index=False, header=False)
+            adjust_col_width('comment', df_comment, writer, width=200)
 
             # # raw data
             # self.df_raw.index.name = "index"
@@ -425,6 +456,21 @@ class Data(object):
                 dfm = pd.read_excel(filepath, sheet_name="metadata")
                 dfm = dfm.set_index("key")
                 tt.metadata = tt.metadata.from_dataframe(dfm)
+
+                #read comment
+                if "comment" in sheetnames:
+                    def handle_string(value):
+                        return value.replace('_', '!')
+                    df_comment = pd.read_excel(filepath, sheet_name="comment", index_col=None, header=None,
+                                               dtype=str, na_filter=False,
+                                               converters={"Key1":handle_string})
+                    print(df_comment)
+                    if len(df_comment)>0:
+                        print("!","\n".join(df_comment[0].values))
+                        tt.comment = "\n".join(df_comment[0].values)
+                else:
+                    logging.info("no comment in '{}'".format(filepath))
+
                 return tt
             else:
                 raise Exception("excel file '{}' not available".format(filepath))
@@ -447,6 +493,7 @@ class Blob(Data):
         self._blob = blob
 
     blob = property(fget=_get_blob, fset=_set_blob, doc="blob object")
+
 
 class DataFrame(Blob):
     """Data Frame aka Table"""
@@ -485,7 +532,7 @@ class DataFrame(Blob):
             worksheet = writer.sheets[sheetname]  # pull worksheet object
             worksheet.set_column(0, 0, width)
             for idx, col in enumerate(df):  # loop through all columns
-                worksheet.set_column(idx+1, idx+1, width)
+                worksheet.set_column(idx + 1, idx + 1, width)
 
         with pd.ExcelWriter(filepath) as writer:
             dfm = self.metadata.to_dataframe()
@@ -506,7 +553,6 @@ class DataFrame(Blob):
                 self.blob.to_excel(writer, sheet_name='dataframe')
                 adjust_col_width('dataframe', self.blob, writer, width=15)
 
-
     @classmethod
     def from_xlsx(cls, filepath, **kwargs):
         """save table as xlsx
@@ -526,12 +572,10 @@ class DataFrame(Blob):
         return tt
 
 
-
 SDATACLS = {"Data": Data,
             }
 
 __all__ = ["Data"]
-
 
 
 def print_classes():
