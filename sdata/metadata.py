@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
 import json
+import os
 
 
 class Attribute(object):
@@ -98,7 +99,9 @@ s
         :param value:
         :return:
         """
-        if "float" in value:
+        if value is None:
+            return "str"
+        elif "float" in value:
             value = "float"
         elif "int" in value:
             value = "int"
@@ -292,7 +295,11 @@ class Metadata(object):
         return metadata
 
     def to_json(self, filepath=None):
-        """create dataframe"""
+        """create a json
+
+        :param filepath: default None
+        :return: json str
+        """
         d = self.to_dict()
         if filepath:
             with open(filepath, "w") as fh:
@@ -300,11 +307,45 @@ class Metadata(object):
         return json.dumps(d)
 
     @classmethod
-    def from_json(cls, filepath):
-        """create metadata from dataframe"""
-        with open(filepath, "r") as fh:
-            j = json.load(fh)
-        metadata = cls.from_dict(j)
+    def from_json(cls,jsonstr=None, filepath=None):
+        """create metadata from json file
+
+        :param jsonstr: json str
+        :param filepath: filepath to json file
+        :return: Metadata
+        """
+
+        if filepath is not None and os.path.exists(filepath):
+            with open(filepath, "r") as fh:
+                j = json.load(fh)
+            metadata = cls.from_dict(j)
+        elif jsonstr is not None:
+            j = json.loads(jsonstr)
+            metadata = cls.from_dict(j)
+        return metadata
+
+    def to_list(self):
+        """create a nested list of Attribute values
+
+        :return: list
+        """
+        return self.df.values.tolist()
+
+    @classmethod
+    def from_list(cls, mlist):
+        """create metadata from a list of Attribute values
+
+        [['force_x', 1.2, 'float', 'kN', 'force in x-direction'],
+         ['force_y', 3.1, 'float', 'N', 'force in y-direction']]
+         """
+        metadata = cls()
+        for alist in mlist:
+            if len(alist) < 2:
+                logging.error("Metadata.from_list skip {}".format(alist))
+            else:
+                alist.extend([None, None, None])
+                #["name", "value", "dtype", "unit", "description"]
+                metadata.add(alist[0], alist[1], dtype=alist[2], unit=alist[3], description=alist[4])
         return metadata
 
     def __repr__(self):
