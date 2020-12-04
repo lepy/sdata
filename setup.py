@@ -18,6 +18,7 @@ setup(
     version=version,
     description='structured data',
     long_description=readme,
+    long_description_content_type="text/markdown",
     author="Lepy",
     author_email="lepy@mailbox.org",
     maintainer='Lepy',

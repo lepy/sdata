@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.7.0'
+__version__ = '0.7.1'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -427,7 +427,7 @@ class Data(object):
             # add scace in ervery empty line
             # if len(df_comment)>0:
             #     df_comment[0][df_comment[0].str.len() == 0] = "_"
-            df_comment.to_excel(writer, sheet_name='comment', index=False, header=False)
+            df_comment.to_excel(writer, sheet_name='comment', index=False, header=None)
             adjust_col_width('comment', df_comment, writer, width=200)
 
             # # raw data
@@ -449,6 +449,8 @@ class Data(object):
                 sheetnames = wb.get_sheet_names()
 
                 tt = cls(name=filepath)
+
+                # read df
                 if "table" in sheetnames:
                     tt.table = pd.read_excel(filepath, sheet_name="table", index_col='index')
                 else:
@@ -459,15 +461,13 @@ class Data(object):
 
                 #read comment
                 if "comment" in sheetnames:
-                    def handle_string(value):
-                        return value.replace('_', '!')
-                    df_comment = pd.read_excel(filepath, sheet_name="comment", index_col=None, header=None,
-                                               dtype=str, na_filter=False,
-                                               converters={"Key1":handle_string})
-                    print(df_comment)
-                    if len(df_comment)>0:
-                        print("!","\n".join(df_comment[0].values))
-                        tt.comment = "\n".join(df_comment[0].values)
+                    cells = []
+                    for cell in wb["comment"]["A"]:
+                        if cell.value is not None:
+                            cells.append(cell.value)
+                        else:
+                            cells.append("")
+                    tt.comment = "\n".join(cells)
                 else:
                     logging.info("no comment in '{}'".format(filepath))
 
