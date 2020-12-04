@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.7.1'
+__version__ = '0.7.2'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -54,6 +54,23 @@ class Data(object):
         self.table = kwargs.get("table", None)
         self._comment = ""
         self.comment = kwargs.get("comment", "")
+
+    def describe(self):
+        """Generate descriptive info of the data
+
+        :return:
+        """
+        df = pd.DataFrame({0: []}, dtype=object)
+        df.loc["metadata", 0] = self.metadata.size
+        if self.table is None:
+            df.loc["table_rows"] = 0
+            df.loc["table_columns"] = 0
+        else:
+            df.loc["table_rows"] = self.table.size
+            df.loc["table_columns"] = len(self.table.columns)
+        df.loc["comment", 0] = len(self.comment)
+        return df
+
 
     def _gen_default_attributes(self, default_attributes):
         """create default Attributes in data.metadata"""

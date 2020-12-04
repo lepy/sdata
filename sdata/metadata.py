@@ -391,5 +391,10 @@ class Metadata(object):
         """
         return list(self._attributes.items())
 
+    @property
+    def size(self):
+        """return number uf Attribute"""
+        return len(self.attributes)
+
     def __getitem__(self, name):
         return self.get(name)
