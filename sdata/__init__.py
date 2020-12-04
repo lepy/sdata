@@ -18,7 +18,13 @@ import pandas as pd
 import shutil
 from sdata.metadata import Metadata, Attribute
 import sdata.timestamp as timestamp
-import sys, inspect
+import inspect
+import sys
+import hashlib
+if sys.version_info < (3, 6):
+	import sha3
+
+
 
 try:
     import openpyxl
@@ -54,6 +60,21 @@ class Data(object):
         self.table = kwargs.get("table", None)
         self._comment = ""
         self.comment = kwargs.get("comment", "")
+
+    @property
+    def sha3_256(self):
+        """Return a new SHA3 hash object with a hashbit length of 32 bytes.
+
+        :return: hashlib.sha3_256.hexdigest()
+        """
+        s = hashlib.sha3_256()
+        metadatastr = self.metadata.to_json().encode(errors="replace")
+        s.update(metadatastr)
+        if self.table is not None:
+            tablestr =self.table.to_json().encode(errors="replace")
+            s.update(tablestr)
+        s.update(self.comment.encode(errors="replace"))
+        return s.hexdigest()
 
     def describe(self):
         """Generate descriptive info of the data
