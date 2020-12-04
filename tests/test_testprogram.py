@@ -137,14 +137,14 @@ def test_testprogram():
     print(tp)
     assert tp.name == "testprogram FOO"
     print(tp.dir())
-    exportpath = "/tmp/mytestprogram"
-    tp.to_folder(exportpath)
+    exportpath = "/tmp/mytestprogramx"
+    tp.to_folder(exportpath, dtype="csv")
     tp.tree_folder(exportpath)
     tp2 = sdata.Data.from_folder(exportpath)
     print(tp)
     print(tp2)
     print(tp2.metadata.to_dataframe())
-    exportpath2 = "/tmp/mytestprogram2"
+    exportpath2 = "/tmp/mytestprogramx2"
     tp2.to_folder(exportpath2)
     tp2.tree_folder(exportpath2)
     print()

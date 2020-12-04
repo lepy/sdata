@@ -27,9 +27,9 @@ class Attribute(object):
         self._unit = "-"
         self._dimension = kwargs.get("dimension", "?")
         self._description = ""
-        self._dtype = "str"
+        self._dtype = None
         self.name = name
-        self.dtype = kwargs.get("dtype", "str")
+        self.dtype = kwargs.get("dtype", None)
         self.description = kwargs.get("description", "")
         self.unit = kwargs.get("unit", "-")
         # set dtype first!
@@ -58,10 +58,10 @@ class Attribute(object):
 
     def _set_value(self, value):
         try:
-            # dtype = self.DTYPES.get(self.dtype, str)
-            dtype = self._guess_dtype(value)
+            dtype = self.DTYPES.get(self.dtype, None)
+            if dtype is None:
+                dtype = self._guess_dtype(value)
             self.dtype = dtype.__name__
-            # print(self.dtype, dtype.__name__)
             if value is None:
                 self._value = None
             elif dtype.__name__ == "bool" and value in [0, "0", "False", "false"]:
@@ -100,7 +100,7 @@ s
         :return:
         """
         if value is None:
-            return "str"
+            return None
         elif "float" in value:
             value = "float"
         elif "int" in value:

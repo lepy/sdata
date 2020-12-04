@@ -46,8 +46,9 @@ def _fixed_uuid():
 
 fixed_uuid =_fixed_uuid()
 
-def test_ks2_full():
-
+def atest_ks2_full():
+    tp = sdata.Data("what")
+    tp.to_folder("/tmp/tp_ks2")
     # sdata.testprogram.TestProgram.clear_folder("/tmp/tp_ks2")
     tp = sdata.Data.from_folder("/tmp/tp_ks2")
     tp.clear_group()
@@ -139,7 +140,7 @@ def test_ks2_full():
     tp2.tree_folder("/tmp/tp_ks2a")
     print(tp.dir())
 
-def test_ks2():
+# def test_ks2():
     tp = sdata.Data.from_folder("/tmp/tp_ks2")
     tp.name = "KS2-testprogram"
     tp.to_folder("/tmp/tp_ks2")

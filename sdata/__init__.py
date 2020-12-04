@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.7.2'
+__version__ = '0.7.3'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -19,12 +19,12 @@ import shutil
 from sdata.metadata import Metadata, Attribute
 import sdata.timestamp as timestamp
 import inspect
+import json
 import sys
 import hashlib
+
 if sys.version_info < (3, 6):
-	import sha3
-
-
+    import sha3
 
 try:
     import openpyxl
@@ -46,13 +46,13 @@ class Data(object):
         self._prefix = None
         # ToDo: add getter and setter for metadata
         self.metadata = kwargs.get("metadata") or Metadata()
-        _uuid = kwargs.get("uuid") or uuid.uuid4()
+        _uuid = kwargs.get("uuid") or ""
         _name = kwargs.get("name") or "N.N."
         self.metadata.add("name", _name)
         self.metadata.add("uuid", _uuid)
 
-        # self.uuid = kwargs.get("uuid") or uuid.uuid4()
-        # self.name = kwargs.get("name") or "N.N."
+        self.uuid = kwargs.get("uuid") or uuid.uuid4()
+        self.name = kwargs.get("name") or "N.N."
         self.prefix = kwargs.get("prefix") or ""
         self._gen_default_attributes(kwargs.get("default_attributes") or self.ATTR_NAMES)
         self._group = OrderedDict()
@@ -71,7 +71,7 @@ class Data(object):
         metadatastr = self.metadata.to_json().encode(errors="replace")
         s.update(metadatastr)
         if self.table is not None:
-            tablestr =self.table.to_json().encode(errors="replace")
+            tablestr = self.table.to_json().encode(errors="replace")
             s.update(tablestr)
         s.update(self.comment.encode(errors="replace"))
         return s.hexdigest()
@@ -92,7 +92,6 @@ class Data(object):
         df.loc["comment", 0] = len(self.comment)
         return df
 
-
     def _gen_default_attributes(self, default_attributes):
         """create default Attributes in data.metadata"""
         for attr_name, value, dtype, unit, description, required in default_attributes:
@@ -109,8 +108,11 @@ class Data(object):
             except ValueError as exp:
                 logging.warning("data.uuid: %s" % exp)
         elif isinstance(value, uuid.UUID):
+            print("!", value.hex)
             self.metadata.set_attr("uuid", value.hex)
             # self._uuid = value.hex
+        else:
+            logging.error("Data.uuid: invalid uuid '{}'".format(value))
 
     uuid = property(fget=_get_uuid, fset=_set_uuid, doc="uuid of the object")
 
@@ -232,8 +234,13 @@ class Data(object):
             return data
 
         data.metadata = data._load_metadata(path)
-        data.uuid = data.metadata.get_attr("uuid").value
-        data.name = data.metadata.get_attr("name").value
+        try:
+            print("!", path)
+            data.uuid = data.metadata.get_attr("uuid").value
+            data.name = data.metadata.get_attr("name").value
+        except Exception as exp:
+            logging.error("Data.from_folder: {}".format(data.metadata.to_dict()))
+            raise
 
         # table import
         files = [x for x in os.listdir(path) if
@@ -497,7 +504,7 @@ class Data(object):
                 dfm = dfm.set_index("key")
                 tt.metadata = tt.metadata.from_dataframe(dfm)
 
-                #read comment
+                # read comment
                 if "comment" in sheetnames:
                     cells = []
                     for cell in wb["comment"]["A"]:
@@ -515,6 +522,58 @@ class Data(object):
         except Exception as exp:
             raise
 
+    def to_json(self, filepath=None):
+        """export Data in json format
+
+        :param filepath: export file path (default:None)
+        :return: json str
+        """
+
+        if self.table is not None:
+            json_table = self.table.to_json()
+        else:
+            json_table = {}
+
+        j = {"metadata": self.metadata.to_json(),
+             "table": json_table,
+             "comment": self.comment
+             }
+        if filepath:
+            json.dump(filepath)
+        return json.dumps(j)
+
+    @classmethod
+    def from_json(cls, s=None, filepath=None):
+        """
+
+        :param s: json str
+        :param filepath:
+        :return:
+        """
+        data = cls()
+        if s is None and filepath is not None:
+            s = json.load(filepath)
+        elif s is None and filepath is None:
+            logging.error("data.from_json: no ason data available")
+            return
+        if s:
+            d = json.loads(s)
+            if "metadata" in d.keys():
+                data.metadata = data.metadata.from_json(d["metadata"])
+            else:
+                logging.error("Data.from_json: table not available")
+
+            if "table" in d.keys():
+                data.table = pd.read_json(d["table"])
+            else:
+                logging.error("Data.from_json: metadata not available")
+
+            if "comment" in d.keys():
+                data.comment = d["comment"]
+            else:
+                logging.error("Data.from_json: comment not available")
+
+        return data
 
 class Blob(Data):
     """Binary Large Object"""
