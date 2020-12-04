@@ -87,7 +87,7 @@ class Data(object):
             df.loc["table_rows"] = 0
             df.loc["table_columns"] = 0
         else:
-            df.loc["table_rows"] = self.table.size
+            df.loc["table_rows"] = len(self.table)
             df.loc["table_columns"] = len(self.table.columns)
         df.loc["comment", 0] = len(self.comment)
         return df
@@ -108,9 +108,7 @@ class Data(object):
             except ValueError as exp:
                 logging.warning("data.uuid: %s" % exp)
         elif isinstance(value, uuid.UUID):
-            print("!", value.hex)
             self.metadata.set_attr("uuid", value.hex)
-            # self._uuid = value.hex
         else:
             logging.error("Data.uuid: invalid uuid '{}'".format(value))
 
@@ -235,7 +233,6 @@ class Data(object):
 
         data.metadata = data._load_metadata(path)
         try:
-            print("!", path)
             data.uuid = data.metadata.get_attr("uuid").value
             data.name = data.metadata.get_attr("name").value
         except Exception as exp:
