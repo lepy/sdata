@@ -262,12 +262,12 @@ class Metadata(object):
         metadata = cls.from_dict(d)
         return metadata
 
-    def to_csv(self, filepath=None, sep=","):
+    def to_csv(self, filepath=None, sep=",", header=False):
         """serialize to csv"""
         try:
             df = self.to_dataframe()
-            df.to_csv(filepath, index=None, sep=sep)
-            return df.to_csv(filepath, index=None)
+            # df.to_csv(filepath, index=None, sep=sep)
+            return df.to_csv(filepath, index=None, sep=sep, header=header)
         except OSError as exp:
             logging.error("metadata.to_csv error: %s" % (exp))
 

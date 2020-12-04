@@ -57,11 +57,7 @@ sdatapart = st.sidebar.radio(
     "choose sdata.Data component:",
     ('Metadata', 'Table', 'Comment'))
 if sdatapart == 'Metadata':
-    # ex = st.sidebar.button("create example data")
-    # if ex:
-    #     content_metadata = sample_content_metadata
-    # else:
-    #     content_metadata = ""
+
 
     st.markdown('## Metadata')
     content_metadata = get_content("metadata")
@@ -124,6 +120,9 @@ else:
 
 st.sidebar.markdown("## sdata.Data Status")
 st.sidebar.dataframe(data.describe())
+
+
+
 
 st.markdown("## sdata.Data json")
 content_json = st_ace(key="json", height=100, placeholder=sample_content_table, value=data.to_json(), readonly=True,
