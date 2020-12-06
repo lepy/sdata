@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.7.5'
+__version__ = '0.7.6'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -442,12 +442,30 @@ class Data(object):
 
         :return: BytesIO
         """
+
+        def adjust_col_width(sheetname, df, writer, width=40):
+            worksheet = writer.sheets[sheetname]  # pull worksheet object
+            worksheet.set_column(0, 0, width)
+            for idx, col in enumerate(df):  # loop through all columns
+                # series = df[col]
+                # max_len = max((
+                #     series.astype(str, raise_on_error=False).map(len).max(),  # len of largest item
+                #     len(str(series.name))  # len of column name/header
+                #     )) + 1  # adding a little extra space
+                worksheet.set_column(idx + 1, idx + 1, width)
+
         output = BytesIO()
         writer = pd.ExcelWriter(output, engine='xlsxwriter')
         self.metadata.df.to_excel(writer, sheet_name='metadata')
+        adjust_col_width('metadata', self.metadata.df, writer)
+
         self.df.to_excel(writer, sheet_name='table')
+        adjust_col_width('table', self.table, writer, width=15)
+
         df_comment = pd.DataFrame(self.comment.splitlines())
         df_comment.to_excel(writer, sheet_name='comment', index=False, header=None)
+        adjust_col_width('comment', df_comment, writer, width=200)
+
         writer.save()
         processed_data = output.getvalue()
         return processed_data
