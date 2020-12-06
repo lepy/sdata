@@ -1,14 +1,15 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.7.4'
+__version__ = '0.7.5'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
 '''
-basic data types 
+basic sdata types 
 '''
 
+import sys
 import os
 import uuid
 from collections import OrderedDict
@@ -20,8 +21,9 @@ from sdata.metadata import Metadata, Attribute
 import sdata.timestamp as timestamp
 import inspect
 import json
-import sys
 import hashlib
+import base64
+from io import BytesIO
 
 if sys.version_info < (3, 6):
     import sha3
@@ -37,10 +39,20 @@ def uuid_from_str(name):
 
 
 class Data(object):
-    """run object, e.g. single tension test simulation"""
+    """Base sdata object"""
     ATTR_NAMES = []
 
     def __init__(self, **kwargs):
+        """create Data object
+
+        Data(name='my name', uuid='38b26864e7794f5182d38459bab85842', table=df, comment="A remarkable comment")
+
+        :param name: name of the data object
+        :param table: pandas.DataFrame to store
+        :param uuid: uuid of the object
+        :param metadata: sdata.Metadata object
+        :param comment: a string to describe the object
+        """
         # self._uuid = None
         # self._name = None
         self._prefix = None
@@ -425,7 +437,39 @@ class Data(object):
     def dir(self):
         return [(x.name, x.dir()) for x in self.group.values()]
 
-    def to_xlsx(self, filepath):
+    def to_xlsx_byteio(self):
+        """get xlsx byteio
+
+        :return: BytesIO
+        """
+        output = BytesIO()
+        writer = pd.ExcelWriter(output, engine='xlsxwriter')
+        self.metadata.df.to_excel(writer, sheet_name='metadata')
+        self.df.to_excel(writer, sheet_name='table')
+        df_comment = pd.DataFrame(self.comment.splitlines())
+        df_comment.to_excel(writer, sheet_name='comment', index=False, header=None)
+        writer.save()
+        processed_data = output.getvalue()
+        return processed_data
+
+    def to_xlsx_base64(self):
+        """get xlsx byteio as base64 encoded
+
+        :return: base64
+        """
+        val = self.to_xlsx_byteio()
+        b64 = base64.b64encode(val)
+        return b64
+
+    def get_download_link(self):
+        """Generates a link allowing the data in a given panda dataframe to be downloaded
+        in:  dataframe
+        out: href string
+        """
+        b64 = self.to_xlsx_base64()
+        return '<a href="data:application/octet-stream;base64,{1}" download="{0}.xlsx">Download {0}.xlsx file</a>'.format(self.osname, b64.decode())
+
+    def to_xlsx(self, filepath=None):
         """export atrributes and data to excel
 
         :param filepath:
@@ -466,9 +510,6 @@ class Data(object):
                 adjust_col_width('table', df, writer, width=15)
 
             df_comment = pd.DataFrame(self.comment.splitlines())
-            # add scace in ervery empty line
-            # if len(df_comment)>0:
-            #     df_comment[0][df_comment[0].str.len() == 0] = "_"
             df_comment.to_excel(writer, sheet_name='comment', index=False, header=None)
             adjust_col_width('comment', df_comment, writer, width=200)
 
@@ -590,12 +631,16 @@ class Blob(Data):
 
 
 class DataFrame(Blob):
-    """Data Frame aka Table"""
+    """Data Frame aka Table
+
+    deprecated
+    """
 
     def __init__(self, **kwargs):
         """DataFrame"""
         Blob.__init__(self, **kwargs)
         self.columns = kwargs.get("columns") or Metadata()
+
 
     def _get_blob(self):
         return self._blob
