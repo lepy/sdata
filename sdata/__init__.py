@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.8.2'
+__version__ = '0.8.3'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -547,7 +547,7 @@ class Data(object):
             if os.path.exists(filepath):
                 wb = openpyxl.load_workbook(filename=filepath)
                 # sheetname = u'Übergabedaten VWD für BFA'
-                sheetnames = wb.get_sheet_names()
+                sheetnames = wb.sheetnames
 
                 tt = cls(name=filepath)
 
@@ -623,12 +623,14 @@ class Data(object):
 
         if d:
             if "metadata" in d.keys():
-                data.metadata = data.metadata.from_json(d["metadata"])
+                data.metadata = data.metadata.from_dict(d["metadata"])
             else:
                 logging.error("Data.from_json: table not available")
 
             if "table" in d.keys():
-                data.table = pd.read_json(d["table"])
+                data.table = pd.DataFrame.from_dict(d["table"])
+                # data.table = pd.read_json(json.dumps(d["table"]))
+                # data.table = pd.read_json(d["table"])
             else:
                 logging.error("Data.from_json: metadata not available")
 

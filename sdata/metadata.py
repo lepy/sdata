@@ -28,10 +28,12 @@ class Attribute(object):
         self._unit = "-"
         self._dimension = kwargs.get("dimension", "?")
         self._description = ""
+        self._label = ""
         self._dtype = None
         self.name = name
         self.dtype = kwargs.get("dtype", None)
         self.description = kwargs.get("description", "")
+        self.label = kwargs.get("label", "")
         self.unit = kwargs.get("unit", "-")
         # set dtype first!
         self.value = value
@@ -125,6 +127,14 @@ s
 
     description = property(fget=_get_description, fset=_set_description, doc="Attribute description")
 
+    def _get_label(self):
+        return self._label
+
+    def _set_label(self, value):
+        self._label = value
+
+    label = property(fget=_get_label, fset=_set_label, doc="Attribute label")
+
     def _get_unit(self):
         return self._unit
 
@@ -140,10 +150,11 @@ s
                 'unit': self.unit,
                 'dtype': self.dtype,
                 'description': self.description,
+                'label': self.label,
                 }
 
     def to_list(self):
-        return [self.name, self.value, self.unit, self.dtype, self.description]
+        return [self.name, self.value, self.unit, self.dtype, self.description, self.label]
 
     def to_csv(self, prefix="", sep=",", quote=None):
         """export Attribute to csv
@@ -178,7 +189,7 @@ class Metadata(object):
         * type (int, str, float, bool, timestamp)
         """
 
-    ATTRIBUTEKEYS = ["name", "value", "dtype", "unit", "description"]
+    ATTRIBUTEKEYS = ["name", "value", "dtype", "unit", "description", "label"]
 
     def __init__(self, **kwargs):
         """Metadata class
@@ -211,7 +222,7 @@ class Metadata(object):
             attr = name
         else:
             attr = self.get_attr(name) or Attribute(name, value, **kwargs)
-        for key in ["dtype", "unit", "description"]:
+        for key in ["dtype", "unit", "description", "label"]:
             if key in kwargs:
                 setattr(attr, key, kwargs.get(key))
         if value is not None:
@@ -240,12 +251,13 @@ class Metadata(object):
         metadata = cls()
         for k, v in d.items():
             if isinstance(v, (str,)):
-                v = {"name":k, "value":v, "dtype":None, "unit":None, "description":None}
+                v = {"name":k, "value":v, "dtype":"str", "unit":"", "description":"", "label":""}
             elif hasattr(v, "keys"):
                 v = {"name":k, "value":v.get("value"), "dtype":v.get("dtype"),
-                     "unit":v.get("unit"), "description":v.get("description")}
+                     "unit":v.get("unit"), "description":v.get("description"),
+                     "label":v.get("label")}
             else:
-                v = {"name":k, "value":v, "dtype":None, "unit":None, "description":None}
+                v = {"name":k, "value":v, "dtype":"", "unit":"", "description":"", "label":""}
 
             metadata.set_attr(**v)
         return metadata
@@ -355,9 +367,10 @@ class Metadata(object):
             if len(alist) < 2:
                 logging.error("Metadata.from_list skip {}".format(alist))
             else:
-                alist.extend([None, None, None])
+                alist.extend([None, None, None, None])
                 #["name", "value", "dtype", "unit", "description"]
-                metadata.add(alist[0], alist[1], dtype=alist[2], unit=alist[3], description=alist[4])
+                metadata.add(alist[0], alist[1], dtype=alist[2], unit=alist[3], description=alist[4],
+                             label=alist[5])
         return metadata
 
     def __repr__(self):
