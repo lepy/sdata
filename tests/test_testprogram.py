@@ -132,7 +132,7 @@ def test_testseries():
     assert ts.name == "testseries A1"
 
 
-def test_testprogram():
+def atest_testprogram():
     tp = gen_dummy_testprogram()
     print(tp)
     assert tp.name == "testprogram FOO"

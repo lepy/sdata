@@ -59,7 +59,7 @@ def test_to_json():
     print(data.name, data2.name)
     assert data.name==data2.name
     assert data.uuid==data2.uuid
-    assert data.comment==data2.comment
+    assert data.description==data2.description
     assert data.sha3_256==data2.sha3_256
 
 

@@ -298,7 +298,9 @@ class Metadata(object):
     @classmethod
     def from_csv(cls, filepath):
         """create metadata from dataframe"""
-        df = pd.read_csv(filepath)
+        df = pd.read_csv(filepath, header=None)
+        df.columns = cls.ATTRIBUTEKEYS
+        df.set_index(df.name.values, inplace=True)
         metadata = cls.from_dataframe(df)
         return metadata
 
