@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.8.0'
+__version__ = '0.8.1'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -23,7 +23,7 @@ import inspect
 import json
 import hashlib
 import base64
-from io import BytesIO
+from io import BytesIO, StringIO
 
 if sys.version_info < (3, 6):
     import sha3
@@ -586,11 +586,11 @@ class Data(object):
         """
 
         if self.table is not None:
-            json_table = self.table.to_json()
+            json_table = self.table.to_dict()
         else:
             json_table = {}
 
-        j = {"metadata": self.metadata.to_json(),
+        j = {"metadata": self.metadata.to_dict(),
              "table": json_table,
              "description": self.description
              }
@@ -619,7 +619,7 @@ class Data(object):
             d = json.loads(s)
         else:
             logging.error("data.from_json: unexpected error")
-            d=None
+            d = None
 
         if d:
             if "metadata" in d.keys():
@@ -639,10 +639,57 @@ class Data(object):
 
         return data
 
+    def to_csv(self, filepath=None):
+        """export sdata.Data to csv
+
+        :param filepath:
+        :return:
+        """
+        exportlines = []
+        exportlines.append(self.metadata.to_csv_header(prefix="#;", sep=";", filepath=None))
+        exportlines.append(self.df.to_csv(sep=";"))
+
+        exportstr = "".join(exportlines)
+
+        if filepath is None:
+            return exportstr
+        else:
+            with open(filepath, "w") as fh:
+                fh.write(exportstr)
+
+    @classmethod
+    def from_csv(cls, s=None, filepath=None, sep=";"):
+        """import sdata.Data from csv
+
+        :param s: csv str
+        :param filepath:
+        :param sep: separator (default=";")
+        :return: sdata.Data
+        """
+        data = cls()
+        if filepath:
+            df = pd.read_csv(filepath, sep=";", comment="#")
+            sio = open(filepath, "r")
+        elif s is not None:
+            sio = StringIO(s)
+            pd.read_csv(sio, sep=";", comment="#")
+            sio.seek(0)
+        else:
+            logging.error("data.from_csv: no csv data available")
+            return
+
+        for line in sio:
+            if line.startswith("#;"):
+                print(line)
+
+        data.table = df
+        return data
 
 
 class Blob(Data):
-    """Binary Large Object"""
+    """Binary Large Object
+
+    experimental"""
 
     def __init__(self, **kwargs):
         """Binary Large Object"""

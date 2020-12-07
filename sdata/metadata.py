@@ -3,6 +3,7 @@ import collections
 import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
+from sdata import __version__
 import json
 import os
 
@@ -186,6 +187,7 @@ class Metadata(object):
         """
         self._attributes = collections.OrderedDict()
         self._name = "N.N."
+        self.add("sdata_version", __version__)
 
     def _get_name(self):
         return self._name
