@@ -237,6 +237,14 @@ class Metadata(object):
         """setup metadata from dict"""
         metadata = cls()
         for k, v in d.items():
+            if isinstance(v, (str,)):
+                v = {"name":k, "value":v, "dtype":None, "unit":None, "description":None}
+            elif hasattr(v, "keys"):
+                v = {"name":k, "value":v.get("value"), "dtype":v.get("dtype"),
+                     "unit":v.get("unit"), "description":v.get("description")}
+            else:
+                v = {"name":k, "value":v, "dtype":None, "unit":None, "description":None}
+
             metadata.set_attr(**v)
         return metadata
 

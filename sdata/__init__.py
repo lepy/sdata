@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.7.6'
+__version__ = '0.8.0'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -45,13 +45,13 @@ class Data(object):
     def __init__(self, **kwargs):
         """create Data object
 
-        Data(name='my name', uuid='38b26864e7794f5182d38459bab85842', table=df, comment="A remarkable comment")
+        Data(name='my name', uuid='38b26864e7794f5182d38459bab85842', table=df, description="A remarkable description")
 
         :param name: name of the data object
         :param table: pandas.DataFrame to store
         :param uuid: uuid of the object
         :param metadata: sdata.Metadata object
-        :param comment: a string to describe the object
+        :param description: a string to describe the object
         """
         # self._uuid = None
         # self._name = None
@@ -70,8 +70,8 @@ class Data(object):
         self._group = OrderedDict()
         self._table = None  # pd.DataFrame()
         self.table = kwargs.get("table", None)
-        self._comment = ""
-        self.comment = kwargs.get("comment", "")
+        self._description = ""
+        self.description = kwargs.get("description", "")
 
     @property
     def sha3_256(self):
@@ -85,7 +85,7 @@ class Data(object):
         if self.table is not None:
             tablestr = self.table.to_json().encode(errors="replace")
             s.update(tablestr)
-        s.update(self.comment.encode(errors="replace"))
+        s.update(self.description.encode(errors="replace"))
         return s.hexdigest()
 
     def describe(self):
@@ -101,7 +101,7 @@ class Data(object):
         else:
             df.loc["table_rows"] = len(self.table)
             df.loc["table_columns"] = len(self.table.columns)
-        df.loc["comment", 0] = len(self.comment)
+        df.loc["description", 0] = len(self.description)
         return df
 
     def _gen_default_attributes(self, default_attributes):
@@ -142,19 +142,19 @@ class Data(object):
 
     name = property(fget=_get_name, fset=_set_name, doc="name of the object")
 
-    def _get_comment(self):
-        return self._comment
+    def _get_description(self):
+        return self._description
 
-    def _set_comment(self, value):
+    def _set_description(self, value):
         if isinstance(value, str):
             try:
-                self._comment = str(value)
+                self._description = str(value)
             except ValueError as exp:
                 logging.warning("data.name: %s" % exp)
         else:
-            self._comment = str(value)
+            self._description = str(value)
 
-    comment = property(fget=_get_comment, fset=_set_comment, doc="comments of the object")
+    description = property(fget=_get_description, fset=_set_description, doc="description of the object")
 
     @property
     def filename(self):
@@ -196,7 +196,7 @@ class Data(object):
     table = property(fget=_get_table, fset=_set_table, doc="table object(pandas.DataFrame)")
     df = table
 
-    def to_folder(self, path, dtype="xlsx"):
+    def to_folder(self, path, dtype="csv"):
         """export data to folder"""
         if dtype not in ["csv", "xlsx"]:
             dtype = "xlsx"
@@ -462,9 +462,9 @@ class Data(object):
         self.df.to_excel(writer, sheet_name='table')
         adjust_col_width('table', self.table, writer, width=15)
 
-        df_comment = pd.DataFrame(self.comment.splitlines())
-        df_comment.to_excel(writer, sheet_name='comment', index=False, header=None)
-        adjust_col_width('comment', df_comment, writer, width=200)
+        df_description = pd.DataFrame(self.description.splitlines())
+        df_description.to_excel(writer, sheet_name='description', index=False, header=None)
+        adjust_col_width('description', df_description, writer, width=200)
 
         writer.save()
         processed_data = output.getvalue()
@@ -527,9 +527,9 @@ class Data(object):
                 df.to_excel(writer, sheet_name='table')
                 adjust_col_width('table', df, writer, width=15)
 
-            df_comment = pd.DataFrame(self.comment.splitlines())
-            df_comment.to_excel(writer, sheet_name='comment', index=False, header=None)
-            adjust_col_width('comment', df_comment, writer, width=200)
+            df_description = pd.DataFrame(self.description.splitlines())
+            df_description.to_excel(writer, sheet_name='description', index=False, header=None)
+            adjust_col_width('description', df_description, writer, width=200)
 
             # # raw data
             # self.df_raw.index.name = "index"
@@ -560,17 +560,17 @@ class Data(object):
                 dfm = dfm.set_index("key")
                 tt.metadata = tt.metadata.from_dataframe(dfm)
 
-                # read comment
-                if "comment" in sheetnames:
+                # read description
+                if "description" in sheetnames:
                     cells = []
-                    for cell in wb["comment"]["A"]:
+                    for cell in wb["description"]["A"]:
                         if cell.value is not None:
                             cells.append(cell.value)
                         else:
                             cells.append("")
-                    tt.comment = "\n".join(cells)
+                    tt.description = "\n".join(cells)
                 else:
-                    logging.info("no comment in '{}'".format(filepath))
+                    logging.info("no description in '{}'".format(filepath))
 
                 return tt
             else:
@@ -592,11 +592,13 @@ class Data(object):
 
         j = {"metadata": self.metadata.to_json(),
              "table": json_table,
-             "comment": self.comment
+             "description": self.description
              }
         if filepath:
-            json.dump(filepath)
-        return json.dumps(j)
+            with open(filepath, "w") as fh:
+                json.dump(j, fh)
+        else:
+            return json.dumps(j)
 
     @classmethod
     def from_json(cls, s=None, filepath=None):
@@ -608,12 +610,18 @@ class Data(object):
         """
         data = cls()
         if s is None and filepath is not None:
-            s = json.load(filepath)
+            with open(filepath, "r") as fh:
+                d = json.load(fh)
         elif s is None and filepath is None:
-            logging.error("data.from_json: no ason data available")
+            logging.error("data.from_json: no json data available")
             return
-        if s:
+        elif s is not None and filepath is None:
             d = json.loads(s)
+        else:
+            logging.error("data.from_json: unexpected error")
+            d=None
+
+        if d:
             if "metadata" in d.keys():
                 data.metadata = data.metadata.from_json(d["metadata"])
             else:
@@ -624,12 +632,14 @@ class Data(object):
             else:
                 logging.error("Data.from_json: metadata not available")
 
-            if "comment" in d.keys():
-                data.comment = d["comment"]
+            if "description" in d.keys():
+                data.description = d["description"]
             else:
-                logging.error("Data.from_json: comment not available")
+                logging.error("Data.from_json: description not available")
 
         return data
+
+
 
 class Blob(Data):
     """Binary Large Object"""
