@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.8.1'
+__version__ = '0.8.2'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -513,7 +513,7 @@ class Data(object):
 
             dfm = dfm.sort_index()
             dfm.index.name = "key"
-            dfm.to_excel(writer, sheet_name='metadata')
+            dfm.to_excel(writer, sheet_name='metadata', index=False)
             adjust_col_width('metadata', dfm, writer)
 
             # data
@@ -557,7 +557,7 @@ class Data(object):
                 else:
                     logging.info("no table data in '{}'".format(filepath))
                 dfm = pd.read_excel(filepath, sheet_name="metadata")
-                dfm = dfm.set_index("key")
+                dfm = dfm.set_index(dfm.name.values)
                 tt.metadata = tt.metadata.from_dataframe(dfm)
 
                 # read description
