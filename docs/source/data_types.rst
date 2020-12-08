@@ -55,7 +55,7 @@ dtypes for attributes
 * ``str``, (unicode)
 * ``bool``
 * ``timestamp`` (datetime.isoformat with timezone)
-* ``uuid`` (planed)
+* (``uuid`` planed)
 
 sdata.metadata
 ..............

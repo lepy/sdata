@@ -2,9 +2,23 @@
    sphinx-quickstart on Thu Apr 27 16:32:51 2017.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
+   _dynamic/sdata
 
-sdata's documentation
-=====================
+
+`sdata <https://github.com/lepy/sdata>`_ documentation
+==========================================================
+
+`sdata.git <https://github.com/lepy/sdata>`_
+
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.4311397.svg
+   :target: https://doi.org/10.5281/zenodo.4311397
+
+.. image:: https://img.shields.io/pypi/v/sdata.svg?style=flat-square
+   :target: https://pypi.python.org/pypi/sdata/
+
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.4311323.svg
+   :target: https://doi.org/10.5281/zenodo.4311323
+
 
 .. toctree::
    :maxdepth: 4
@@ -12,7 +26,6 @@ sdata's documentation
 
    motivation
    design_goals
-   _dynamic/sdata
    data_types
    api
    etc
