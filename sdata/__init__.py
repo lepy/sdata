@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.8.3'
+__version__ = '0.8.4'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -511,7 +511,7 @@ class Data(object):
             # dfm = pd.DataFrame.from_dict(self.metadata, orient="index", columns=["value"])
             dfm = self.metadata.to_dataframe()
 
-            dfm = dfm.sort_index()
+            # dfm = dfm.sort_index()
             dfm.index.name = "key"
             dfm.to_excel(writer, sheet_name='metadata', index=False)
             adjust_col_width('metadata', dfm, writer)
@@ -558,6 +558,10 @@ class Data(object):
                     logging.info("no table data in '{}'".format(filepath))
                 dfm = pd.read_excel(filepath, sheet_name="metadata")
                 dfm = dfm.set_index(dfm.name.values)
+                # dfm["value"] = dfm["value"].replace(np.nan, None)
+                dfm["description"] = dfm["description"].replace(np.nan, '')
+                dfm["label"] = dfm["label"].replace(np.nan, '')
+                # print("!data.from_xlsx", dfm)
                 tt.metadata = tt.metadata.from_dataframe(dfm)
 
                 # read description

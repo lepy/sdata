@@ -65,8 +65,10 @@ class Attribute(object):
             if dtype is None:
                 dtype = self._guess_dtype(value)
             self.dtype = dtype.__name__
-            if value is None:
+            if not value and self.dtype not in ["int", "float"]:
                 self._value = None
+            elif not value and self.dtype in ["int", "float"]:
+                self._value = np.nan
             elif dtype.__name__ == "bool" and value in [0, "0", "False", "false"]:
                 self._value = False
             elif dtype.__name__ == "bool" and value in [1, "1", "true", "True"]:
@@ -253,12 +255,15 @@ class Metadata(object):
             if isinstance(v, (str,)):
                 v = {"name":k, "value":v, "dtype":"str", "unit":"", "description":"", "label":""}
             elif hasattr(v, "keys"):
-                v = {"name":k, "value":v.get("value"), "dtype":v.get("dtype"),
-                     "unit":v.get("unit"), "description":v.get("description"),
-                     "label":v.get("label")}
+
+                dtype = v.get("dtype", "str")
+                value = v.get("value")
+
+                v = {"name":k, "value":value, "dtype":dtype,
+                     "unit":v.get("unit", ""), "description":v.get("description", ""),
+                     "label":v.get("label", "")}
             else:
                 v = {"name":k, "value":v, "dtype":"", "unit":"", "description":"", "label":""}
-
             metadata.set_attr(**v)
         return metadata
 
