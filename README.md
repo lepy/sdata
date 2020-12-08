@@ -55,8 +55,12 @@ my_key  my_key                               123    int  m^3    a volume
 force    force                             1.234  float   kN     x force
 ```
 
+## Demo App
 
-[test the demo app](https://share.streamlit.io/lepy/sdata_streamlit/main/sdata_editor.py)
+* [test the demo app with editor](https://share.streamlit.io/lepy/sdata_streamlit/main/sdata_editor.py)
+
+Try to paste some Excel-Data in the forms ...
+
 
 ## Metadata
 
@@ -81,3 +85,13 @@ force    force                             1.234  float   kN     x force
 * Ingolf Lepenies. (2020). Das sdata-Format (Version 0.8.4). http://doi.org/10.5281/zenodo.4311323
 * https://zenodo.org/record/4311323#.X89yo9-YXys
 
+    @software{ingolf_lepenies_2020_4311397,
+      author       = {Ingolf Lepenies},
+      title        = {sdata -  a structured data format},
+      month        = dec,
+      year         = 2020,
+      publisher    = {Zenodo},
+      version      = {0.8.4},
+      doi          = {10.5281/zenodo.4311397},
+      url          = {https://doi.org/10.5281/zenodo.4311397}
+    }
