@@ -27,6 +27,7 @@
    motivation
    design_goals
    data_types
+   paper
    api
    etc
 
