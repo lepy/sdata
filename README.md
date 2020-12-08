@@ -82,16 +82,8 @@ Try to paste some Excel-Data in the forms ...
 
 ## paper
 
-* Ingolf Lepenies. (2020). Das sdata-Format (Version 0.8.4). http://doi.org/10.5281/zenodo.4311323
-* https://zenodo.org/record/4311323#.X89yo9-YXys
+* [Das sdata-Format](https://zenodo.org/record/4311323#.X89yo9-YXys)
+    * Ingolf Lepenies. (2020). Das sdata-Format (Version 0.8.4). http://doi.org/10.5281/zenodo.4311323 
 
-    @software{ingolf_lepenies_2020_4311397,
-      author       = {Ingolf Lepenies},
-      title        = {sdata -  a structured data format},
-      month        = dec,
-      year         = 2020,
-      publisher    = {Zenodo},
-      version      = {0.8.4},
-      doi          = {10.5281/zenodo.4311397},
-      url          = {https://doi.org/10.5281/zenodo.4311397}
-    }
+* [sdata](https://doi.org/10.5281/zenodo.4311396)
+    * Ingolf Lepenies. (2020, December 8). sdata - a structured data format (Version 0.8.4). Zenodo. http://doi.org/10.5281/zenodo.4311397
