@@ -78,5 +78,6 @@ force    force                             1.234  float   kN     x force
 
 ## paper
 
+* Ingolf Lepenies. (2020). Das sdata-Format (Version 0.8.4). http://doi.org/10.5281/zenodo.4311323
 * https://zenodo.org/record/4311323#.X89yo9-YXys
 
