@@ -7,9 +7,10 @@
 [![Build Status](https://travis-ci.org/lepy/sdata.svg?branch=master)](https://travis-ci.org/lepy/sdata)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/107e46dc4eee4b58a6ef82fce3043a3e)](https://www.codacy.com/app/lepy/sdata?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=lepy/sdata&amp;utm_campaign=Badge_Grade)
 [![Coverage Status](https://coveralls.io/repos/github/lepy/sdata/badge.svg?branch=master)](https://coveralls.io/github/lepy/sdata?branch=master)
+[![Das sdata-Format](https://zenodo.org/badge/DOI/10.5281/zenodo.4311323.svg)](https://zenodo.org/record/4311323#.X89yo9-YXys)
+
 
 # Structured data format (sdata)
-
 
 ## Design goals
 
@@ -75,21 +76,7 @@ force    force                             1.234  float   kN     x force
 * bool
 * timestamp (datetime.isoformat with timezone)
 
+## paper
 
+* https://zenodo.org/record/4311323#.X89yo9-YXys
 
-
-Each object has a metadata file.
-
-## Data model
-
-The data model is orientated to the common data model, cp. https://www.unidata.ucar.edu/software/thredds/current/netcdf-java/CDM/
-
-* http://datashape.pydata.org/overview.html
-
-## Links
-
-* http://semver.org
-* https://docs.python.org/2/library/mimetypes.html
-* https://wiki.asam.net/display/STANDARDS/ASAM+ODS
-* http://www.bioinformatics.org/bradstuff/bc/IntroPythonClient.pdf
-* https://datahub.io/docs/data-packages/publish-faq#examples
