@@ -6,7 +6,7 @@ from sdata.timestamp import TimeStamp
 from sdata import __version__
 import json
 import os
-
+import hashlib
 
 class Attribute(object):
     """Attribute class"""
@@ -428,3 +428,35 @@ class Metadata(object):
 
     def __getitem__(self, name):
         return self.get(name)
+
+    @property
+    def sha3_256(self):
+        """Return a new SHA3 hash object with a hashbit length of 32 bytes.
+
+        :return: hashlib.sha3_256.hexdigest()
+        """
+        s = hashlib.sha3_256()
+        metadatastr = self.to_json().encode(errors="replace")
+        s.update(metadatastr)
+        return s.hexdigest()
+
+    def hash(self, hash_function=None):
+        """A hash represents the object used to calculate a checksum of a
+        string of information.
+
+        :param hashfunc:
+        :return: hash_function().hexdigest()
+        """
+        if hash_function is None:
+            hash_function = hashlib.sha3_256
+            s = hash_function()
+        else:
+            s = hash_function()
+            if not (hasattr(s, "update") and hasattr(s, "hexdigest")):
+                logging.error("Metatdata.hash: given hashfunction is invalid")
+                raise Exception("Metatdata.hash: given hashfunction is invalid")
+
+        metadatastr = self.to_json().encode(errors="replace")
+        s.update(metadatastr)
+        return s.hexdigest()
+
