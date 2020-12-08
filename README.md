@@ -7,7 +7,8 @@
 [![Build Status](https://travis-ci.org/lepy/sdata.svg?branch=master)](https://travis-ci.org/lepy/sdata)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/107e46dc4eee4b58a6ef82fce3043a3e)](https://www.codacy.com/app/lepy/sdata?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=lepy/sdata&amp;utm_campaign=Badge_Grade)
 [![Coverage Status](https://coveralls.io/repos/github/lepy/sdata/badge.svg?branch=master)](https://coveralls.io/github/lepy/sdata?branch=master)
-[![Das sdata-Format](https://zenodo.org/badge/DOI/10.5281/zenodo.4311323.svg)](https://zenodo.org/record/4311323#.X89yo9-YXys)
+[![Das sdata-Format v0.8.4](https://zenodo.org/badge/DOI/10.5281/zenodo.4311323.svg)](https://doi.org/10.5281/zenodo.4311323)
+
 
 
 # Structured data format (sdata)
@@ -71,6 +72,7 @@ Try to paste some Excel-Data in the forms ...
 * dtype
 * unit
 * description
+* label
 
 ### dtypes for attributes
 
