@@ -18,8 +18,6 @@ import numpy as np
 import pandas as pd
 import shutil
 from sdata.metadata import Metadata, Attribute
-from sdata.data import Data
-from sdata.blob import Blob
 import sdata.timestamp as timestamp
 import inspect
 import json
@@ -40,7 +38,7 @@ def uuid_from_str(name):
     return uuid.uuid3(uuid.NAMESPACE_DNS, name)
 
 
-class Data3(object):
+class Data(object):
     """Base sdata object"""
     ATTR_NAMES = []
 
@@ -378,7 +376,7 @@ class Data3(object):
     @staticmethod
     def _load_metadata(path):
         """load metadata from csv
-        
+
         :returns: Metadata instance"""
         metadata_filepath = os.path.join(path, "metadata.csv")
         if os.path.exists(metadata_filepath):
@@ -390,7 +388,7 @@ class Data3(object):
     @staticmethod
     def _get_class_from_metadata(metadata):
         """get class object from metadata
-        
+
         :returns: relevant sdata class object"""
         classattr = metadata.get_attr("class")
         if classattr is not None:
@@ -567,7 +565,8 @@ class Data3(object):
         out: href string
         """
         b64 = self.to_xlsx_base64()
-        return '<a href="data:application/octet-stream;base64,{1}" download="{0}.xlsx">Download {0}.xlsx file</a>'.format(self.osname, b64.decode())
+        return '<a href="data:application/octet-stream;base64,{1}" download="{0}.xlsx">Download {0}.xlsx file</a>'.format(
+            self.osname, b64.decode())
 
     def to_xlsx(self, filepath=None):
         """export atrributes and data to excel
@@ -784,7 +783,6 @@ class DataFrame(Data):
         """DataFrame"""
         self.columns = kwargs.get("columns") or Metadata()
 
-
     def _get_blob(self):
         return self._blob
 
@@ -855,10 +853,9 @@ class DataFrame(Data):
 
 
 SDATACLS = {"Data": Data,
-            "Blob": Blob
             }
-
-__all__ = ["Data", "Blob"]
+#
+# __all__ = ["Data", Data]
 
 
 def print_classes():
