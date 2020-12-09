@@ -455,8 +455,8 @@ class Metadata(object):
         :return: hash_function().hexdigest()
         """
         if not (hasattr(hash, "update") and hasattr(hash, "hexdigest")):
-            logging.error("Metatdata.hash: given hashfunction is invalid")
-            raise Exception("Metatdata.hash: given hashfunction is invalid")
+            logging.error("Metadata.hash: given hashfunction is invalid")
+            raise Exception("Metadata.hash: given hashfunction is invalid")
 
         metadatastr = self.to_json().encode(errors="replace")
         hash.update(metadatastr)

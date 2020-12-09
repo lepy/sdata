@@ -45,7 +45,14 @@ class Data(object):
     def __init__(self, **kwargs):
         """create Data object
 
-        Data(name='my name', uuid='38b26864e7794f5182d38459bab85842', table=df, description="A remarkable description")
+        .. code-block:: python
+
+            df = pd.DataFrame([1,2,3])
+            data = sdata.Data(name='my name',
+                        uuid='38b26864e7794f5182d38459bab85842',
+                        table=df,
+                        description="A remarkable description")
+
 
         :param name: name of the data object
         :param table: pandas.DataFrame to store
@@ -53,6 +60,7 @@ class Data(object):
         :param metadata: sdata.Metadata object
         :param description: a string to describe the object
         """
+
         # self._uuid = None
         # self._name = None
         self._prefix = None
@@ -77,6 +85,12 @@ class Data(object):
     def sha3_256(self):
         """Return a new SHA3 hash object with a hashbit length of 32 bytes.
 
+        .. code-block:: python
+
+            sdata.Data(name="1", uuid=sdata.uuid_from_str("1")).sha3_256
+
+            'c468e659891eb5dea6eb6baf73f51ca0688792bf9ad723209dc22730903f6efa'
+
         :return: hashlib.sha3_256.hexdigest()
         """
         s = hashlib.sha3_256()
@@ -88,10 +102,68 @@ class Data(object):
         s.update(self.description.encode(errors="replace"))
         return s.hexdigest()
 
+    def update_hash(self, hash):
+        """A hash represents the object used to calculate a checksum of a
+        string of information.
+
+        .. code-block:: python
+
+            data = sdata.Data()
+
+            md5 = hashlib.md5()
+            data.update_hash(md5)
+            md5.hexdigest()
+            'bbf323bdcb0bf961803b5504a8a60d69'
+
+            sha1 = hashlib.sha1()
+            data.update_hash(sha1)
+            sha1.hexdigest()
+            '3c59368c7735c1ecaf03ebd4c595bb6e73e90f0c'
+
+            hash = hashlib.sha3_256()
+            data.update_hash(hash).hexdigest()
+            'c468e659891eb5dea6eb6baf73f51ca0688792bf9ad723209dc22730903f6efa'
+
+            data.update_hash(hash).digest()
+            b'M8"\x9eV\xb0e\xbbHa\x84q\x94G\xce\n\x9b\xd9V\x8c]\xea\xd5$\rf\x07^\x06M\x18\x89'
+
+        :param hash: hash object, e.g. hashlib.sha1()
+        :return: hash
+        """
+        if not (hasattr(hash, "update") and hasattr(hash, "hexdigest")):
+            logging.error("Data.update_hash: given hashfunction is invalid")
+            raise Exception("Data.update_hash: given hashfunction is invalid")
+
+        metadatastr = self.metadata.to_json().encode(errors="replace")
+        hash.update(metadatastr)
+        if self.table is not None:
+            tablestr = self.table.to_json().encode(errors="replace")
+            hash.update(tablestr)
+        hash.update(self.description.encode(errors="replace"))
+        return hash
+
     def describe(self):
         """Generate descriptive info of the data
 
-        :return:
+        .. code-block:: python
+
+            df = pd.DataFrame([1,2,3])
+            data = sdata.Data(name='my name',
+                        uuid='38b26864e7794f5182d38459bab85842',
+                        table=df,
+                        description="A remarkable description")
+            data.describe()
+
+        .. code-block:: none
+
+                            0
+            metadata        3
+            table_rows      3
+            table_columns   1
+            description    24
+
+
+        :return: pd.DataFrame
         """
         df = pd.DataFrame({0: []}, dtype=object)
         df.loc["metadata", 0] = self.metadata.size
@@ -278,7 +350,11 @@ class Data(object):
 
     @staticmethod
     def clear_folder(path):
-        """delete subfolder in export path"""
+        """delete subfolder in export folder
+
+        :param path: path
+        :return: None
+        """
 
         def is_valid(path):
             prefix = path.split("-")[0]
@@ -357,23 +433,23 @@ class Data(object):
     group = property(get_group, doc="get group")
 
     def keys(self):
-        """
+        """get all child objects uuids
 
-        :return:
+        :return: list of uuid's
         """
         return list(self.group.keys())
 
     def values(self):
-        """
+        """get all child objects
 
-        :return:
+        :return: list of child objects
         """
         return list(self.group.values())
 
     def items(self):
-        """
+        """get all child objects
 
-        :return:
+        :return: [(child uuid, child objects), ]
         """
         return list(self.group.items())
 
@@ -435,10 +511,14 @@ class Data(object):
                     print(padding + '├─' + file)
 
     def dir(self):
+        """returns a nested list of all child objects
+
+        :return: list of sdata.Data objects
+        """
         return [(x.name, x.dir()) for x in self.group.values()]
 
     def to_xlsx_byteio(self):
-        """get xlsx byteio
+        """get xlsx as byteio
 
         :return: BytesIO
         """
@@ -471,7 +551,7 @@ class Data(object):
         return processed_data
 
     def to_xlsx_base64(self):
-        """get xlsx byteio as base64 encoded
+        """get xlsx as byteio base64 encoded
 
         :return: base64
         """
