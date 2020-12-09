@@ -77,7 +77,7 @@ class Blob(Data):
         :return: sha1
         """
         hash = hashlib.sha1()
-        if os.path.exists(self.url):
+        if self.url and os.path.exists(self.url):
             with open(self.url, "rb") as fh:
                 self.update_hash(fh, hash)
             return hash.hexdigest()
@@ -91,7 +91,7 @@ class Blob(Data):
         :return: sha1
         """
         hash = hashlib.md5()
-        if os.path.exists(self.url):
+        if self.url and os.path.exists(self.url):
             with open(self.url, "rb") as fh:
                 self.update_hash(fh, hash)
             return hash.hexdigest()
