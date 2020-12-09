@@ -9,7 +9,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/lepy/sdata/badge.svg?branch=master)](https://coveralls.io/github/lepy/sdata?branch=master)
 [![Das sdata-Format v0.8.4](https://zenodo.org/badge/DOI/10.5281/zenodo.4311323.svg)](https://doi.org/10.5281/zenodo.4311323)
 
-
+https://lepy.github.io/sdata/
 
 # Structured data format (sdata)
 
@@ -55,6 +55,11 @@ uuid      uuid  08222ca66e5047808bdc3b35d8f17224    str    -
 my_key  my_key                               123    int  m^3    a volume
 force    force                             1.234  float   kN     x force
 ```
+## Howto
+
+  
+* [Das sdata-Format - slides](https://lepy.github.io/sdata/ipynb/Das_sdata_Format.slides.html#)
+
 
 ## Demo App
 
@@ -86,6 +91,8 @@ Try to paste some Excel-Data in the forms ...
 
 * [Das sdata-Format](https://zenodo.org/record/4311323#.X89yo9-YXys)
     * Ingolf Lepenies. (2020). Das sdata-Format (Version 0.8.4). http://doi.org/10.5281/zenodo.4311323 
-
+    * [Das sdata-Format - slides](https://lepy.github.io/sdata/ipynb/Das_sdata_Format.slides.html#)
+    
 * [sdata](https://doi.org/10.5281/zenodo.4311396)
     * Ingolf Lepenies. (2020, December 8). sdata - a structured data format (Version 0.8.4). Zenodo. http://doi.org/10.5281/zenodo.4311397
+
