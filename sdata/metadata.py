@@ -61,15 +61,16 @@ class Attribute(object):
 
     def _set_value(self, value):
         try:
-            dtype = self.DTYPES.get(self.dtype, None)
-            if dtype is None:
-                dtype = self._guess_dtype(value)
-            self.dtype = dtype.__name__
-            if not value and self.dtype not in ["int", "float"]:
+            dtype = self.DTYPES.get(self.dtype, self._guess_dtype(value))
+
+            if self.dtype != dtype.__name__:
+                # logging.debug("guess dtype for ``: ``".format(value, dtype.__name__))
+                self.dtype = dtype.__name__
+            if not value and self.dtype not in ["int", "float", "bool"]:
                 self._value = None
             elif not value and self.dtype in ["int", "float"]:
                 self._value = np.nan
-            elif dtype.__name__ == "bool" and value in [0, "0", "False", "false"]:
+            elif dtype.__name__ == "bool" and value not in [1, "1", "true", "True"]:
                 self._value = False
             elif dtype.__name__ == "bool" and value in [1, "1", "true", "True"]:
                 self._value = True

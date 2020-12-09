@@ -772,85 +772,85 @@ class Data(object):
         data.table = df
         return data
 
-
-class DataFrame(Data):
-    """Data Frame aka Table
-
-    deprecated
-    """
-
-    def __init__(self, **kwargs):
-        """DataFrame"""
-        self.columns = kwargs.get("columns") or Metadata()
-
-    def _get_blob(self):
-        return self._blob
-
-    def _set_blob(self, blob):
-        if isinstance(blob, pd.DataFrame):
-            self._blob = blob
-            self.guess_columns()
-
-    blob = property(fget=_get_blob, fset=_set_blob, doc="blob object")
-
-    def guess_columns(self):
-        """extract column names and dtypes from dataframe"""
-        if self.blob is not None:
-            for icol, col in enumerate(self.blob.columns):
-                self.columns.set_attr(col, value=icol, dtype=self.blob[col].dtype.name)
-
-    def to_xlsx(self, path, **kwargs):
-        """export atrributes and data to excel
-
-        :param filepath:
-        :return:
-        """
-
-        filepath = os.path.join(path, "{}.xlsx".format(self.filename))
-
-        def adjust_col_width(sheetname, df, writer, width=40):
-            worksheet = writer.sheets[sheetname]  # pull worksheet object
-            worksheet.set_column(0, 0, width)
-            for idx, col in enumerate(df):  # loop through all columns
-                worksheet.set_column(idx + 1, idx + 1, width)
-
-        with pd.ExcelWriter(filepath) as writer:
-            dfm = self.metadata.to_dataframe()
-            dfm = dfm.sort_index()
-            dfm.index.name = "key"
-            dfm.to_excel(writer, sheet_name='metadata')
-            adjust_col_width('metadata', dfm, writer)
-
-            dfc = self.columns.to_dataframe()
-            dfc = dfc.sort_index()
-            dfc.index.name = "key"
-            dfc.to_excel(writer, sheet_name='columns')
-            adjust_col_width('columns', dfc, writer)
-
-            # data
-            if self.blob is not None:
-                self.blob.index.name = "index"
-                self.blob.to_excel(writer, sheet_name='dataframe')
-                adjust_col_width('dataframe', self.blob, writer, width=15)
-
-    @classmethod
-    def from_xlsx(cls, filepath, **kwargs):
-        """save table as xlsx
-
-        :param filepath:
-        :return:
-        """
-        tt = cls(name=filepath)
-        tt.blob = pd.read_excel(filepath, sheet_name="dataframe")
-        dfm = pd.read_excel(filepath, sheet_name="metadata")
-        dfm = dfm.set_index("key")
-        tt.metadata = tt.metadata.from_dataframe(dfm)
-
-        dfc = pd.read_excel(filepath, sheet_name="columns")
-        dfc = dfc.set_index("key")
-        tt.columns = tt.metadata.from_dataframe(dfc)
-        return tt
-
+#
+# class DataFrame(Data):
+#     """Data Frame aka Table
+#
+#     deprecated
+#     """
+#
+#     def __init__(self, **kwargs):
+#         """DataFrame"""
+#         self.columns = kwargs.get("columns") or Metadata()
+#
+#     def _get_blob(self):
+#         return self._blob
+#
+#     def _set_blob(self, blob):
+#         if isinstance(blob, pd.DataFrame):
+#             self._blob = blob
+#             self.guess_columns()
+#
+#     blob = property(fget=_get_blob, fset=_set_blob, doc="blob object")
+#
+#     def guess_columns(self):
+#         """extract column names and dtypes from dataframe"""
+#         if self.blob is not None:
+#             for icol, col in enumerate(self.blob.columns):
+#                 self.columns.set_attr(col, value=icol, dtype=self.blob[col].dtype.name)
+#
+#     def to_xlsx(self, path, **kwargs):
+#         """export atrributes and data to excel
+#
+#         :param filepath:
+#         :return:
+#         """
+#
+#         filepath = os.path.join(path, "{}.xlsx".format(self.filename))
+#
+#         def adjust_col_width(sheetname, df, writer, width=40):
+#             worksheet = writer.sheets[sheetname]  # pull worksheet object
+#             worksheet.set_column(0, 0, width)
+#             for idx, col in enumerate(df):  # loop through all columns
+#                 worksheet.set_column(idx + 1, idx + 1, width)
+#
+#         with pd.ExcelWriter(filepath) as writer:
+#             dfm = self.metadata.to_dataframe()
+#             dfm = dfm.sort_index()
+#             dfm.index.name = "key"
+#             dfm.to_excel(writer, sheet_name='metadata')
+#             adjust_col_width('metadata', dfm, writer)
+#
+#             dfc = self.columns.to_dataframe()
+#             dfc = dfc.sort_index()
+#             dfc.index.name = "key"
+#             dfc.to_excel(writer, sheet_name='columns')
+#             adjust_col_width('columns', dfc, writer)
+#
+#             # data
+#             if self.blob is not None:
+#                 self.blob.index.name = "index"
+#                 self.blob.to_excel(writer, sheet_name='dataframe')
+#                 adjust_col_width('dataframe', self.blob, writer, width=15)
+#
+#     @classmethod
+#     def from_xlsx(cls, filepath, **kwargs):
+#         """save table as xlsx
+#
+#         :param filepath:
+#         :return:
+#         """
+#         tt = cls(name=filepath)
+#         tt.blob = pd.read_excel(filepath, sheet_name="dataframe")
+#         dfm = pd.read_excel(filepath, sheet_name="metadata")
+#         dfm = dfm.set_index("key")
+#         tt.metadata = tt.metadata.from_dataframe(dfm)
+#
+#         dfc = pd.read_excel(filepath, sheet_name="columns")
+#         dfc = dfc.set_index("key")
+#         tt.columns = tt.metadata.from_dataframe(dfc)
+#         return tt
+#
 
 SDATACLS = {"Data": Data,
             }
