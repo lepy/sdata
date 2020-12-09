@@ -40,6 +40,7 @@ class Blob(Data):
         self.metadata.add("vault", kwargs.get("vault", ""))
         self.metadata.add("blob_filetype", kwargs.get("filetype", "unknown"))
 
+
     def _get_url(self):
         # return self._name
         return self.metadata.get("blob_url").value
@@ -97,7 +98,6 @@ class Blob(Data):
             return hash.hexdigest()
         else:
             logging.error("can't open external url '{}'".format(str(self.url)))
-
 
     def update_hash(self, fh, hash):
         """A hash represents the object used to calculate a checksum of a
