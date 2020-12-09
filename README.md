@@ -93,7 +93,8 @@ Try to paste some Excel-Data in the forms ...
     * [slides](https://lepy.github.io/sdata/ipynb/Das_sdata_Format.slides.html#),
     [html](https://lepy.github.io/sdata/paper/2020/Das_sdata-Format.html), 
     [pdf](https://lepy.github.io/sdata/paper/2020/Das_sdata-Format.pdf)
-    
+    [temperaturmessung-001.json](https://lepy.github.io/sdata/paper/2020/temperaturmessung-001.json)
+    [temperaturmessung-001.xlsx](https://lepy.github.io/sdata/paper/2020/temperaturmessung-001.xlsx)
     
 * [sdata](https://doi.org/10.5281/zenodo.4311396)
     * Ingolf Lepenies. (2020, December 8). sdata - a structured data format (Version 0.8.4). Zenodo. http://doi.org/10.5281/zenodo.4311397

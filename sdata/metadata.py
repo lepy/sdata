@@ -7,6 +7,47 @@ from sdata import __version__
 import json
 import os
 import hashlib
+import re
+
+def extract_name_unit(value):
+    """extract name and unit from a combined string
+
+    .. code-block:: python
+
+        value: 'Target Strain Rate (1/s) '
+        name : 'Target Strain Rate'
+        unit : '1/s'
+
+        value: 'Gauge Length [mm] monkey '
+        name : 'Gauge Length'
+        unit : 'mm'
+
+        value: 'Gauge Length <mm> whatever '
+        name : 'Gauge Length'
+        unit : 'mm'
+
+    :param value: string, e.g. 'Length <mm> whatever'
+    :return: name, unit
+    """
+    pattern1 = r'([\w\s\.]+) \(([\w.-\/]+)\)'
+    match1 = re.search(pattern1, value)
+    pattern2 = r'([\w\s\.]+) \[([\w.-\/]+)\]'
+    match2 = re.search(pattern2, value)
+    pattern3 = r'([\w\s\.]+) \<([\w.-\/]+)\>'
+    match3 = re.search(pattern3, value)
+    if match1:
+        name = match1.group(1)
+        unit = match1.group(2)
+    elif match2:
+        name = match2.group(1)
+        unit = match2.group(2)
+    elif match3:
+        name = match3.group(1)
+        unit = match3.group(2)
+    else:
+        name = value
+        unit = ""
+    return name, unit
 
 class Attribute(object):
     """Attribute class"""
