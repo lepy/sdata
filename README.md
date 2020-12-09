@@ -90,7 +90,10 @@ Try to paste some Excel-Data in the forms ...
 
 * [Das sdata-Format](https://zenodo.org/record/4311323#.X89yo9-YXys)
     * Ingolf Lepenies. (2020). Das sdata-Format (Version 0.8.4). http://doi.org/10.5281/zenodo.4311323 
-    * [Das sdata-Format - slides](https://lepy.github.io/sdata/ipynb/Das_sdata_Format.slides.html#)
+    * [slides](https://lepy.github.io/sdata/ipynb/Das_sdata_Format.slides.html#),
+    [html](https://lepy.github.io/sdata/paper/2020/Das_sdata-Format.html), 
+    [pdf](https://lepy.github.io/sdata/paper/2020/Das_sdata-Format.pdf)
+    
     
 * [sdata](https://doi.org/10.5281/zenodo.4311396)
     * Ingolf Lepenies. (2020, December 8). sdata - a structured data format (Version 0.8.4). Zenodo. http://doi.org/10.5281/zenodo.4311397

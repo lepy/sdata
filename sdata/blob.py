@@ -22,13 +22,24 @@ class Blob(Data):
     VAULT_TYPES = ["filesystem", "hdf5", "db", "www"]
 
     def __init__(self, **kwargs):
-        """Binary Large Object"""
+        """Binary Large Object
+
+        :param name:
+        :param url:
+        :param filetype:
+        :param vault:
+        :param kwargs:
+
+        """
         Data.__init__(self, **kwargs)
-        self.metadata.add("blob_name", "")
-        self.metadata.add("blob_sha1", "")
-        self.metadata.add("blob_url", "")
-        self.metadata.add("blob_type", "")
-        self.metadata.add("vault", "")
+        self.metadata.add("blob_name", kwargs.get("name", ""))
+        self.metadata.add("blob_type", "unknown")
+        self.url = kwargs.get("url", "")
+        self.metadata.add("blob_sha1", self.sha1)
+        self.metadata.add("blob_md5", self.md5)
+        self.metadata.add("vault", kwargs.get("vault", ""))
+        self.metadata.add("blob_filetype", kwargs.get("filetype", "unknown"))
+
 
     def _get_url(self):
         # return self._name
@@ -46,21 +57,6 @@ class Blob(Data):
 
     url = property(fget=_get_url, fset=_set_url, doc="url of the blob")
 
-    def set_reference(self, url, **kwargs):
-        """set refence to file object
-
-        :param url: url to the external blob
-        :param name: name of the blob
-        :param btype: blob file type, e.g. pdf, csv
-        :return:
-        """
-        self.metadata.add("blob_name", kwargs.get("name"))
-        self.metadata.add("blob_uuid", "")
-        self.metadata.add("vault", "")
-        self.metadata.add("blob_sha1", "")
-        self.metadata.add("blob_url", url)
-        self.metadata.add("blob_format", "")
-
     def exists(self, vault="filesystem"):
         """Test whether a object under the blob.url exists.
 
@@ -77,10 +73,31 @@ class Blob(Data):
 
     @property
     def sha1(self):
-        """
+        """calculate the sha1 hash of the blob
 
-        :return:
+        :return: sha1
         """
+        hash = hashlib.sha1()
+        if self.url and os.path.exists(self.url):
+            with open(self.url, "rb") as fh:
+                self.update_hash(fh, hash)
+            return hash.hexdigest()
+        else:
+            logging.error("can't open external url '{}'".format(str(self.url)))
+
+    @property
+    def md5(self):
+        """calculate the md5 hash of the blob
+
+        :return: sha1
+        """
+        hash = hashlib.md5()
+        if self.url and os.path.exists(self.url):
+            with open(self.url, "rb") as fh:
+                self.update_hash(fh, hash)
+            return hash.hexdigest()
+        else:
+            logging.error("can't open external url '{}'".format(str(self.url)))
 
     def update_hash(self, fh, hash):
         """A hash represents the object used to calculate a checksum of a
