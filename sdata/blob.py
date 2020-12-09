@@ -74,3 +74,41 @@ class Blob(Data):
                 return False
         else:
             return False
+
+    @property
+    def sha1(self):
+        """
+
+        :return:
+        """
+
+    def update_hash(self, fh, hash):
+        """A hash represents the object used to calculate a checksum of a
+        string of information.
+
+        .. code-block:: python
+
+            hash = hashlib.md5()
+            df = pd.DataFrame([1,2,3])
+            url = "/tmp/blob.csv"
+            df.to_csv(url)
+            blob = sdata.Blob(url=url)
+            fh = open(url, "rb")
+            blob.update_hash(fh, hash)
+            hash.hexdigest()
+
+        :param fh: file handle
+        :param hash: hash object, e.g. hashlib.sha1()
+        :return: hash
+        """
+
+        # BUF_SIZE is totally arbitrary, change for your app!
+        BUF_SIZE = 65536  # lets read stuff in 64kb chunks!
+
+        with fh as f:
+            while True:
+                data = f.read(BUF_SIZE)
+                if not data:
+                    break
+                hash.update(data)
+        return hash

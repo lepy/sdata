@@ -10,22 +10,13 @@ basic sdata types
 '''
 
 import sys
-import os
 import uuid
-from collections import OrderedDict
 import logging
-import numpy as np
-import pandas as pd
-import shutil
 from sdata.metadata import Metadata, Attribute
 from sdata.data import Data
 from sdata.blob import Blob
 import sdata.timestamp as timestamp
 import inspect
-import json
-import hashlib
-import base64
-from io import BytesIO, StringIO
 
 if sys.version_info < (3, 6):
     import sha3
