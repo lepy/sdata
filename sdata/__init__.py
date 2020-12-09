@@ -30,7 +30,6 @@ except:
 def uuid_from_str(name):
     return uuid.uuid3(uuid.NAMESPACE_DNS, name)
 
-
 SDATACLS = {"Data": Data,
             "Blob": Blob
             }

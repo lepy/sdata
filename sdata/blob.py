@@ -112,3 +112,4 @@ class Blob(Data):
                     break
                 hash.update(data)
         return hash
+
