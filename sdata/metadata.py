@@ -222,6 +222,47 @@ s
     __repr__ = __str__
 
 
+class AttributeSchema(Attribute):
+    """Attribute class"""
+
+    DTYPES = {'float': float, 'int': int, 'str': str, 'timestamp': TimeStamp, "bool": bool}
+
+    def __init__(self, name, value, **kwargs):
+        Attribute.__init__(self, name, value, **kwargs)
+        self._required = False
+        self.required = kwargs.get("required", False)
+
+    def _get_required(self):
+        return self._required
+
+    def _set_required(self, value):
+        if value in [True, 1, "true", "True"]:
+            self._required = True
+        else:
+            self._required = False
+
+    required = property(fget=_get_required, fset=_set_required, doc="Attribute required")
+
+    def to_dict(self):
+        """:returns dict of attribute items"""
+        return {'name': self.name,
+                'value': self.value,
+                'unit': self.unit,
+                'dtype': self.dtype,
+                'description': self.description,
+                'label': self.label,
+                'required': self.required,
+                }
+
+    def to_list(self):
+        return [self.name, self.value, self.unit, self.dtype, self.description, self.label, self.required]
+
+
+    def __str__(self):
+        return "(AttrSchema'%s':%s(%s))" % (self.name, self.required, self.dtype)
+
+    __repr__ = __str__
+
 class Metadata(object):
     """Metadata container class
     
@@ -504,3 +545,38 @@ class Metadata(object):
         hash.update(metadatastr)
         return hash
 
+
+class MetadataSchema(Metadata):
+    """MetadataSchema container class
+
+    each Metadata entry has has a
+        * name (256)
+        * value
+        * unit
+        * description
+        * type (int, str, float, bool, timestamp)
+        * label
+        * required
+        * min_value
+        * max_value
+        """
+
+    ATTRIBUTEKEYS = ["name", "value", "dtype", "unit", "description", "label", "required"]
+
+    def __init__(self, **kwargs):
+        """MetadataSchema class"""
+        Metadata.__init__(self, **kwargs)
+
+    def set_attr(self, name="N.N.", value=None, **kwargs):
+        """set AttributeSchema"""
+        if isinstance(name, AttributeSchema):
+            attr = name
+        else:
+            attr = self.get_attr(name) or AttributeSchema(name, value, **kwargs)
+        for key in ["dtype", "unit", "description", "label", "required"]:
+            if key in kwargs:
+                setattr(attr, key, kwargs.get(key))
+        if value is not None:
+            attr.value = value
+
+        self._attributes[attr.name] = attr

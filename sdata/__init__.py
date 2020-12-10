@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.9.2'
+__version__ = '0.10.0'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -13,7 +13,7 @@ import sys
 import uuid
 import logging
 from sdata.metadata import Metadata, Attribute
-from sdata.data import Data
+from sdata.data import Data, Schema
 from sdata.blob import Blob
 import sdata.timestamp as timestamp
 import inspect
@@ -31,10 +31,11 @@ def uuid_from_str(name):
     return uuid.uuid3(uuid.NAMESPACE_DNS, name)
 
 SDATACLS = {"Data": Data,
-            "Blob": Blob
+            "Blob": Blob,
+            "Schema": Schema,
             }
 
-__all__ = ["Data", "Blob"]
+__all__ = ["Data", "Blob", "Schema"]
 
 
 def print_classes():

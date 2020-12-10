@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import shutil
 import copy
-from sdata.metadata import Metadata, Attribute
+from sdata.metadata import Metadata, Attribute, MetadataSchema, AttributeSchema
 import sdata.timestamp as timestamp
 import inspect
 import json
@@ -884,6 +884,49 @@ class DataFrame(Data):
         tt.columns = tt.metadata.from_dataframe(dfc)
         return tt
 
+
+class Schema(Data):
+    """Base sdata object"""
+    ATTR_NAMES = []
+
+    def __init__(self, **kwargs):
+        """create Schema object
+
+        .. code-block:: python
+
+            df = pd.DataFrame([1,2,3])
+            data = sdata.Schema(name='my schema',
+                        uuid='38b26864e7794f5182d38259bab85842',
+                        table=df,
+                        description="A remarkable description")
+
+
+        :param name: name of the data object
+        :param table: pandas.DataFrame to store
+        :param uuid: uuid of the object
+        :param metadata: sdata.MetadataSchema object
+        :param description: a string to describe the object
+        """
+
+        # self._uuid = None
+        # self._name = None
+        self._prefix = None
+        # ToDo: add getter and setter for metadata
+        self.metadata = kwargs.get("metadata") or MetadataSchema()
+        _uuid = kwargs.get("uuid") or ""
+        _name = kwargs.get("name") or "N.N."
+        self.metadata.add("name", _name)
+        self.metadata.add("uuid", _uuid)
+
+        self.uuid = kwargs.get("uuid") or uuid.uuid4()
+        self.name = kwargs.get("name") or "N.N."
+        self.prefix = kwargs.get("prefix") or ""
+        self._gen_default_attributes(kwargs.get("default_attributes") or self.ATTR_NAMES)
+        self._group = OrderedDict()
+        self._table = None  # pd.DataFrame()
+        self.table = kwargs.get("table", None)
+        self._description = ""
+        self.description = kwargs.get("description", "")
 
 SDATACLS = {"Data": Data,
             }
