@@ -12,6 +12,22 @@ Subpackages
 Submodules
 ----------
 
+sdata.blob module
+-----------------
+
+.. automodule:: sdata.blob
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+sdata.data module
+-----------------
+
+.. automodule:: sdata.data
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 sdata.metadata module
 ---------------------
 

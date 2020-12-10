@@ -17,6 +17,7 @@ import logging
 import numpy as np
 import pandas as pd
 import shutil
+import copy
 from sdata.metadata import Metadata, Attribute
 import sdata.timestamp as timestamp
 import inspect
@@ -771,6 +772,38 @@ class Data(object):
 
         data.table = df
         return data
+
+    def copy(self):
+        """create a copy of the Data object
+
+        .. code-block:: python
+
+            data = sdata.Data(name="data", uuid="38b26864e7794f5182d38459bab85842", description="this is remarkable")
+            datac = data.copy()
+            print("data  {0.uuid}".format(data))
+            print("datac {0.uuid}".format(datac))
+            print("datac.metadata['sdata_uuid_ref'] {0.value}".format(datac.metadata["sdata_uuid_ref"]))
+
+        .. code-block::
+
+            data  38b26864e7794f5182d38459bab85842
+            datac 2c4eb15900af435d8cd9c8573ca777e2
+            datac.metadata['sdata_uuid_ref'] 38b26864e7794f5182d38459bab85842
+
+        :return: Data
+        """
+        data = copy.deepcopy(self)
+        data.metadata.add("uuid", self.gen_uuid())
+        data.metadata.add("sdata_uuid_ref", self.uuid)
+
+        return data
+
+    def gen_uuid(self):
+        """generate new uuid string
+
+        :return: str, e.g. '5fa04a3738e4431dbc34eccea5e795c4'
+        """
+        return uuid.uuid4().hex
 
 
 class DataFrame(Data):
