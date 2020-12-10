@@ -823,15 +823,29 @@ class Data(object):
         """
         return uuid.uuid4().hex
 
-    def refactor(self):
+    def refactor(self, fix_columns=True, add_table_metadata=True):
         """helper function
 
         * to cleanup dataframe column name
         * to define Attributes for all dataframe columns
         """
         if isinstance(self.table, pd.DataFrame):
-            for col in self.table.columns:
-                pass
+            mapper = {}
+            for old_colname in self.table.columns:
+                name, unit = extract_name_unit(old_colname)
+                if fix_columns:
+                    mapper[old_colname] = name
+                if add_table_metadata:
+                    old_attr = self.metadata.get(old_colname)
+                    if old_attr:
+                        logging.info("skip: {}".format(old_attr))
+                        self.metadata.relabel(old_colname, name)
+                    else:
+                        self.metadata.add(name=name, label=old_colname, unit=unit, dtype="float")
+            self.table.rename(columns=mapper, inplace=True)
+
+
+
 
 
 class Schema(Data):
