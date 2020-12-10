@@ -477,6 +477,21 @@ class Metadata(object):
         """
         self.set_attr(name, value, **kwargs)
 
+    def relabel(self, name, newname):
+        """relabel Attribute
+
+        :param name: old attribute name
+        :param newname: new attribute name
+        :return: None
+        """
+        attr = self.get(name)
+        if not attr:
+            logging.warning("{0}: no Attribute {1} to relabel.".format(self.__class__, name))
+        else:
+            attr.name = newname
+            self.attributes.pop(name)
+            self.add(attr)
+
     def get(self, name, default=None):
         if self._attributes.get(name) is not None:
             return self._attributes.get(name)
@@ -511,6 +526,15 @@ class Metadata(object):
 
     def __getitem__(self, name):
         return self.get(name)
+
+    def sort(self):
+        """sort Metadata.attributes
+
+        :return: None
+        """
+        sorted_keys = sorted(self.keys())
+        attributes = collections.OrderedDict([(key, self.attributes.get(key)) for key in sorted_keys])
+        self.attributes = attributes
 
     @property
     def sha3_256(self):

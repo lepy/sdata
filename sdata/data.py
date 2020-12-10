@@ -1,14 +1,10 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.8.4'
-__revision__ = None
-__version_info__ = tuple([int(num) for num in __version__.split('.')])
-
 '''
 basic sdata types 
 '''
-
+from sdata import __version__
 import sys
 import os
 import uuid
@@ -18,12 +14,13 @@ import numpy as np
 import pandas as pd
 import shutil
 import copy
-from sdata.metadata import Metadata, Attribute, MetadataSchema, AttributeSchema
+from sdata.metadata import Metadata, Attribute, MetadataSchema, AttributeSchema, extract_name_unit
 import sdata.timestamp as timestamp
 import inspect
 import json
 import hashlib
 import base64
+import requests
 from io import BytesIO, StringIO
 
 if sys.version_info < (3, 6):
@@ -688,11 +685,11 @@ class Data(object):
 
     @classmethod
     def from_json(cls, s=None, filepath=None):
-        """
+        """create Data from json str or file
 
         :param s: json str
         :param filepath:
-        :return:
+        :return: sdata.Data
         """
         data = cls()
         if s is None and filepath is not None:
@@ -726,6 +723,27 @@ class Data(object):
                 logging.error("Data.from_json: description not available")
 
         return data
+
+    @classmethod
+    def from_url(cls, url=None, stype=None):
+        """create Data from json str or file
+
+        :param url: url
+        :param stype: "json" ("xlsx", "csv")
+        :return: sdata.Data
+        """
+
+        supported_stypes = ["json"]
+
+        if stype not in supported_stypes:
+            raise NotADirectoryError("stype '{}' is not supported".format(stype))
+            return
+
+        raw = requests.get(url).text
+        if  stype=="json":
+            data = cls.from_json(raw)
+            return data
+
 
     def to_csv(self, filepath=None):
         """export sdata.Data to csv
@@ -805,84 +823,15 @@ class Data(object):
         """
         return uuid.uuid4().hex
 
+    def refactor(self):
+        """helper function
 
-class DataFrame(Data):
-    """Data Frame aka Table
-
-    deprecated
-    """
-
-    def __init__(self, **kwargs):
-        """DataFrame"""
-        self.columns = kwargs.get("columns") or Metadata()
-
-    def _get_blob(self):
-        return self._blob
-
-    def _set_blob(self, blob):
-        if isinstance(blob, pd.DataFrame):
-            self._blob = blob
-            self.guess_columns()
-
-    blob = property(fget=_get_blob, fset=_set_blob, doc="blob object")
-
-    def guess_columns(self):
-        """extract column names and dtypes from dataframe"""
-        if self.blob is not None:
-            for icol, col in enumerate(self.blob.columns):
-                self.columns.set_attr(col, value=icol, dtype=self.blob[col].dtype.name)
-
-    def to_xlsx(self, path, **kwargs):
-        """export atrributes and data to excel
-
-        :param filepath:
-        :return:
+        * to cleanup dataframe column name
+        * to define Attributes for all dataframe columns
         """
-
-        filepath = os.path.join(path, "{}.xlsx".format(self.filename))
-
-        def adjust_col_width(sheetname, df, writer, width=40):
-            worksheet = writer.sheets[sheetname]  # pull worksheet object
-            worksheet.set_column(0, 0, width)
-            for idx, col in enumerate(df):  # loop through all columns
-                worksheet.set_column(idx + 1, idx + 1, width)
-
-        with pd.ExcelWriter(filepath) as writer:
-            dfm = self.metadata.to_dataframe()
-            dfm = dfm.sort_index()
-            dfm.index.name = "key"
-            dfm.to_excel(writer, sheet_name='metadata')
-            adjust_col_width('metadata', dfm, writer)
-
-            dfc = self.columns.to_dataframe()
-            dfc = dfc.sort_index()
-            dfc.index.name = "key"
-            dfc.to_excel(writer, sheet_name='columns')
-            adjust_col_width('columns', dfc, writer)
-
-            # data
-            if self.blob is not None:
-                self.blob.index.name = "index"
-                self.blob.to_excel(writer, sheet_name='dataframe')
-                adjust_col_width('dataframe', self.blob, writer, width=15)
-
-    @classmethod
-    def from_xlsx(cls, filepath, **kwargs):
-        """save table as xlsx
-
-        :param filepath:
-        :return:
-        """
-        tt = cls(name=filepath)
-        tt.blob = pd.read_excel(filepath, sheet_name="dataframe")
-        dfm = pd.read_excel(filepath, sheet_name="metadata")
-        dfm = dfm.set_index("key")
-        tt.metadata = tt.metadata.from_dataframe(dfm)
-
-        dfc = pd.read_excel(filepath, sheet_name="columns")
-        dfc = dfc.set_index("key")
-        tt.columns = tt.metadata.from_dataframe(dfc)
-        return tt
+        if isinstance(self.table, pd.DataFrame):
+            for col in self.table.columns:
+                pass
 
 
 class Schema(Data):
@@ -927,6 +876,12 @@ class Schema(Data):
         self.table = kwargs.get("table", None)
         self._description = ""
         self.description = kwargs.get("description", "")
+
+    def __str__(self):
+        return "(Schema '%s':%s)" % (self.name, self.uuid)
+
+    __repr__ = __str__
+
 
 SDATACLS = {"Data": Data,
             }
