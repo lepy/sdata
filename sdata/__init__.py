@@ -15,7 +15,8 @@ import logging
 from sdata.metadata import Metadata, Attribute
 from sdata.data import Data, Schema
 from sdata.blob import Blob
-import sdata.timestamp as timestamp
+# import sdata.timestamp as timestamp
+from sdata.timestamp import today_str
 import inspect
 
 if sys.version_info < (3, 6):
@@ -29,6 +30,8 @@ except:
 
 def uuid_from_str(name):
     return uuid.uuid3(uuid.NAMESPACE_DNS, name)
+
+
 
 SDATACLS = {"Data": Data,
             "Blob": Blob,

@@ -167,7 +167,9 @@ s
         return self._description
 
     def _set_description(self, value):
-        self._description = value
+        if value is None:
+            value = ""
+        self._description = str(value)
 
     description = property(fget=_get_description, fset=_set_description, doc="Attribute description")
 
@@ -175,7 +177,9 @@ s
         return self._label
 
     def _set_label(self, value):
-        self._label = value
+        if value is None:
+            value = ""
+        self._label = str(value)
 
     label = property(fget=_get_label, fset=_set_label, doc="Attribute label")
 

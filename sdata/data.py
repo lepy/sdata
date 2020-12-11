@@ -15,13 +15,13 @@ import pandas as pd
 import shutil
 import copy
 from sdata.metadata import Metadata, Attribute, MetadataSchema, AttributeSchema, extract_name_unit
-import sdata.timestamp as timestamp
 import inspect
 import json
 import hashlib
 import base64
 import requests
 from io import BytesIO, StringIO
+
 
 if sys.version_info < (3, 6):
     import sha3
@@ -31,10 +31,8 @@ try:
 except:
     logging.warning("openpyxl is not available -> no xlsx import")
 
-
 def uuid_from_str(name):
     return uuid.uuid3(uuid.NAMESPACE_DNS, name)
-
 
 class Data(object):
     """Base sdata object"""
@@ -841,7 +839,7 @@ class Data(object):
                         logging.info("skip: {}".format(old_attr))
                         self.metadata.relabel(old_colname, name)
                     else:
-                        self.metadata.add(name=name, label=old_colname, unit=unit, dtype="float")
+                        self.metadata.add(name=name, description=old_colname, unit=unit, dtype="float")
             self.table.rename(columns=mapper, inplace=True)
 
 
