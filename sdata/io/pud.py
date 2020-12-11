@@ -6,8 +6,9 @@ import uuid
 import numpy as np
 import pandas as pd
 from sdata.io import PID
+from sdata import Data
 
-class Pud(PID):
+class Pud(Data):
     """run object, e.g. single tension test simulation"""
 
     ATTRIBUTES = ["material_norm_name",
@@ -36,9 +37,10 @@ class Pud(PID):
 
     def __init__(self, **kwargs):
         """"""
-        PID.__init__(self, **kwargs)
-        for attr in self.ATTRIBUTES:
-            self.set_attr(attr, None)
+        Data.__init__(self, **kwargs)
+        # for attr in self.ATTRIBUTES:
+        #     self.set_attr(attr, None)
+
 
     @classmethod
     def from_file(cls, filepath):
@@ -118,24 +120,24 @@ class Pud(PID):
             s = attr.key  # .decode('utf8')
             attr.key = s.translate(table)
             try:
-                tt.set_attr(attr.key.strip(), attr.value.strip())
+                tt.metadata.set_attr(attr.key.strip(), attr.value.strip())
             except AttributeError as exp:
-                tt.set_attr(attr.key.strip(), attr.value)
+                tt.metadata.set_attr(attr.key.strip(), attr.value)
             except UnicodeEncodeError as exp:
                 print("UnicodeEncodeError {}".format(attr.key))
                 raise
 
-        data = df.loc[startindex:]
-        data = data[0].str.split(";", expand=True)
-        data.columns = [x.strip() for x in data.iloc[0].values]
-        data = data.drop(index=startindex)
-        for col in data.columns:
-            data[col] = data[col].astype(float)
+        table = df.loc[startindex:].copy()
+        table = table[0].str.split(";", expand=True)
+        table.columns = [x.strip() for x in table.iloc[0].values]
+        table = table.drop(index=startindex)
+        for col in table.columns:
+            table[col] = table[col].astype(float)
 
-        if 'KRAFT <kN>' in data.columns:
-            data['KRAFT <N>'] = data['KRAFT <kN>'] * 1e3
+        if 'KRAFT <kN>' in table.columns:
+            table['KRAFT <N>'] = table['KRAFT <kN>'] * 1e3
 
-        # print(data)
+        # print(table)
         # print(attributes)
         # mapper={"Kraft <N>":"force",
         #    'Weg <mm>':"displacement",
@@ -146,23 +148,23 @@ class Pud(PID):
         #    "ZEIT <s>":"time",
         #    "BREITENAENDERUNG <mm>":"displacement_y"}
         #
-        # data = data.rename(columns=mapper)
+        # table = table.rename(columns=mapper)
 
-        name = tt.get_attr("PROBENIDENTNUMMER")
-        tt.uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(name.upper()))
+        attr = tt.metadata.get("PROBENIDENTNUMMER")
+        tt.uuid = uuid.uuid5(uuid.NAMESPACE_DNS, str(attr.name.upper()))
 
-        tt.data = data
+        tt.table = table
 
-        l0 = tt.get_attr('MESSLAENGE_IST <mm>', np.nan)
-        width = tt.get_attr('PROBENBREITE_IST <mm>', np.nan)
-        thickness = tt.get_attr('PROBENDICKE_IST <mm>', np.nan)
-        actual_testing_temperature = tt.get_attr('PRUEFTEMPERATUR_SOLL <K>', np.nan)
-        sample_direction = tt.get_attr('ENTNAHMERICHTUNG', np.nan)
-        nominal_pre_deformation = tt.get_attr('VORVERFORMUNG_SOLL <%>', np.nan)
-        actual_pre_deformation = tt.get_attr('VORVERFORMUNG_IST  <%>', np.nan)
-        nominal_strain_rate = tt.get_attr('DEHNRATE_SOLL <1/s>', np.nan)
-        actual_strain_rate = tt.get_attr('DEHNRATE_IST  <1/s>', np.nan)
-        place_of_test = tt.get_attr('PRUEFSTELLE', np.nan)
+        l0 = tt.metadata.get('MESSLAENGE_IST <mm>', np.nan)
+        width = tt.metadata.get('PROBENBREITE_IST <mm>', np.nan)
+        thickness = tt.metadata.get('PROBENDICKE_IST <mm>', np.nan)
+        actual_testing_temperature = tt.metadata.get('PRUEFTEMPERATUR_SOLL <K>', np.nan)
+        sample_direction = tt.metadata.get('ENTNAHMERICHTUNG', np.nan)
+        nominal_pre_deformation = tt.metadata.get('VORVERFORMUNG_SOLL <%>', np.nan)
+        actual_pre_deformation = tt.metadata.get('VORVERFORMUNG_IST  <%>', np.nan)
+        nominal_strain_rate = tt.metadata.get('DEHNRATE_SOLL <1/s>', np.nan)
+        actual_strain_rate = tt.metadata.get('DEHNRATE_IST  <1/s>', np.nan)
+        place_of_test = tt.metadata.get('PRUEFSTELLE', np.nan)
 
         mapper = {"Kraft <N>"            : "force",
                   'Weg <mm>'             : "displacement",
@@ -194,7 +196,7 @@ class Pud(PID):
             actual_testing_temperature = np.nan
 
         try:
-            sample_direction = tt.get_orientation(sample_direction)
+            sample_direction = tt.metadata.get_orientation(sample_direction)
         except Exception as exp:
             sample_direction = np.nan
 
@@ -218,22 +220,22 @@ class Pud(PID):
         except Exception as exp:
             actual_strain_rate = np.nan
 
-        try:
-            place_of_test = str(place_of_test)
-        except Exception as exp:
-            place_of_test = "?"
+        # try:
+        #     place_of_test = str(place_of_test)
+        # except Exception as exp:
+        #     place_of_test = "?"hash
 
         area = width * thickness
-        tt.set_attr("l0", l0)
-        tt.set_attr("width", width)
-        tt.set_attr("thickness", thickness)
-        tt.set_attr("area", area)
-        tt.set_attr("actual_testing_temperature", actual_testing_temperature)
-        tt.set_attr("sample_direction", sample_direction)
-        tt.set_attr("nominal_pre_deformation", nominal_pre_deformation)
-        tt.set_attr("actual_pre_deformation", actual_pre_deformation)
-        tt.set_attr("nominal_strain_rate", nominal_strain_rate)
-        tt.set_attr("actual_strain_rate", actual_strain_rate)
-        tt.set_attr("place_of_test", place_of_test)
+        tt.metadata.set_attr("l0", l0)
+        tt.metadata.set_attr("width", width)
+        tt.metadata.set_attr("thickness", thickness)
+        tt.metadata.set_attr("area", area)
+        tt.metadata.set_attr("actual_testing_temperature", actual_testing_temperature)
+        tt.metadata.set_attr("sample_direction", sample_direction)
+        tt.metadata.set_attr("nominal_pre_deformation", nominal_pre_deformation)
+        tt.metadata.set_attr("actual_pre_deformation", actual_pre_deformation)
+        tt.metadata.set_attr("nominal_strain_rate", nominal_strain_rate)
+        tt.metadata.set_attr("actual_strain_rate", actual_strain_rate)
+        tt.metadata.set_attr("place_of_test", place_of_test)
 
         return tt

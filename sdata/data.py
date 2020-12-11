@@ -100,7 +100,7 @@ class Data(object):
         s.update(self.description.encode(errors="replace"))
         return s.hexdigest()
 
-    def update_hash(self, hash):
+    def update_hash(self, hashobject):
         """A hash represents the object used to calculate a checksum of a
         string of information.
 
@@ -118,27 +118,27 @@ class Data(object):
             sha1.hexdigest()
             '3c59368c7735c1ecaf03ebd4c595bb6e73e90f0c'
 
-            hash = hashlib.sha3_256()
-            data.update_hash(hash).hexdigest()
+            hashobject = hashlib.sha3_256()
+            data.update_hash(hashobject).hexdigest()
             'c468e659891eb5dea6eb6baf73f51ca0688792bf9ad723209dc22730903f6efa'
 
-            data.update_hash(hash).digest()
+            data.update_hash(hashobject).digest()
             b'M8...'
 
         :param hash: hash object, e.g. hashlib.sha1()
         :return: hash
         """
-        if not (hasattr(hash, "update") and hasattr(hash, "hexdigest")):
+        if not (hasattr(hashobject, "update") and hasattr(hashobject, "hexdigest")):
             logging.error("Data.update_hash: given hashfunction is invalid")
             raise Exception("Data.update_hash: given hashfunction is invalid")
 
         metadatastr = self.metadata.to_json().encode(errors="replace")
-        hash.update(metadatastr)
+        hashobject.update(metadatastr)
         if self.table is not None:
             tablestr = self.table.to_json().encode(errors="replace")
-            hash.update(tablestr)
-        hash.update(self.description.encode(errors="replace"))
-        return hash
+            hashobject.update(tablestr)
+        hashobject.update(self.description.encode(errors="replace"))
+        return hashobject
 
     def describe(self):
         """Generate descriptive info of the data

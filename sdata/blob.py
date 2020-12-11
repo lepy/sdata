@@ -99,32 +99,31 @@ class Blob(Data):
         else:
             logging.error("can't open external url '{}'".format(str(self.url)))
 
-    def update_hash(self, fh, hash):
+    def update_hash(self, fh, hashobject, buffer_size = 65536):
         """A hash represents the object used to calculate a checksum of a
         string of information.
 
         .. code-block:: python
 
-            hash = hashlib.md5()
+            hashobject = hashlib.md5()
             df = pd.DataFrame([1,2,3])
             url = "/tmp/blob.csv"
             df.to_csv(url)
             blob = sdata.Blob(url=url)
             fh = open(url, "rb")
-            blob.update_hash(fh, hash)
-            hash.hexdigest()
+            blob.update_hash(fh, hashobject)
+            hashobject.hexdigest()
 
         :param fh: file handle
-        :param hash: hash object, e.g. hashlib.sha1()
-        :return: hash
+        :param hashobject: hash object, e.g. hashlib.sha1()
+        :param buffer_size: buffer size (default buffer_size=65536)
+        :return: hashobject
         """
 
-        # BUF_SIZE is totally arbitrary, change for your app!
-        BUF_SIZE = 65536  # lets read stuff in 64kb chunks!
 
         with fh as f:
             while True:
-                data = f.read(BUF_SIZE)
+                data = f.read(buffer_size)
                 if not data:
                     break
                 hash.update(data)

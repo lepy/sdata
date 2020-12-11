@@ -547,26 +547,26 @@ class Metadata(object):
         s.update(metadatastr)
         return s.hexdigest()
 
-    def update_hash(self, hash):
+    def update_hash(self, hashobject):
         """A hash represents the object used to calculate a checksum of a
         string of information.
 
         .. code-block:: python
 
-            hash = hashlib.sha3_256()
+            hashobject = hashlib.sha3_256()
             metadata = Metadata()
-            metadata.update_hash(hash)
+            metadata.update_hash(hashobject)
             hash.hexdigest()
 
         :param hash: hash object
         :return: hash_function().hexdigest()
         """
-        if not (hasattr(hash, "update") and hasattr(hash, "hexdigest")):
+        if not (hasattr(hashobject, "update") and hasattr(hashobject, "hexdigest")):
             logging.error("Metadata.hash: given hashfunction is invalid")
             raise Exception("Metadata.hash: given hashfunction is invalid")
 
         metadatastr = self.to_json().encode(errors="replace")
-        hash.update(metadatastr)
+        hashobject.update(metadatastr)
         return hash
 
 

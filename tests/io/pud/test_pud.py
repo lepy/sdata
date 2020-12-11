@@ -11,7 +11,7 @@ def test_pud():
     pud = sdata.io.pud.Pud.from_file(filepath)
     print(pud)
     print(pud.metadata)
-    print(pud.data.head())
+    # print(pud.data.head())
 
 if __name__ == '__main__':
     test_pud()
