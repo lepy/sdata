@@ -64,8 +64,8 @@ class Data(object):
         self.metadata = kwargs.get("metadata") or Metadata()
         _uuid = kwargs.get("uuid") or ""
         _name = kwargs.get("name") or "N.N."
-        self.metadata.add("name", _name)
-        self.metadata.add("uuid", _uuid)
+        self.metadata.add("sdata_name", _name)
+        self.metadata.add("sdata_uuid", _uuid)
 
         self.uuid = kwargs.get("uuid") or uuid.uuid4()
         self.name = kwargs.get("name") or "N.N."
@@ -178,7 +178,7 @@ class Data(object):
             self.metadata.set_attr(name=attr_name, value=value, dtype=dtype, description=description)
 
     def _get_uuid(self):
-        return self.metadata.get("uuid").value
+        return self.metadata.get("sdata_uuid").value
         # return self._uuid
 
     def _set_uuid(self, value):
@@ -188,7 +188,7 @@ class Data(object):
             except ValueError as exp:
                 logging.warning("data.uuid: %s" % exp)
         elif isinstance(value, uuid.UUID):
-            self.metadata.set_attr("uuid", value.hex)
+            self.metadata.set_attr("sdata_uuid", value.hex)
         else:
             logging.error("Data.uuid: invalid uuid '{}'".format(value))
 
@@ -196,12 +196,12 @@ class Data(object):
 
     def _get_name(self):
         # return self._name
-        return self.metadata.get("name").value
+        return self.metadata.get("sdata_name").value
 
     def _set_name(self, value):
         if isinstance(value, str):
             try:
-                self.metadata.set_attr("name", str(value)[:256])
+                self.metadata.set_attr("sdata_name", str(value)[:256])
             except ValueError as exp:
                 logging.warning("data.name: %s" % exp)
         else:
@@ -265,7 +265,13 @@ class Data(object):
     df = table
 
     def to_folder(self, path, dtype="csv"):
-        """export data to folder"""
+        """export data to folder
+
+        :param path:
+        :param dtype:
+        :return:
+        """
+
         if dtype not in ["csv", "xlsx"]:
             dtype = "xlsx"
         if not os.path.exists(path):
@@ -303,7 +309,11 @@ class Data(object):
 
     @classmethod
     def from_folder(cls, path):
-        """:returns: sdata object instance"""
+        """sdata object instance
+
+        :param path:
+        :return:
+        """
         # data = Data.from_folder(path)
 
         data = cls()
