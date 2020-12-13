@@ -47,6 +47,7 @@ class Data(object):
     SDATA_UUID = "!sdata_uuid"
     SDATA_CTIME = "!sdata_ctime"
     SDATA_MTIME = "!sdata_mtime"
+    SDATA_PARENT = "!sdata_parent"
 
     def __init__(self, **kwargs):
         """create Data object
@@ -79,6 +80,7 @@ class Data(object):
         self.metadata.add(self.SDATA_UUID, "", dtype="str")
         self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str")
         self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str")
+        self.metadata.add(self.SDATA_PARENT, "", dtype="str")
 
         # auto correct
         if kwargs.get("auto_correct") is None or kwargs.get("auto_correct") is True:
@@ -846,20 +848,20 @@ class Data(object):
             datac = data.copy()
             print("data  {0.uuid}".format(data))
             print("datac {0.uuid}".format(datac))
-            print("datac.metadata['sdata_uuid_ref'] {0.value}".format(datac.metadata["sdata_uuid_ref"]))
+            print("datac.metadata['!sdata_parent'] {0.value}".format(datac.metadata["sdata_parent"]))
 
         .. code-block::
 
             data  38b26864e7794f5182d38459bab85842
             datac 2c4eb15900af435d8cd9c8573ca777e2
-            datac.metadata['sdata_uuid_ref'] 38b26864e7794f5182d38459bab85842
+            datac.metadata['!sdata_parent'] 38b26864e7794f5182d38459bab85842
 
         :return: Data
         """
         data = copy.deepcopy(self)
-        data.metadata.add("uuid", self.gen_uuid())
-        data.metadata.add("sdata_uuid_ref", self.uuid)
-
+        data.metadata.add(self.SDATA_PARENT, self.uuid)
+        data.metadata.add(self.SDATA_UUID, self.gen_uuid())
+        data.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str")
         return data
 
     def gen_uuid(self):
