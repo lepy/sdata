@@ -22,6 +22,8 @@ import base64
 import requests
 from io import BytesIO, StringIO
 
+class Sdata_Name_Exeption(Exception): pass
+class Sdata_Uuid_Exeption(Exception): pass
 
 if sys.version_info < (3, 6):
     import sha3
@@ -37,6 +39,9 @@ def uuid_from_str(name):
 class Data(object):
     """Base sdata object"""
     ATTR_NAMES = []
+
+    SDATA_NAME = "!sdata_name"
+    SDATA_UUID = "!sdata_uuid"
 
     def __init__(self, **kwargs):
         """create Data object
@@ -62,12 +67,10 @@ class Data(object):
         self._prefix = None
         # ToDo: add getter and setter for metadata
         self.metadata = kwargs.get("metadata") or Metadata()
-        _uuid = kwargs.get("uuid") or ""
-        _name = kwargs.get("name") or "N.N."
-        self.metadata.add("sdata_name", _name)
-        self.metadata.add("sdata_uuid", _uuid)
+        self.metadata.add(self.SDATA_NAME, "")
+        self.metadata.add(self.SDATA_UUID, "")
 
-        self.uuid = kwargs.get("uuid") or uuid.uuid4()
+        self.uuid = kwargs.get("uuid") or uuid.uuid4() # store given uuid str or generate a new uuid
         self.name = kwargs.get("name") or "N.N."
         self.prefix = kwargs.get("prefix") or ""
         self._gen_default_attributes(kwargs.get("default_attributes") or self.ATTR_NAMES)
@@ -178,35 +181,38 @@ class Data(object):
             self.metadata.set_attr(name=attr_name, value=value, dtype=dtype, description=description)
 
     def _get_uuid(self):
-        return self.metadata.get("sdata_uuid").value
+        return self.metadata.get(self.SDATA_UUID).value
         # return self._uuid
 
     def _set_uuid(self, value):
         if isinstance(value, str):
             try:
-                self._uuid = uuid.UUID(value).hex
+                uuid.UUID(value)
+                self.metadata.set_attr(self.SDATA_UUID, uuid.UUID(value).hex)
             except ValueError as exp:
                 logging.warning("data.uuid: %s" % exp)
+                raise Sdata_Uuid_Exeption("got invalid uuid str '{}'".format(str(value)))
         elif isinstance(value, uuid.UUID):
-            self.metadata.set_attr("sdata_uuid", value.hex)
+            self.metadata.set_attr(self.SDATA_UUID, value.hex)
         else:
             logging.error("Data.uuid: invalid uuid '{}'".format(value))
+            raise Exception("Data.uuid: invalid uuid '{}'".format(value))
 
     uuid = property(fget=_get_uuid, fset=_set_uuid, doc="uuid of the object")
 
     def _get_name(self):
         # return self._name
-        return self.metadata.get("sdata_name").value
+        return self.metadata.get(self.SDATA_NAME).value
 
     def _set_name(self, value):
         if isinstance(value, str):
             try:
-                self.metadata.set_attr("sdata_name", str(value)[:256])
+                self.metadata.set_attr(self.SDATA_NAME, str(value)[:256])
             except ValueError as exp:
                 logging.warning("data.name: %s" % exp)
         else:
             # self._name = str(value)[:256]
-            self.metadata.set_attr("name", str(value)[:256])
+            self.metadata.set_attr(self.SDATA_NAME, str(value)[:256])
 
     name = property(fget=_get_name, fset=_set_name, doc="name of the object")
 

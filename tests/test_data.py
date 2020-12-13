@@ -20,8 +20,9 @@ def test_data():
     # uuidstr2 = "b1fd2643-af55-4b33-b044-22070a0dc7c7"
     uuidobj = uuid.UUID(uuidstr)
     data2 = sdata.Data(name=testname+"2", uuid=uuidstr)
-    print(data2)
-    print(data2.uuid)
+    print(data2, uuidobj)
+    print(data2.uuid,uuidobj.hex)
+
     assert data2.uuid == uuidobj.hex
 
 def test_group():

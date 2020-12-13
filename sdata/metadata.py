@@ -1,5 +1,5 @@
-import logging
-import collections
+# -*-coding: utf-8-*-
+# import logging
 import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
@@ -8,6 +8,7 @@ import json
 import os
 import hashlib
 import re
+from sdata.contrib.sortedcontainers.sorteddict import SortedDict
 
 def extract_name_unit(value):
     """extract name and unit from a combined string
@@ -285,7 +286,7 @@ class Metadata(object):
 
         :param kwargs:
         """
-        self._attributes = collections.OrderedDict()
+        self._attributes = SortedDict()
         self._name = "N.N."
         self.add("sdata_version", __version__)
 
@@ -530,15 +531,6 @@ class Metadata(object):
 
     def __getitem__(self, name):
         return self.get(name)
-
-    def sort(self):
-        """sort Metadata.attributes
-
-        :return: None
-        """
-        sorted_keys = sorted(self.keys())
-        attributes = collections.OrderedDict([(key, self.attributes.get(key)) for key in sorted_keys])
-        self.attributes = attributes
 
     @property
     def sha3_256(self):
