@@ -304,10 +304,26 @@ class TimeStamp(object):
         return get_local_timestamp(self._datetime).isoformat()
 
 def today_str():
-    """create timestamp for today
+    """create timestamp for today (utc)
 
     :return: '2020-12-11T00:00:00+00:00'
     """
     today = datetime.datetime.today()
     todaystr = datetime.date(today.year, today.month, today.day).isoformat()
+    return TimeStamp(todaystr).utc
+
+def now_local_str():
+    """create timestamp for now for local timezone
+
+    :return: '2020-12-11T00:00:00+00:00'
+    """
+    todaystr = datetime.datetime.now().isoformat()
+    return TimeStamp(todaystr).local
+
+def now_utc_str():
+    """create timestamp for now for utc timezone
+
+    :return: '2020-12-11T00:00:00+00:00'
+    """
+    todaystr = datetime.datetime.now().isoformat()
     return TimeStamp(todaystr).utc

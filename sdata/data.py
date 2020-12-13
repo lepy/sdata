@@ -10,6 +10,7 @@ import os
 import uuid
 from collections import OrderedDict
 import logging
+logger = logging.getLogger("sdata")
 import numpy as np
 import pandas as pd
 import shutil
@@ -31,7 +32,7 @@ if sys.version_info < (3, 6):
 try:
     import openpyxl
 except:
-    logging.warning("openpyxl is not available -> no xlsx import")
+    logger.warning("openpyxl is not available -> no xlsx import")
 
 def uuid_from_str(name):
     return uuid.uuid3(uuid.NAMESPACE_DNS, name)
@@ -70,7 +71,22 @@ class Data(object):
         self.metadata.add(self.SDATA_NAME, "")
         self.metadata.add(self.SDATA_UUID, "")
 
-        self.uuid = kwargs.get("uuid") or uuid.uuid4() # store given uuid str or generate a new uuid
+        # auto correct
+        if kwargs.get("auto_correct") is None or kwargs.get("auto_correct") is True:
+            self.auto_correct = True
+        else:
+            self.auto_correct = False
+
+        logger.debug("sdata: set auto_correct={}".format(self.auto_correct))
+
+        try:
+            self.uuid = kwargs.get("uuid") or uuid.uuid4() # store given uuid str or generate a new uuid
+        except Sdata_Uuid_Exeption as exp:
+            if self.auto_correct is True:
+                logger.warning("got invald uuid -> generate a new uuid")
+                self.uuid = uuid.uuid4()
+            else:
+                raise
         self.name = kwargs.get("name") or "N.N."
         self.prefix = kwargs.get("prefix") or ""
         self._gen_default_attributes(kwargs.get("default_attributes") or self.ATTR_NAMES)
@@ -130,7 +146,7 @@ class Data(object):
         :return: hash
         """
         if not (hasattr(hashobject, "update") and hasattr(hashobject, "hexdigest")):
-            logging.error("Data.update_hash: given hashfunction is invalid")
+            logger.error("Data.update_hash: given hashfunction is invalid")
             raise Exception("Data.update_hash: given hashfunction is invalid")
 
         metadatastr = self.metadata.to_json().encode(errors="replace")
@@ -190,12 +206,12 @@ class Data(object):
                 uuid.UUID(value)
                 self.metadata.set_attr(self.SDATA_UUID, uuid.UUID(value).hex)
             except ValueError as exp:
-                logging.warning("data.uuid: %s" % exp)
+                logger.warning("data.uuid: %s" % exp)
                 raise Sdata_Uuid_Exeption("got invalid uuid str '{}'".format(str(value)))
         elif isinstance(value, uuid.UUID):
             self.metadata.set_attr(self.SDATA_UUID, value.hex)
         else:
-            logging.error("Data.uuid: invalid uuid '{}'".format(value))
+            logger.error("Data.uuid: invalid uuid '{}'".format(value))
             raise Exception("Data.uuid: invalid uuid '{}'".format(value))
 
     uuid = property(fget=_get_uuid, fset=_set_uuid, doc="uuid of the object")
@@ -209,7 +225,7 @@ class Data(object):
             try:
                 self.metadata.set_attr(self.SDATA_NAME, str(value)[:256])
             except ValueError as exp:
-                logging.warning("data.name: %s" % exp)
+                logger.warning("data.name: %s" % exp)
         else:
             # self._name = str(value)[:256]
             self.metadata.set_attr(self.SDATA_NAME, str(value)[:256])
@@ -224,7 +240,7 @@ class Data(object):
             try:
                 self._description = str(value)
             except ValueError as exp:
-                logging.warning("data.name: %s" % exp)
+                logger.warning("data.name: %s" % exp)
         else:
             self._description = str(value)
 
@@ -253,7 +269,7 @@ class Data(object):
             try:
                 self._prefix = value[:256]
             except ValueError as exp:
-                logging.warning("data.prefix: %s" % exp)
+                logger.warning("data.prefix: %s" % exp)
         else:
             self._prefix = str(value)[:256]
 
@@ -284,7 +300,7 @@ class Data(object):
             try:
                 os.makedirs(path)
             except OSError as exp:
-                logging.error(exp)
+                logger.error(exp)
         else:
             self.clear_folder(path)
 
@@ -295,7 +311,7 @@ class Data(object):
 
         if dtype == "csv":
             metadata_filepath = os.path.join(path, "metadata.csv")
-            logging.debug("export meta csv '{}'".format(metadata_filepath))
+            logger.debug("export meta csv '{}'".format(metadata_filepath))
             self.metadata.to_csv(metadata_filepath)
 
             # table export
@@ -324,7 +340,7 @@ class Data(object):
 
         data = cls()
         if not os.path.exists(path):
-            logging.error("from_folder error: path '{}' not exists.".format(path))
+            logger.error("from_folder error: path '{}' not exists.".format(path))
             return data
 
         data.metadata = data._load_metadata(path)
@@ -332,7 +348,7 @@ class Data(object):
             data.uuid = data.metadata.get_attr("uuid").value
             data.name = data.metadata.get_attr("name").value
         except Exception as exp:
-            logging.error("Data.from_folder: {}".format(data.metadata.to_dict()))
+            logger.error("Data.from_folder: {}".format(data.metadata.to_dict()))
             raise
 
         # table import
@@ -380,7 +396,7 @@ class Data(object):
         for subfolder in valid_subfolders:
             try:
                 subfolder = os.path.join(path, subfolder)
-                logging.debug("clear_folder: rm {}".format(subfolder))
+                logger.debug("clear_folder: rm {}".format(subfolder))
                 shutil.rmtree(subfolder)
             except OSError as exp:
                 raise
@@ -407,10 +423,10 @@ class Data(object):
             sdataclassname = classattr.value
             sdatacls = SDATACLS.get(sdataclassname)
             if sdataclassname not in SDATACLS:
-                logging.warning("unsupported cls '{}'".format(sdataclassname))
+                logger.warning("unsupported cls '{}'".format(sdataclassname))
                 sdatacls = Data
         else:
-            logging.warn("cls not defined '{}'".format(metadata))
+            logger.warning("cls not defined '{}'".format(metadata))
             sdatacls = None
         return sdatacls
 
@@ -474,11 +490,11 @@ class Data(object):
         if isinstance(data, Data):
             names = [dat.name.lower() for uid, dat in self.group.items()]
             if data.name.lower() in names:
-                logging.error("{}: name '{}' aready exists".format(data.__class__.__name__, data.name))
+                logger.error("{}: name '{}' aready exists".format(data.__class__.__name__, data.name))
                 return
             self.group[data.uuid] = data
         else:
-            logging.warning("ignore data %s (wrong type!)" % data)
+            logger.warning("ignore data %s (wrong type!)" % data)
 
     def get_data_by_uuid(self, uid):
         """get data by uuid"""
@@ -648,7 +664,7 @@ class Data(object):
                 if "table" in sheetnames:
                     tt.table = pd.read_excel(filepath, sheet_name="table", index_col='index')
                 else:
-                    logging.info("no table data in '{}'".format(filepath))
+                    logger.info("no table data in '{}'".format(filepath))
                 dfm = pd.read_excel(filepath, sheet_name="metadata")
                 dfm = dfm.set_index(dfm.name.values)
                 # dfm["value"] = dfm["value"].replace(np.nan, None)
@@ -667,7 +683,7 @@ class Data(object):
                             cells.append("")
                     tt.description = "\n".join(cells)
                 else:
-                    logging.info("no description in '{}'".format(filepath))
+                    logger.info("no description in '{}'".format(filepath))
 
                 return tt
             else:
@@ -710,31 +726,31 @@ class Data(object):
             with open(filepath, "r") as fh:
                 d = json.load(fh)
         elif s is None and filepath is None:
-            logging.error("data.from_json: no json data available")
+            logger.error("data.from_json: no json data available")
             return
         elif s is not None and filepath is None:
             d = json.loads(s)
         else:
-            logging.error("data.from_json: unexpected error")
+            logger.error("data.from_json: unexpected error")
             d = None
 
         if d:
             if "metadata" in d.keys():
                 data.metadata = data.metadata.from_dict(d["metadata"])
             else:
-                logging.error("Data.from_json: table not available")
+                logger.error("Data.from_json: table not available")
 
             if "table" in d.keys():
                 data.table = pd.DataFrame.from_dict(d["table"])
                 # data.table = pd.read_json(json.dumps(d["table"]))
                 # data.table = pd.read_json(d["table"])
             else:
-                logging.error("Data.from_json: metadata not available")
+                logger.error("Data.from_json: metadata not available")
 
             if "description" in d.keys():
                 data.description = d["description"]
             else:
-                logging.error("Data.from_json: description not available")
+                logger.error("Data.from_json: description not available")
 
         return data
 
@@ -795,7 +811,7 @@ class Data(object):
             pd.read_csv(sio, sep=";", comment="#")
             sio.seek(0)
         else:
-            logging.error("data.from_csv: no csv data available")
+            logger.error("data.from_csv: no csv data available")
             return
 
         for line in sio:
@@ -852,14 +868,11 @@ class Data(object):
                 if add_table_metadata:
                     old_attr = self.metadata.get(old_colname)
                     if old_attr:
-                        logging.info("skip: {}".format(old_attr))
+                        logger.info("skip: {}".format(old_attr))
                         self.metadata.relabel(old_colname, name)
                     else:
                         self.metadata.add(name=name, description=old_colname, unit=unit, dtype="float")
             self.table.rename(columns=mapper, inplace=True)
-
-
-
 
 
 class Schema(Data):

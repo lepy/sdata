@@ -1,5 +1,6 @@
 # -*-coding: utf-8-*-
-# import logging
+import logging
+logger = logging.getLogger("sdata")
 import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
@@ -92,7 +93,7 @@ class Attribute(object):
                 else:
                     raise ValueError("empty Attribute.name")
             except ValueError as exp:
-                logging.warning("error Attribute.name: %s" % exp)
+                logger.warning("error Attribute.name: %s" % exp)
         else:
             self._name = str(value).strip()[:256]
 
@@ -106,7 +107,7 @@ class Attribute(object):
             dtype = self.DTYPES.get(self.dtype, self._guess_dtype(value))
 
             if self.dtype != dtype.__name__:
-                # logging.debug("guess dtype for ``: ``".format(value, dtype.__name__))
+                # logger.debug("guess dtype for ``: ``".format(value, dtype.__name__))
                 self.dtype = dtype.__name__
             if not value and self.dtype not in ["int", "float", "bool"]:
                 self._value = None
@@ -119,7 +120,7 @@ class Attribute(object):
             else:
                 self._value = dtype(value)
         except ValueError as exp:
-            logging.error("error Attribute.value: {}".format(exp))
+            logger.error("error Attribute.value: {}".format(exp))
 
     value = property(fget=_get_value, fset=_set_value, doc="Attribute value")
 
@@ -160,7 +161,7 @@ s
         #     try:
         #         self._value = self.DTYPES[self.dtype](self.value)
         #     except Exception as exp:
-        #         logging.error("_set_dtype:{}:{}-{}".format(self.dtype, exp, exp.__class__.__name__))
+        #         logger.error("_set_dtype:{}:{}-{}".format(self.dtype, exp, exp.__class__.__name__))
 
     dtype = property(fget=_get_dtype, fset=_set_dtype, doc="Attribute type str")
 
@@ -384,7 +385,7 @@ class Metadata(object):
             # df.to_csv(filepath, index=None, sep=sep)
             return df.to_csv(filepath, index=None, sep=sep, header=header)
         except OSError as exp:
-            logging.error("metadata.to_csv error: %s" % (exp))
+            logger.error("metadata.to_csv error: %s" % (exp))
 
     def to_csv_header(self, prefix="#", sep=",", filepath=None):
         """serialize to csv"""
@@ -395,12 +396,12 @@ class Metadata(object):
 
             alines = "".join(lines)
             if filepath:
-                logging.info("export '{}'".format(filepath))
+                logger.info("export '{}'".format(filepath))
                 with open(filepath, "w") as fh:
                     fh.write(alines)
             return alines
         except OSError as exp:
-            logging.error("metadata.to_csv error: %s" % (exp))
+            logger.error("metadata.to_csv error: %s" % (exp))
 
     @classmethod
     def from_csv(cls, filepath):
@@ -458,7 +459,7 @@ class Metadata(object):
         metadata = cls()
         for alist in mlist:
             if len(alist) < 2:
-                logging.error("Metadata.from_list skip {}".format(alist))
+                logger.error("Metadata.from_list skip {}".format(alist))
             else:
                 alist.extend([None, None, None, None])
                 #["name", "value", "dtype", "unit", "description"]
@@ -491,7 +492,7 @@ class Metadata(object):
         """
         attr = self.get(name)
         if not attr:
-            logging.warning("{0}: no Attribute {1} to relabel.".format(self.__class__, name))
+            logger.warning("{0}: no Attribute {1} to relabel.".format(self.__class__, name))
         else:
             attr.name = newname
             self.attributes.pop(name)
@@ -558,7 +559,7 @@ class Metadata(object):
         :return: hash_function().hexdigest()
         """
         if not (hasattr(hashobject, "update") and hasattr(hashobject, "hexdigest")):
-            logging.error("Metadata.hash: given hashfunction is invalid")
+            logger.error("Metadata.hash: given hashfunction is invalid")
             raise Exception("Metadata.hash: given hashfunction is invalid")
 
         metadatastr = self.to_json().encode(errors="replace")

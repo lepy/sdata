@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.11.0'
+__version__ = '0.11.1'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -16,7 +16,7 @@ from sdata.metadata import Metadata, Attribute
 from sdata.data import Data, Schema
 from sdata.blob import Blob
 # import sdata.timestamp as timestamp
-from sdata.timestamp import today_str
+from sdata.timestamp import today_str, now_utc_str, now_local_str
 import inspect
 
 if sys.version_info < (3, 6):
