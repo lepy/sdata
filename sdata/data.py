@@ -115,8 +115,26 @@ class Data(object):
         self.metadata.add(self.SDATA_MTIME, now_utc_str())
 
     @property
+    def sha3_256_table(self):
+        """Return a SHA3 hash of the sData.table object with a hashbit length of 32 bytes.
+
+        .. code-block:: python
+
+            sdata.Data(name="1", uuid=sdata.uuid_from_str("1")).sha3_256_table
+
+            'c468e659891eb5dea6eb6baf73f51ca0688792bf9ad723209dc22730903f6efa'
+
+        :return: hashlib.sha3_256.hexdigest()
+        """
+        s = hashlib.sha3_256()
+        if self.table is not None:
+            tablestr = self.table.to_json().encode(errors="replace")
+            s.update(tablestr)
+        return s.hexdigest()
+
+    @property
     def sha3_256(self):
-        """Return a new SHA3 hash object with a hashbit length of 32 bytes.
+        """Return a SHA3 hash of the sData object with a hashbit length of 32 bytes.
 
         .. code-block:: python
 
