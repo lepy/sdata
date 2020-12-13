@@ -16,6 +16,7 @@ import pandas as pd
 import shutil
 import copy
 from sdata.metadata import Metadata, Attribute, MetadataSchema, AttributeSchema, extract_name_unit
+from sdata.timestamp import now_utc_str, now_local_str, today_str
 import inspect
 import json
 import hashlib
@@ -41,8 +42,11 @@ class Data(object):
     """Base sdata object"""
     ATTR_NAMES = []
 
+    SDATA_VERSION = "!sdata_version"
     SDATA_NAME = "!sdata_name"
     SDATA_UUID = "!sdata_uuid"
+    SDATA_CTIME = "!sdata_ctime"
+    SDATA_MTIME = "!sdata_mtime"
 
     def __init__(self, **kwargs):
         """create Data object
@@ -68,8 +72,13 @@ class Data(object):
         self._prefix = None
         # ToDo: add getter and setter for metadata
         self.metadata = kwargs.get("metadata") or Metadata()
-        self.metadata.add(self.SDATA_NAME, "")
-        self.metadata.add(self.SDATA_UUID, "")
+
+        # set default sdata attributes
+        self.metadata.add(self.SDATA_VERSION, __version__, dtype="str")
+        self.metadata.add(self.SDATA_NAME, "", dtype="str")
+        self.metadata.add(self.SDATA_UUID, "", dtype="str")
+        self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str")
+        self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str")
 
         # auto correct
         if kwargs.get("auto_correct") is None or kwargs.get("auto_correct") is True:
@@ -95,6 +104,13 @@ class Data(object):
         self.table = kwargs.get("table", None)
         self._description = ""
         self.description = kwargs.get("description", "")
+
+    def update_mtime(self):
+        """update modification time
+
+        :return:
+        """
+        self.metadata.add(self.SDATA_MTIME, now_utc_str())
 
     @property
     def sha3_256(self):

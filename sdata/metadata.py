@@ -288,8 +288,7 @@ class Metadata(object):
         :param kwargs:
         """
         self._attributes = SortedDict()
-        self._name = "N.N."
-        self.add("sdata_version", __version__)
+        self._name = kwargs.get("name") or "N.N."
 
     def _get_name(self):
         return self._name
