@@ -70,4 +70,11 @@ def verify_table(data, pub_key, metadata_hash="!sdata_sha3_256_table", metadata_
 
     signature_verification = pub_key.verify(data.metadata[metadata_hash].value,
                           pgpy.PGPSignature.from_blob(data.metadata[metadata_hash_signature].value))
-    return list(signature_verification.good_signatures)[0].verified
+    if list(signature_verification.good_signatures)[0].verified is not True:
+        logging.error("the table signature is False")
+        return False
+
+    if data.sha3_256_table == data.metadata[metadata_hash].value:
+        return True
+    else:
+        return False
