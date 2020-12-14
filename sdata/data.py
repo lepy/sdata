@@ -71,16 +71,27 @@ class Data(object):
         # self._uuid = None
         # self._name = None
         self._prefix = None
+
         # ToDo: add getter and setter for metadata
-        self.metadata = kwargs.get("metadata") or Metadata()
+        # self.metadata = kwargs.get("metadata") or Metadata()
+
+        self.metadata = Metadata()
 
         # set default sdata attributes
         self.metadata.add(self.SDATA_VERSION, __version__, dtype="str")
-        self.metadata.add(self.SDATA_NAME, "", dtype="str")
-        self.metadata.add(self.SDATA_UUID, "", dtype="str")
+        self.metadata.add(self.SDATA_NAME, "N.N.", dtype="str")
+        self.metadata.add(self.SDATA_UUID, uuid.uuid4(), dtype="str")
         self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str")
         self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str")
         self.metadata.add(self.SDATA_PARENT, "", dtype="str")
+
+        metadata = kwargs.get("metadata")
+        if metadata is not None:
+            # logger.debug("Data got Metadata {}".format(metadata))
+            if metadata and isinstance(metadata, Metadata):
+                for attribute in metadata.attributes.values():
+                    # logger.debug("Data.Metadata.add {0.name}:{0.value}".format(attribute))
+                    self.metadata.add(attribute)
 
         # auto correct
         if kwargs.get("auto_correct") is None or kwargs.get("auto_correct") is True:
@@ -90,15 +101,19 @@ class Data(object):
 
         logger.debug("sdata: set auto_correct={}".format(self.auto_correct))
 
-        try:
-            self.uuid = kwargs.get("uuid") or uuid.uuid4() # store given uuid str or generate a new uuid
-        except Sdata_Uuid_Exeption as exp:
-            if self.auto_correct is True:
-                logger.warning("got invald uuid -> generate a new uuid")
-                self.uuid = uuid.uuid4()
-            else:
-                raise
-        self.name = kwargs.get("name") or "N.N."
+        if kwargs.get("uuid") is not None:
+            try:
+                self.uuid = kwargs.get("uuid") # store given uuid str or generate a new uuid
+            except Sdata_Uuid_Exeption as exp:
+                if self.auto_correct is True:
+                    logger.warning("got invald uuid -> generate a new uuid")
+                    self.uuid = uuid.uuid4()
+                else:
+                    raise
+
+        if kwargs.get("name") is not None:
+            self.name = kwargs.get("name")
+
         self.prefix = kwargs.get("prefix") or ""
         self._gen_default_attributes(kwargs.get("default_attributes") or self.ATTR_NAMES)
         self._group = OrderedDict()
@@ -106,6 +121,9 @@ class Data(object):
         self.table = kwargs.get("table", None)
         self._description = ""
         self.description = kwargs.get("description", "")
+
+
+
 
     def update_mtime(self):
         """update modification time
