@@ -333,6 +333,18 @@ class Metadata(object):
     def update_from_dict(self, d):
         """set attributes from dict"""
         for k, v in d.items():
+            if isinstance(v, (str,)):
+                v = {"name":k, "value":v, "dtype":"str", "unit":"", "description":"", "label":""}
+            elif hasattr(v, "keys"):
+
+                dtype = v.get("dtype", "str")
+                value = v.get("value")
+
+                v = {"name":k, "value":value, "dtype":dtype,
+                     "unit":v.get("unit", ""), "description":v.get("description", ""),
+                     "label":v.get("label", "")}
+            else:
+                v = {"name":k, "value":v, "dtype":"", "unit":"", "description":"", "label":""}
             self.set_attr(**v)
 
     @classmethod

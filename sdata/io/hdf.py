@@ -21,8 +21,8 @@ class FlatHDFDataStore():
             df = pd.DataFrame()
         else:
             df = data.df
-        self.hdf.put('{}/metadata'.format(data.uuid), data.metadata.df, format='table', data_columns=True)
-        self.hdf.put('{}/table'.format(data.uuid), df, format='table', data_columns=True)
+        self.hdf.put('{}/metadata'.format(data.uuid), data.metadata.df, format='fixed', data_columns=True)
+        self.hdf.put('{}/table'.format(data.uuid), df, format='fixed', data_columns=True)
 
     def keys(self):
         return [x.split("/")[1] for x in self.hdf.keys() if "metadata" in x]

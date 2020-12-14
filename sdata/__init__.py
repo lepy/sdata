@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.11.2'
+__version__ = '0.12.0'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
