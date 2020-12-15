@@ -104,7 +104,7 @@ class Attribute(object):
 
     def _set_value(self, value):
         try:
-            dtype = self.DTYPES.get(self.dtype, self._guess_dtype(value))
+            dtype = self.DTYPES.get(self.dtype, self.guess_dtype(value))
 
             if self.dtype != dtype.__name__:
                 # logger.debug("guess dtype for ``: ``".format(value, dtype.__name__))
@@ -124,7 +124,8 @@ class Attribute(object):
 
     value = property(fget=_get_value, fset=_set_value, doc="Attribute value")
 
-    def _guess_dtype(self, value):
+    @staticmethod
+    def guess_dtype(value):
         """returns dtype class
 
         :param value:
@@ -306,6 +307,16 @@ class Metadata(object):
 
     attributes = property(fget=_get_attributes, fset=_set_attributes, doc="returns Attributes")
 
+    @property
+    def user_attributes(self):
+        attrs = [(a.name, a) for a in self.attributes.values() if not a.name.startswith("!sdata")]
+        return SortedDict(attrs)
+
+    @property
+    def sdata_attributes(self):
+        attrs = [(a.name, a) for a in self.attributes.values() if a.name.startswith("!sdata")]
+        return SortedDict(attrs)
+
     def set_attr(self, name="N.N.", value=None, **kwargs):
         """set Attribute"""
         if isinstance(name, Attribute):
@@ -380,6 +391,11 @@ class Metadata(object):
     @property
     def df(self):
         """create dataframe"""
+        return self.to_dataframe()
+
+    @property
+    def user_df(self):
+        """create dataframe for user attributes"""
         return self.to_dataframe()
 
     @classmethod
@@ -472,7 +488,7 @@ class Metadata(object):
             if len(alist) < 2:
                 logger.error("Metadata.from_list skip {}".format(alist))
             else:
-                alist.extend([None, None, None, None])
+                alist.extend(["", "", "", ""])
                 #["name", "value", "dtype", "unit", "description"]
                 metadata.add(alist[0], alist[1], dtype=alist[2], unit=alist[3], description=alist[4],
                              label=alist[5])
@@ -577,6 +593,35 @@ class Metadata(object):
         hashobject.update(metadatastr)
         return hash
 
+    def set_unit_from_name(self, add_description=True, fix_name=True):
+        """try to extract unit from attribute name
+
+        :return:
+        """
+        for attr in self.user_attributes.values():
+            new_name, unit = extract_name_unit(attr.name)
+            attr.unit = unit
+            if add_description is True and len(attr.description)==0 and len(unit)>0:
+                attr.description = attr.name
+            if fix_name is True:
+                self.relabel(attr.name, new_name)
+
+    def guess_value_dtype(self):
+        """try to cast the Attribute values, e.g. str -> float
+
+        :return:
+        """
+        for attr in list(self.user_attributes.values()):
+            for dtype in [float, str]:
+                try:
+                    # attr.value = dtype(attr.value)
+                    # attr.dtype = dtype.__name__
+                    self.add(name=attr.name, value=dtype(attr.value), dtype=dtype.__name__)
+                    # print(["ok", attr.name, attr.value, self.get(attr.name).value])
+                    break
+                except (ValueError, TypeError) as exp:
+                    pass
+                    # print([attr.name, attr.value, dtype, exp])
 
 class MetadataSchema(Metadata):
     """MetadataSchema container class
