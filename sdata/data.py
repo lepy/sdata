@@ -49,6 +49,7 @@ class Data(object):
     SDATA_CTIME = "!sdata_ctime"
     SDATA_MTIME = "!sdata_mtime"
     SDATA_PARENT = "!sdata_parent"
+    SDATA_CLASS = "!sdata_class"
 
     def __init__(self, **kwargs):
         """create Data object
@@ -79,12 +80,13 @@ class Data(object):
         self.metadata = Metadata()
 
         # set default sdata attributes
-        self.metadata.add(self.SDATA_VERSION, __version__, dtype="str")
-        self.metadata.add(self.SDATA_NAME, "N.N.", dtype="str")
-        self.metadata.add(self.SDATA_UUID, uuid.uuid4(), dtype="str")
-        self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str")
-        self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str")
-        self.metadata.add(self.SDATA_PARENT, "", dtype="str")
+        self.metadata.add(self.SDATA_VERSION, __version__, dtype="str", description="sdata package version")
+        self.metadata.add(self.SDATA_NAME, "N.N.", dtype="str", description="name of the data object")
+        self.metadata.add(self.SDATA_UUID, uuid.uuid4(), dtype="str", description="Universally Unique Identifier")
+        self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="creation date")
+        self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str", description="modification date")
+        self.metadata.add(self.SDATA_PARENT, "", dtype="str", description="uuid of the parent sdata object")
+        self.metadata.add(self.SDATA_CLASS, self.__class__.__name__, dtype="str", description="sdata class")
 
         metadata = kwargs.get("metadata")
         if metadata is not None:

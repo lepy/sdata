@@ -33,11 +33,11 @@ def test_table():
     table.to_xlsx("/tmp/sdata_table.xlsx")
     print(table.metadata.to_dataframe())
 
-    table2 = table.from_xlsx("/tmp/sdata_table.xlsx")
-    print("table2", table2)
-    print(table2.metadata.to_dataframe())
-
-    print(ts.tree_folder("/tmp/sdata_table"))
+    # table2 = table.from_xlsx("/tmp/sdata_table.xlsx")
+    # print("table2", table2)
+    # print(table2.metadata.to_dataframe())
+    #
+    # print(ts.tree_folder("/tmp/sdata_table"))
 
 if __name__ == '__main__':
     test_table()
