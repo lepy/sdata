@@ -135,6 +135,53 @@ def test_empty_metadata():
     m = sdata.metadata.Metadata()
     print(m.to_dataframe())
 
+def test_guess_dtype():
+    m = sdata.Metadata()
+
+    assert m.guess_dtype_from_value('1.23')[1] == 'float'
+    assert m.guess_dtype_from_value('otto1.23')[1] == 'str'
+    assert m.guess_dtype_from_value('1.e-3')[1] == 'float'
+    assert m.guess_dtype_from_value('1')[1] == 'int'
+    assert m.guess_dtype_from_value(1)[1] == 'int'
+    assert m.guess_dtype_from_value(False)[1] == 'bool'
+    assert m.guess_dtype_from_value(True)[1] == 'bool'
+    assert m.guess_dtype_from_value("False")[1] == 'bool'
+    # '1.23' -> 'float'
+    # 'otto1.23' -> 'str'
+    # 1 -> 'int'
+    # False -> 'bool'
+
+def test_metadata_from_dict():
+    d = {"i":1, "f":1.1, "ii":'1', "ff":'1.1', 'fff':'1.e-4',
+         'b':True, 'bb':'True', 'bbb':"false", 'bbbb':False,
+         "s":"otto"}
+    m = sdata.Metadata()
+    m.update_from_dict(d)
+    print(m.attributes)
+    assert m["i"].dtype == 'int'
+    assert m["ii"].dtype == 'int'
+    assert m["f"].dtype == 'float'
+    assert m["ff"].dtype == 'float'
+    assert m["fff"].dtype == 'float'
+    assert m["b"].dtype == 'bool'
+    assert m["bb"].dtype == 'bool'
+    assert m["bbb"].dtype == 'bool'
+    assert m["bbbb"].dtype == 'bool'
+    assert m["s"].dtype == 'str'
+
+    m = sdata.Metadata.from_dict(d)
+    print(m.attributes)
+    assert m["i"].dtype == 'int'
+    assert m["ii"].dtype == 'int'
+    assert m["f"].dtype == 'float'
+    assert m["ff"].dtype == 'float'
+    assert m["fff"].dtype == 'float'
+    assert m["b"].dtype == 'bool'
+    assert m["bb"].dtype == 'bool'
+    assert m["bbb"].dtype == 'bool'
+    assert m["bbbb"].dtype == 'bool'
+    assert m["s"].dtype == 'str'
+
 if __name__ == '__main__':
     # test_attribute()
     # test_metadata()

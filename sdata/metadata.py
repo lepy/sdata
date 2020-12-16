@@ -341,41 +341,60 @@ class Metadata(object):
             d[attr.name] = attr.to_dict()
         return d
 
+    @staticmethod
+    def guess_dtype_from_value(value):
+        """guess dtype from value,
+        e.g.
+        '1.23' -> 'float'
+        'otto1.23' -> 'str'
+        1 -> 'int'
+        False -> 'bool'
+
+        :param value:
+        :return: str ['int', 'float', 'bool', 'str']
+        """
+        if value.__class__.__name__ in ["int", "float", "bool"]:
+            return value, value.__class__.__name__
+        elif value in ["False", "True", "true", "false"]:
+            return value, 'bool'
+        try:
+            value = int(value)
+            return value, value.__class__.__name__
+        except:
+            pass
+        try:
+            value = float(value)
+            return value, value.__class__.__name__
+        except:
+            pass
+        return str(value), "str"
+
     def update_from_dict(self, d):
         """set attributes from dict"""
         for k, v in d.items():
-            if isinstance(v, (str,)):
+            value, dtype = self.guess_dtype_from_value(v)
+            if dtype in ["float", "int", "bool"]:
+                v = {"name":k, "value":value, "dtype":dtype, "unit":"", "description":"", "label":""}
+            elif isinstance(v, (str,)):
                 v = {"name":k, "value":v, "dtype":"str", "unit":"", "description":"", "label":""}
             elif hasattr(v, "keys"):
 
-                dtype = v.get("dtype", "str")
+                dtype = v.get("dtype", self.guess_dtype_from_value(v.get("value"))[1])
                 value = v.get("value")
 
                 v = {"name":k, "value":value, "dtype":dtype,
                      "unit":v.get("unit", ""), "description":v.get("description", ""),
                      "label":v.get("label", "")}
             else:
-                v = {"name":k, "value":v, "dtype":"", "unit":"", "description":"", "label":""}
+                v, dtype = self.guess_dtype_from_value(v)
+                v = {"name":k, "value":v, "dtype":dtype, "unit":"", "description":"", "label":""}
             self.set_attr(**v)
 
     @classmethod
     def from_dict(cls, d):
         """setup metadata from dict"""
         metadata = cls()
-        for k, v in d.items():
-            if isinstance(v, (str,)):
-                v = {"name":k, "value":v, "dtype":"str", "unit":"", "description":"", "label":""}
-            elif hasattr(v, "keys"):
-
-                dtype = v.get("dtype", "str")
-                value = v.get("value")
-
-                v = {"name":k, "value":value, "dtype":dtype,
-                     "unit":v.get("unit", ""), "description":v.get("description", ""),
-                     "label":v.get("label", "")}
-            else:
-                v = {"name":k, "value":v, "dtype":"", "unit":"", "description":"", "label":""}
-            metadata.set_attr(**v)
+        metadata.update_from_dict(d)
         return metadata
 
     def to_dataframe(self):
