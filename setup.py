@@ -11,12 +11,12 @@ with open('sdata/__init__.py', 'r') as f:
 with open('README.md', 'rb') as f:
     readme = f.read().decode('utf-8')
 
-REQUIRES = ['numpy', 'pandas']
+REQUIRES = ['numpy', 'pandas', 'tabulate', 'xlrd', 'openpyxl', 'xlsxwriter', 'pytz', 'requests']
 
 setup(
     name='sdata',
     version=version,
-    description='structured data',
+    description='a structured data format',
     long_description=readme,
     long_description_content_type="text/markdown",
     author="Lepy",

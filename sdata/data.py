@@ -22,6 +22,7 @@ import json
 import hashlib
 import base64
 import requests
+from tabulate import tabulate
 from io import BytesIO, StringIO
 
 class Sdata_Name_Exeption(Exception): pass
@@ -874,6 +875,109 @@ class Data(object):
 
         data.table = df
         return data
+
+    def to_html(self, filepath, xlsx=True, style=None):
+        """export Data to html
+
+        :param filepath:
+        :param xlsx:
+        :param style:
+        :return:
+        """
+
+        table_values = self.df.head()
+        table_headers = self.df.columns
+
+        table_description_values = self.df.describe()
+        table_description_headers = self.df.describe().columns
+
+        metadata_values = self.metadata.df.head().values
+        metadata_headers = self.metadata.df.columns
+
+        if xlsx is True:
+            xlsx_tag = self.get_download_link()
+        else:
+            xlsx_tag = ""
+
+        param = {"title":"{0} [{1}]".format(self.osname,
+                                            self.uuid),
+                 "description":self.description,
+                 "metadata": tabulate(metadata_values, metadata_headers, tablefmt="html"),
+                 "table": tabulate(table_values, table_headers, tablefmt="html"),
+                 "table_description": tabulate(table_description_values, table_description_headers, tablefmt="html"),
+                 "xlsx_tag":xlsx_tag,
+                 "sdata":"created with sdata v{}.".format(__version__),
+                 "now":"{}".format(now_utc_str()),
+                 }
+
+        tmpl = """<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title}</title>
+    <style>
+    h1 {{ 
+       background-color: #00FFFF77;
+       color: black;
+    }}
+    h2 {{ 
+       background-color: #00FFFF44;
+       color: black;
+    }}
+    h3 {{ 
+       background-color: #00FFFF11;
+       color: black;
+    }}
+    p {{
+    	color: black;
+    }}
+    table, th, td, caption {{
+    border: 1px solid #a0a0a0;
+    }}
+    
+    table {{
+      border-collapse: collapse;
+      border-spacing: 1em;
+      border-width: thin 0 0 thin;
+      margin: 0 0 1em;
+      table-layout: auto;
+      max-width: 100%;
+      text-align: right;
+    }}
+    th, td {{
+      font-weight: normal;
+      text-align: left;
+      border-spacing: 1em;
+      padding: .1em .3em;
+    }}
+    th, caption {{
+      background-color: #f1f3f4;
+      font-weight: 700;
+    }}
+    </style>
+  </head>
+  <body>
+    <h1>{title}</h1>
+    <h2>Download</h2>
+    <p">{xlsx_tag}</p>
+    <h2>Description</h2>
+    <p>{description}</p>
+    <h2>Metadata</h2>
+    {metadata}
+    <h2>Table</h2>
+    {table}
+    <h3>Table Description</h3>
+    {table_description}
+    <p>{sdata}</p>
+    <p>{now}</p>
+  </body>
+</html>""".format(**param)
+        try:
+            with open(filepath, "w") as fh:
+                fh.write(tmpl)
+        except Exception as exp:
+            raise
 
     def copy(self):
         """create a copy of the Data object
