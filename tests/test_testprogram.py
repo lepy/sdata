@@ -8,6 +8,7 @@ modulepath = os.path.dirname(__file__)
 sys.path.insert(0, os.path.join(modulepath, "..", "..", "src"))
 
 import sdata
+from sdata.experiments import TestProgram
 import pandas as pd
 import numpy as np
 
@@ -112,12 +113,11 @@ def gen_dummy_testprogram():
     # t2b.add_result(get_dummy_table())
     ts2.add_data(t2b)
 
-    tp = sdata.Data(name="testprogram FOO", uuid="43880975d9b745f1b853c31b691e67a9")
+    tp = TestProgram(name="testprogram FOO", uuid="43880975d9b745f1b853c31b691e67a9")
     tp.add_data(ts1)
     tp.add_data(ts2)
 
     return tp
-
 
 def test_test():
     t = sdata.Data(name="test 001")
@@ -131,6 +131,28 @@ def test_testseries():
     print(ts)
     assert ts.name == "testseries A1"
 
+def test_testprogram():
+    tpname = "ALU"
+    tpname1 = "ALU1"
+    tpuuid = "d4e97cedca6238bea16732ce88c1922f"
+    tpuuid1 = "d4e97cedca6238bea16732ce88c19221"
+    tp = TestProgram(name=tpname,
+                     name_testprogram=tpname1,
+                     uuid=tpuuid,
+                     uuid_testprogram=tpuuid1)
+    print(tp.metadata.df.value)
+    assert tp.uuid == tpuuid
+    assert tp.uuid_testprogram == tpuuid1
+    assert tp.name == tpname
+    assert tp.name_testprogram == tpname1
+
+    tp = TestProgram(name=tpname,
+                     uuid=tpuuid,)
+    print(tp.metadata.df.value)
+    assert tp.uuid == tpuuid
+    assert tp.uuid_testprogram == tpuuid1
+    assert tp.name == tpname
+    assert tp.name_testprogram == "N.N."
 
 def atest_testprogram():
     tp = gen_dummy_testprogram()

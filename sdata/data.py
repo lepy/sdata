@@ -343,6 +343,23 @@ class Data(object):
     table = property(fget=_get_table, fset=_set_table, doc="table object(pandas.DataFrame)")
     df = table
 
+    def description_to_df(self):
+        """get description as DataFrame
+
+        :return: DataFrame of description lines
+        """
+        return pd.DataFrame(self.description.splitlines())
+
+    def description_from_df(self, df):
+        """set description from DataFrame of lines
+
+        :return:
+        """
+        if df is not None and isinstance(df, pd.DataFrame) and len(df)>0:
+            lines = df.iloc[:, 0]
+            lines = lines.astype(str)
+            self.description = "\n".join(lines.values)
+
     def to_folder(self, path, dtype="csv"):
         """export data to folder
 

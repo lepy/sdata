@@ -54,7 +54,7 @@ def test_filename():
 
 def test_to_json():
     df = pd.DataFrame({'a': ['x', 'y', '', 'z'], 'b': [1, 2, 2, 3.2]})
-    data = sdata.Data(name="data", uuid="38b26864e7794f5182d38459bab8584d", table=df, comment="abc")
+    data = sdata.Data(name="data", uuid="38b26864e7794f5182d38459bab8584d", table=df, description="abc")
     js = data.to_json()
     data2 = sdata.Data.from_json(s=js)
     print(data.name, data2.name)
@@ -63,8 +63,33 @@ def test_to_json():
     assert data.description==data2.description
     assert data.sha3_256==data2.sha3_256
 
+def test_description():
+    data = sdata.Data(name="data", uuid="38b26864e7794f5182d38459bab8584d", description="abc")
+    assert data.description == "abc"
 
+    text1 = """abc
+test
 
+ende"""
+    data = sdata.Data(name="data", uuid="38b26864e7794f5182d38459bab8584d", description=text1)
+    assert data.description == text1
+
+    data = sdata.Data(name="data", uuid="38b26864e7794f5182d38459bab8584d", description=text1)
+    df = data.description_to_df()
+    print(df)
+    data.description_from_df(df)
+    assert data.description == text1
+
+    text2 = text1 + "\n"
+    data = sdata.Data(name="data", uuid="38b26864e7794f5182d38459bab8584d", description=text2)
+    assert data.description == text2
+
+    data = sdata.Data(name="data", uuid="38b26864e7794f5182d38459bab8584d", description=text2)
+    df = data.description_to_df()
+    print(df)
+    data.description_from_df(df)
+    assert data.description == text1
+    assert data.description != text2
 
 if __name__ == '__main__':
     test_data()

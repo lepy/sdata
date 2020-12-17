@@ -109,7 +109,10 @@ class Attribute(object):
             if self.dtype != dtype.__name__:
                 # logger.debug("guess dtype for ``: ``".format(value, dtype.__name__))
                 self.dtype = dtype.__name__
-            if not value and self.dtype not in ["int", "float", "bool"]:
+
+            if value == "" and self.dtype in ["str"]:
+                self._value = ""
+            elif not value and self.dtype not in ["int", "float", "bool"]:
                 self._value = None
             elif not value and self.dtype in ["int", "float"]:
                 self._value = np.nan

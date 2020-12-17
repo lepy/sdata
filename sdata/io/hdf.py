@@ -12,8 +12,30 @@ from sdata.metadata import Metadata
 
 
 class FlatHDFDataStore():
+    """Flat HDF5 Store
+
+    .. code-block:: python
+
+        store = FlatHDFDataStore(filepath="/tmp/mystore.h5")
+
+        data = sdata.Data(name="otto",
+                          uuid="d4e97cedca6238bea16732ce88c1922f",
+                          table=pd.DataFrame({"a": [1, 2, 3]}),
+                          description="Hallo\nSpencer")
+        store.put(data)
+
+        loaded_data = store.get_data_by_uuid("d4e97cedca6238bea16732ce88c1922f")
+        assert data.sha3_256 == loaded_data.sha3_256
+
+
+    """
     def __init__(self, filepath, **kwargs):
-        self.hdf = pd.HDFStore(filepath)
+        """Flat HDF5 Store on file system
+
+        :param filepath: e.g. /tmp/mystore.h5
+        :param kwargs:
+        """
+        self.hdf = pd.HDFStore(filepath, **kwargs)
 
     def put(self, data):
         """store data in a pandas hdf5 store"""
@@ -23,6 +45,7 @@ class FlatHDFDataStore():
             df = data.df
         self.hdf.put('{}/metadata'.format(data.uuid), data.metadata.df, format='fixed', data_columns=True)
         self.hdf.put('{}/table'.format(data.uuid), df, format='fixed', data_columns=True)
+        self.hdf.put('{}/description'.format(data.uuid), data.description_to_df(), format='fixed', data_columns=True)
 
     def keys(self):
         return [x.split("/")[1] for x in self.hdf.keys() if "metadata" in x]
@@ -54,11 +77,14 @@ class FlatHDFDataStore():
             return None
         metadata_path = "/{}/metadata".format(uuid)
         table_path = "/{}/table".format(uuid)
+        description_path = "/{}/description".format(uuid)
         df_metadata = self.hdf.get(metadata_path)
         df_table = self.hdf.get(table_path)
+        df_description = self.hdf.get(description_path)
         metadata = Metadata.from_dataframe(df_metadata)
         # logger.debug("hdf {}".format(metadata.get("!sdata_uuid").value))
         data = Data(metadata=metadata, table=df_table)
+        data.description_from_df(df_description)
         return data
 
     def close(self):
