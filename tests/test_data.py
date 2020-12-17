@@ -91,6 +91,15 @@ ende"""
     assert data.description == text1
     assert data.description != text2
 
+def test_project():
+    project = "my_project_id"
+    data = sdata.Data(name="data",
+                      uuid="38b26864e7794f5182d38459bab8584d",
+                      description="data for a project",
+                      project=project)
+    assert data.project == project
+
+
 if __name__ == '__main__':
     test_data()
     test_group()

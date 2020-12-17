@@ -50,6 +50,7 @@ class Data(object):
     SDATA_MTIME = "!sdata_mtime"
     SDATA_PARENT = "!sdata_parent"
     SDATA_CLASS = "!sdata_class"
+    SDATA_PROJECT = "!sdata_project"
 
     def __init__(self, **kwargs):
         """create Data object
@@ -124,9 +125,7 @@ class Data(object):
         self.table = kwargs.get("table", None)
         self._description = ""
         self.description = kwargs.get("description", "")
-
-
-
+        self.project = kwargs.get("project", "")
 
     def update_mtime(self):
         """update modification time
@@ -288,6 +287,21 @@ class Data(object):
             self.metadata.set_attr(self.SDATA_NAME, str(value)[:256])
 
     name = property(fget=_get_name, fset=_set_name, doc="name of the object")
+
+    def _get_project(self):
+        return self.metadata.get(self.SDATA_PROJECT).value
+
+    def _set_project(self, value):
+        if isinstance(value, str):
+            try:
+                self.metadata.set_attr(self.SDATA_PROJECT, str(value)[:256])
+            except ValueError as exp:
+                logger.warning("data.project: %s" % exp)
+        else:
+            # self._name = str(value)[:256]
+            self.metadata.set_attr(self.SDATA_PROJECT, str(value)[:256])
+
+    project = property(fget=_get_project, fset=_set_project, doc="name of the project")
 
     def _get_description(self):
         return self._description
