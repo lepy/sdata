@@ -150,7 +150,7 @@ def test_testprogram():
                      uuid=tpuuid,)
     print(tp.metadata.df.value)
     assert tp.uuid == tpuuid
-    assert tp.uuid_testprogram == tpuuid1
+    assert tp.uuid_testprogram == ""
     assert tp.name == tpname
     assert tp.name_testprogram == "N.N."
 
