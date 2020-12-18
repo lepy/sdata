@@ -44,3 +44,4 @@ def test_empty_attribute():
     print(a)
     assert a.name == "nan"
     assert a.value == ""
+

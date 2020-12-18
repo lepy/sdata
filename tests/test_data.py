@@ -100,6 +100,29 @@ def test_project():
     assert data.project == project
 
 
+def test_uuid():
+    u0 = "38b26864e7794f5182d38459bab8584d"
+    print(u0)
+    data = sdata.Data(name="data", uuid=u0)
+    assert data.uuid == u0
+
+    u = uuid.UUID("38b26864e7794f5182d38459bab8584d")
+    print(u)
+    data = sdata.Data(name="data", uuid=u)
+    assert data.uuid == u0
+
+    u = "38b26864-e779-4f51-82d3-8459bab8584d"
+    print(u)
+    data = sdata.Data(name="data", uuid=u)
+    assert data.uuid == u0
+
+    u = "38b26864-e779-4f51-82d3-8459bab8584d"
+    print(u)
+    data = sdata.Data(name="data")
+    data.uuid = u
+    assert data.uuid == u0
+
+
 if __name__ == '__main__':
     test_data()
     test_group()

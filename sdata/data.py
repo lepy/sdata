@@ -23,7 +23,11 @@ import hashlib
 import base64
 import requests
 from tabulate import tabulate
-from io import BytesIO, StringIO
+
+if sys.version_info < (3, 0):
+    from StringIO import StringIO
+else:
+    from io import BytesIO, StringIO
 
 class Sdata_Name_Exeption(Exception): pass
 class Sdata_Uuid_Exeption(Exception): pass
@@ -83,7 +87,7 @@ class Data(object):
         # set default sdata attributes
         self.metadata.add(self.SDATA_VERSION, __version__, dtype="str", description="sdata package version")
         self.metadata.add(self.SDATA_NAME, "N.N.", dtype="str", description="name of the data object")
-        self.metadata.add(self.SDATA_UUID, uuid.uuid4(), dtype="str", description="Universally Unique Identifier")
+        self.metadata.add(self.SDATA_UUID, uuid.uuid4().hex, dtype="str", description="Universally Unique Identifier")
         self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="creation date")
         self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str", description="modification date")
         self.metadata.add(self.SDATA_PARENT, "", dtype="str", description="uuid of the parent sdata object")
@@ -111,9 +115,12 @@ class Data(object):
             except Sdata_Uuid_Exeption as exp:
                 if self.auto_correct is True:
                     logger.warning("got invald uuid -> generate a new uuid")
-                    self.uuid = uuid.uuid4()
+                    self.uuid = uuid.uuid4().hex
                 else:
                     raise
+        # else:
+        #     self.uuid = uuid.uuid4().hex
+
 
         if kwargs.get("name") is not None:
             self.name = kwargs.get("name")
