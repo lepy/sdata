@@ -30,21 +30,23 @@ class TestProgram(Data):
         Data.__init__(self, **kwargs)
         self.metadata.add(name=self.SDATA_CLASS, value=self.__class__.__name__, dtype="str")
 
-        if kwargs.get("uuid_testprogram") is not None:
-            try:
-                self.uuid_testprogram = kwargs.get("uuid_testprogram") # store given uuid str or generate a new uuid
-            except Sdata_Uuid_Exeption as exp:
-                if self.auto_correct is True:
-                    logger.warning("got invald uuid -> generate a new uuid")
-                    self.uuid_testprogram = uuid.uuid4().hex
-                else:
-                    raise
-
-        if kwargs.get("name_testprogram") is not None:
-            self.name_testprogram = kwargs.get("name_testprogram")
+        # if kwargs.get("uuid_testprogram") is not None:
+        #     try:
+        #         self.uuid_testprogram = kwargs.get("uuid_testprogram") # store given uuid str or generate a new uuid
+        #     except Sdata_Uuid_Exeption as exp:
+        #         if self.auto_correct is True:
+        #             logger.warning("got invald uuid -> generate a new uuid")
+        #             self.uuid_testprogram = uuid.uuid4().hex
+        #         else:
+        #             raise
 
         self.name_testprogram = self.name
         self.uuid_testprogram = self.uuid
+
+        if kwargs.get("name_testprogram") is not None:
+            self._set_name(kwargs.get("name_testprogram"))
+        if kwargs.get("uuid_testprogram") is not None:
+            self._set_uuid(kwargs.get("uuid_testprogram"))
 
     def gen_testseries(self, **kwargs):
         """generate TestSeries instance
@@ -81,23 +83,43 @@ class TestSeries(TestProgram):
         self.metadata.add(name=self.SDATA_TESTPROGRAM_UUID, value="", dtype="str", description="uuid of the testprogram")
         self.metadata.add(name=self.SDATA_TESTTYPE, value="", dtype="str", description="test type")
 
-        if kwargs.get("uuid_testseries") is not None:
-            try:
-                self.uuid_testseries = kwargs.get("uuid_testseries") # store given uuid str or generate a new uuid
-            except Sdata_Uuid_Exeption as exp:
-                if self.auto_correct is True:
-                    logger.warning("got invald uuid -> generate a new uuid")
-                    self.uuid_testseries = uuid.uuid4().hex
-                else:
-                    raise
+        # if kwargs.get("name_testprogram") is not None:
+        #     self.name_testprogram = kwargs.get("name_testprogram")
+        #
+        # if kwargs.get("uuid_testseries") is not None:
+        #     try:
+        #         self.uuid_testseries = kwargs.get("uuid_testseries") # store given uuid str or generate a new uuid
+        #     except Sdata_Uuid_Exeption as exp:
+        #         if self.auto_correct is True:
+        #             logger.warning("got invald uuid -> generate a new uuid")
+        #             self.uuid_testseries = uuid.uuid4().hex
+        #         else:
+        #             raise
 
         self.uuid_testseries = self.uuid
         self.name_testseries = self.name
 
-        if kwargs.get("name_testseries") is not None:
-            self.name_testseries = kwargs.get("name_testseries")
+        # if kwargs.get("name") is not None:
+        #     self._set_name(kwargs.get("name"))
+        # if kwargs.get("uuid") is not None:
+        #     self._set_uuid(kwargs.get("uuid"))
+
+        # if kwargs.get("name_testseries") is not None:
+        #     self.name_testseries = kwargs.get("name_testseries")
+
         if kwargs.get("testtype") is not None:
-            self.testtype = kwargs.get("testtype")
+            self._set_testtype(kwargs.get("testtype"))
+        if kwargs.get("name_testseries") is not None:
+            self._set_name(kwargs.get("name_testseries"))
+        if kwargs.get("uuid_testseries") is not None:
+            self._set_uuid(kwargs.get("uuid_testseries"))
+        if kwargs.get("name_testprogram") is not None:
+            self._set_name_testprogram(kwargs.get("name_testprogram"))
+        if kwargs.get("uuid_testprogram") is not None:
+            self._set_uuid_testprogram(kwargs.get("uuid_testprogram"))
+
+    uuid_testseries = property(fget=TestProgram._get_uuid, fset=TestProgram._set_uuid, doc="uuid of the testseries")
+    name_testseries = property(fget=TestProgram._get_name, fset=TestProgram._set_name, doc="name of the testseries")
 
     def _get_uuid_testprogram(self):
         return self.metadata.get(self.SDATA_TESTPROGRAM_UUID).value

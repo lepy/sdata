@@ -150,17 +150,17 @@ def test_test():
 
 def test_testseries():
     tpname = "ALU"
-    tpuuid = "d4e97cedca6238bea16732ce88c1922f"
+    tpuuid = "a00000edca6238bea16732ce88c1922f"
     tsname = "ALU_UT"
-    tsuuid = "a1e97cedca6238bea16732ce88c19220"
-    ts = TestSeries(name="testseries A1")
+    tsuuid = "b111111dca6238bea16732ce88c19220"
+    ts = TestSeries(name=tsname)
     print(ts)
 
-    assert ts.name == "testseries A1"
-    assert ts.uuid_testseries == ""
-    assert ts.name_testseries == "N.N."
+    assert ts.name == tsname
+    assert ts.uuid_testseries == ts.uuid
+    assert ts.name_testseries == ts.name
 
-    ts = TestSeries(name="testseries A1",
+    ts = TestSeries(name=tsname,
                     uuid_testseries=tsuuid,
                     name_testseries=tsname,
                     uuid_testprogram=tpuuid,
@@ -168,7 +168,9 @@ def test_testseries():
                     )
     print(ts)
 
-    assert ts.name == "testseries A1"
+    print(ts.metadata.df.value)
+
+    assert ts.name == tsname
     assert ts.uuid_testseries == tsuuid
     assert ts.name_testseries == tsname
     assert ts.uuid_testprogram == tpuuid
@@ -177,17 +179,15 @@ def test_testseries():
 
 def test_testprogram():
     tpname = "ALU"
-    tpname1 = "ALU1"
-    tpuuid = "d4e97cedca6238bea16732ce88c1922f"
-    tpuuid1 = "d4e97cedca6238bea16732ce88c19221"
+    tpuuid = "a0000000ca6238bea16732ce88c1922f"
 
     tp = TestProgram(name=tpname,
                      uuid=tpuuid,)
     print(tp.metadata.df.value)
     assert tp.uuid == tpuuid
-    assert tp.uuid_testprogram == ""
+    assert tp.uuid_testprogram == tpuuid
     assert tp.name == tpname
-    assert tp.name_testprogram == "N.N."
+    assert tp.name_testprogram == tpname
 
     tp = TestProgram(name=tpname,
                      uuid=tpuuid,
@@ -195,23 +195,23 @@ def test_testprogram():
     print(tp.metadata.df.value)
     assert tp.uuid == tpuuid
     assert tp.name == tpname
-    assert tp.uuid_testprogram == tpuuid1
-    assert tp.name_testprogram == tpname1
+    assert tp.uuid_testprogram == tpuuid
+    assert tp.name_testprogram == tpname
 
     tsname = "Testseries S1"
-    tsuuid = "a4e97cedca6238bea16732ce88c1922f"
+    tsuuid = "b11111111a6238bea16732ce88c19221"
     ts = tp.gen_testseries(name=tsname, uuid=tsuuid)
     print(ts)
     assert ts.name == tsname
-    assert ts.uuid_testprogram == tpuuid1
-    assert ts.name_testprogram == tpname1
+    assert ts.uuid_testprogram == tpuuid
+    assert ts.name_testprogram == tpname
 
-    tname1 = "Test S1-001"
+    tname = "Test S1-001"
     tuuid = "b4e97cedca6238bea16732ce88c19221"
-    t = ts.gen_testseries(name=tname1,
+    t = ts.gen_test(name=tname,
                           uuid=tuuid)
     print(ts)
-    assert t.name == tname1
+    assert t.name == tname
     assert t.uuid_testprogram == tpuuid
     assert t.name_testprogram == tpname
     assert t.uuid_testseries == tsuuid
