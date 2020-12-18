@@ -205,6 +205,23 @@ class Test(TestSeries):
         self.metadata.add(name=self.SDATA_TESTSERIES_NAME, value="N.N.", dtype="str")
         self.metadata.add(name=self.SDATA_TESTSERIES_UUID, value="", dtype="str")
 
+        if kwargs.get("name") is not None:
+            self._set_name(kwargs.get("name"))
+        else:
+            self._set_name("N.N.")
+        if kwargs.get("testtype") is not None:
+            # print("testtype", kwargs.get("testtype"), self._set_testtype)
+            self._set_testtype(kwargs.get("testtype"))
+        if kwargs.get("name_testseries") is not None:
+            self._set_name_testseries(kwargs.get("name_testseries"))
+        if kwargs.get("uuid_testseries") is not None:
+            self._set_uuid_testseries(kwargs.get("uuid_testseries"))
+        if kwargs.get("name_testprogram") is not None:
+            self._set_name_testprogram(kwargs.get("name_testprogram"))
+        if kwargs.get("uuid_testprogram") is not None:
+            # print("uuid_testprogram", kwargs.get("uuid_testprogram"), self._set_uuid_testprogram)
+            self._set_uuid_testprogram(kwargs.get("uuid_testprogram"))
+
     def _get_uuid_testseries(self):
         return self.metadata.get(self.SDATA_TESTSERIES_UUID).value
 
@@ -237,6 +254,21 @@ class Test(TestSeries):
             self.metadata.set_attr(self.SDATA_TESTSERIES_NAME, str(value)[:256])
 
     name_testseries = property(fget=_get_name_testseries, fset=_set_name_testseries, doc="name of the testseries")
+
+    def _get_testtype(self):
+        return self.metadata.get(self.SDATA_TESTTYPE).value
+
+    def _set_testtype(self, value):
+        if isinstance(value, str):
+            try:
+                self.metadata.set_attr(self.SDATA_TESTTYPE, str(value)[:256])
+            except ValueError as exp:
+                logger.warning("data.testtype: %s" % exp)
+        else:
+            self.metadata.set_attr(self.SDATA_TESTTYPE, str(value)[:256])
+
+    testtype = property(fget=_get_testtype, fset=_set_testtype, doc="testtype of the testseries")
+
 
 
 __all__ = []
