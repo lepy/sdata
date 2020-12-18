@@ -61,6 +61,10 @@ class TestProgram(Data):
         ts.metadata.add(self.SDATA_PARENT, self.uuid)
         return ts
 
+    @property
+    def longname(self):
+        return "_".join([self.name_testprogram])
+
 class TestSeries(TestProgram):
     """A sdata TestSeries
 
@@ -188,6 +192,11 @@ class TestSeries(TestProgram):
 
         return t
 
+    @property
+    def longname(self):
+        return "_".join([self.name_testprogram, self.name])
+
+
 class Test(TestSeries):
     """A sdata Test
 
@@ -268,6 +277,10 @@ class Test(TestSeries):
             self.metadata.set_attr(self.SDATA_TESTTYPE, str(value)[:256])
 
     testtype = property(fget=_get_testtype, fset=_set_testtype, doc="testtype of the testseries")
+
+    @property
+    def longname(self):
+        return "_".join([self.name_testprogram, self.name_testseries, self.name])
 
 
 
