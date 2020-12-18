@@ -114,7 +114,7 @@ class Data(object):
                 self.uuid = kwargs.get("uuid") # store given uuid str or generate a new uuid
             except Sdata_Uuid_Exeption as exp:
                 if self.auto_correct is True:
-                    logger.warning("got invald uuid -> generate a new uuid")
+                    logger.warning("got invalid uuid -> generate a new uuid")
                     self.uuid = uuid.uuid4().hex
                 else:
                     raise

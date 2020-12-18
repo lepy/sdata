@@ -8,13 +8,13 @@ modulepath = os.path.dirname(__file__)
 sys.path.insert(0, os.path.join(modulepath, "..", "..", "src"))
 
 import sdata
-from sdata.experiments import TestProgram
+from sdata.experiments import TestProgram, TestSeries, Test
 import pandas as pd
 import numpy as np
 
 
 def _gen_uuids(n=100):
-    us = [uuid.uuid4().hex for i in xrange(n)]
+    us = [uuid.uuid4().hex for i in range(n)]
     print(us)
 
 
@@ -120,31 +120,66 @@ def gen_dummy_testprogram():
     return tp
 
 def test_test():
-    t = sdata.Data(name="test 001")
+    tpname = "ALU"
+    tpuuid = "d4e97cedca6238bea16732ce88c1922f"
+    tsname = "ALU_UT"
+    tsuuid = "a1e97cedca6238bea16732ce88c19220"
+    tname = "test A1-001"
+    t = Test(name=tname)
     print(t)
-    assert t.name == "test 001"
-    t.to_folder("/tmp/mytest")
+
+    assert t.name == tname
+    assert t.uuid_testseries == ""
+    assert t.name_testseries == "N.N."
+
+    t = Test(name=tname,
+            uuid_testseries=tsuuid,
+            name_testseries=tsname,
+            uuid_testprogram=tpuuid,
+            name_testprogram=tpname,
+            )
+    print(t)
+
+    assert t.name == tname
+    assert t.uuid_testseries == tsuuid
+    assert t.name_testseries == tsname
+    assert t.uuid_testprogram == tpuuid
+    assert t.name_testprogram == tpname
+
 
 
 def test_testseries():
-    ts = sdata.Data(name="testseries A1")
+    tpname = "ALU"
+    tpuuid = "d4e97cedca6238bea16732ce88c1922f"
+    tsname = "ALU_UT"
+    tsuuid = "a1e97cedca6238bea16732ce88c19220"
+    ts = TestSeries(name="testseries A1")
     print(ts)
+
     assert ts.name == "testseries A1"
+    assert ts.uuid_testseries == ""
+    assert ts.name_testseries == "N.N."
+
+    ts = TestSeries(name="testseries A1",
+                    uuid_testseries=tsuuid,
+                    name_testseries=tsname,
+                    uuid_testprogram=tpuuid,
+                    name_testprogram=tpname,
+                    )
+    print(ts)
+
+    assert ts.name == "testseries A1"
+    assert ts.uuid_testseries == tsuuid
+    assert ts.name_testseries == tsname
+    assert ts.uuid_testprogram == tpuuid
+    assert ts.name_testprogram == tpname
+
 
 def test_testprogram():
     tpname = "ALU"
     tpname1 = "ALU1"
     tpuuid = "d4e97cedca6238bea16732ce88c1922f"
     tpuuid1 = "d4e97cedca6238bea16732ce88c19221"
-    tp = TestProgram(name=tpname,
-                     name_testprogram=tpname1,
-                     uuid=tpuuid,
-                     uuid_testprogram=tpuuid1)
-    print(tp.metadata.df.value)
-    assert tp.uuid == tpuuid
-    assert tp.uuid_testprogram == tpuuid1
-    assert tp.name == tpname
-    assert tp.name_testprogram == tpname1
 
     tp = TestProgram(name=tpname,
                      uuid=tpuuid,)
@@ -153,6 +188,35 @@ def test_testprogram():
     assert tp.uuid_testprogram == ""
     assert tp.name == tpname
     assert tp.name_testprogram == "N.N."
+
+    tp = TestProgram(name=tpname,
+                     uuid=tpuuid,
+                )
+    print(tp.metadata.df.value)
+    assert tp.uuid == tpuuid
+    assert tp.name == tpname
+    assert tp.uuid_testprogram == tpuuid1
+    assert tp.name_testprogram == tpname1
+
+    tsname = "Testseries S1"
+    tsuuid = "a4e97cedca6238bea16732ce88c1922f"
+    ts = tp.gen_testseries(name=tsname, uuid=tsuuid)
+    print(ts)
+    assert ts.name == tsname
+    assert ts.uuid_testprogram == tpuuid1
+    assert ts.name_testprogram == tpname1
+
+    tname1 = "Test S1-001"
+    tuuid = "b4e97cedca6238bea16732ce88c19221"
+    t = ts.gen_testseries(name=tname1,
+                          uuid=tuuid)
+    print(ts)
+    assert t.name == tname1
+    assert t.uuid_testprogram == tpuuid
+    assert t.name_testprogram == tpname
+    assert t.uuid_testseries == tsuuid
+    assert t.name_testseries == tsname
+
 
 def atest_testprogram():
     tp = gen_dummy_testprogram()
