@@ -109,17 +109,7 @@ class Data(object):
 
         logger.debug("sdata: set auto_correct={}".format(self.auto_correct))
 
-        if kwargs.get("uuid") is not None:
-            try:
-                self.uuid = kwargs.get("uuid") # store given uuid str or generate a new uuid
-            except Sdata_Uuid_Exeption as exp:
-                if self.auto_correct is True:
-                    logger.warning("got invalid uuid -> generate a new uuid")
-                    self.uuid = uuid.uuid4().hex
-                else:
-                    raise
-        # else:
-        #     self.uuid = uuid.uuid4().hex
+
 
 
         if kwargs.get("name") is not None:
@@ -133,6 +123,29 @@ class Data(object):
         self._description = ""
         self.description = kwargs.get("description", "")
         self.project = kwargs.get("project", "")
+
+        if kwargs.get("uuid") is not None:
+            try:
+                self._set_uuid(kwargs.get("uuid")) # store given uuid str or generate a new uuid
+            except Sdata_Uuid_Exeption as exp:
+                if self.auto_correct is True:
+                    logger.warning("got invalid uuid -> generate a new uuid")
+                    self._set_uuid(uuid.uuid4().hex)
+                else:
+                    raise
+        # else:
+        #     self.uuid = uuid.uuid4().hex
+
+    def __eq__(self, other):
+        """compare Data checksum
+        
+        :param other: sdata.Data objecet
+        :return: True or False
+        """
+        if not isinstance(other, self.__class__):
+            logger.debug("you should not compare {} with {}!".format(self.__class__.__name__, other.__class__.__name__))
+            return False
+        return self.sha3_256 == other.sha3_256
 
     def update_mtime(self):
         """update modification time
