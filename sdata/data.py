@@ -87,9 +87,7 @@ class Data(object):
         # set default sdata attributes
         self.metadata.add(self.SDATA_VERSION, __version__, dtype="str", description="sdata package version")
         self.metadata.add(self.SDATA_NAME, "N.N.", dtype="str", description="name of the data object")
-        self.metadata.add(self.SDATA_UUID, uuid.uuid4().hex, dtype="str", description="Universally Unique Identifier")
-        self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="creation date")
-        self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str", description="modification date")
+        self.metadata.add(self.SDATA_UUID, "", dtype="str", description="Universally Unique Identifier")
         self.metadata.add(self.SDATA_PARENT, "", dtype="str", description="uuid of the parent sdata object")
         self.metadata.add(self.SDATA_CLASS, self.__class__.__name__, dtype="str", description="sdata class")
 
@@ -130,11 +128,18 @@ class Data(object):
             except Sdata_Uuid_Exeption as exp:
                 if self.auto_correct is True:
                     logger.warning("got invalid uuid -> generate a new uuid")
-                    self._set_uuid(uuid.uuid4().hex)
+                    new_uuid = uuid_from_str(self.sha3_256)
+                    self._set_uuid(new_uuid.hex)
                 else:
                     raise
-        # else:
-        #     self.uuid = uuid.uuid4().hex
+        else:
+            new_uuid = uuid_from_str(self.sha3_256)
+            self._set_uuid(new_uuid.hex)
+
+        # after uuid generation!
+        self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="creation date")
+        self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str", description="modification date")
+
 
     def __eq__(self, other):
         """compare Data checksum
