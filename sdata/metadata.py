@@ -9,6 +9,7 @@ import json
 import os
 import hashlib
 import re
+import copy
 from sdata.contrib.sortedcontainers.sorteddict import SortedDict
 
 def extract_name_unit(value):
@@ -573,6 +574,11 @@ class Metadata(object):
         :return: list of Attribute items (keys, values)
         """
         return list(self._attributes.items())
+
+
+    def copy(self):
+        """returns a deep copy"""
+        return copy.deepcopy(self)
 
     @property
     def size(self):

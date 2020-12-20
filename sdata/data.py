@@ -90,6 +90,8 @@ class Data(object):
         self.metadata.add(self.SDATA_UUID, "", dtype="str", description="Universally Unique Identifier")
         self.metadata.add(self.SDATA_PARENT, "", dtype="str", description="uuid of the parent sdata object")
         self.metadata.add(self.SDATA_CLASS, self.__class__.__name__, dtype="str", description="sdata class")
+        self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="creation date")
+        self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str", description="modification date")
 
         metadata = kwargs.get("metadata")
         if metadata is not None:
@@ -122,24 +124,47 @@ class Data(object):
         self.description = kwargs.get("description", "")
         self.project = kwargs.get("project", "")
 
-        if kwargs.get("uuid") is not None:
+        print(["uuid info", kwargs.get("uuid"), self.metadata.get(self.SDATA_UUID).value])
+        if (kwargs.get("uuid")=="" or kwargs.get("uuid") is not None) and not self.metadata.get(self.SDATA_UUID).value and kwargs.get("uuid")!="hash":
+            logger.info("uuid in kwargs")
             try:
                 self._set_uuid(kwargs.get("uuid")) # store given uuid str or generate a new uuid
             except Sdata_Uuid_Exeption as exp:
                 if self.auto_correct is True:
                     logger.warning("got invalid uuid -> generate a new uuid")
-                    new_uuid = uuid_from_str(self.sha3_256)
-                    self._set_uuid(new_uuid.hex)
+                    self._set_uuid(uuid.uuid4())
                 else:
                     raise
-        else:
-            new_uuid = uuid_from_str(self.sha3_256)
+        elif (kwargs.get("uuid")=="" or kwargs.get("uuid") is None) and self.metadata.get(self.SDATA_UUID).value != "":
+            logger.info("uuid in metadata")
+            pass
+        elif kwargs.get("uuid")=="hash":
+            sha3_256 = self.gen_uuid_from_state()
+            logger.info("gen uuid from sha3_256 {}".format(sha3_256))
+
+            new_uuid = uuid_from_str(sha3_256)
             self._set_uuid(new_uuid.hex)
+        else:
+            logger.info("uuid new")
+            self._set_uuid(uuid.uuid4())
 
-        # after uuid generation!
-        self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="creation date")
-        self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str", description="modification date")
+    def gen_uuid_from_state(self):
+        """generate the same uuid for the same data
 
+        :return: uuid
+        """
+        s = hashlib.sha3_256()
+        metadata = self.metadata.copy()
+        metadata.attributes.pop(self.SDATA_UUID)
+        metadata.attributes.pop(self.SDATA_MTIME)
+        metadata.attributes.pop(self.SDATA_CTIME)
+        metadatastr = metadata.to_json().encode(errors="replace")
+        s.update(metadatastr)
+        if self.table is not None:
+            tablestr = self.table.to_json().encode(errors="replace")
+            s.update(tablestr)
+        s.update(self.description.encode(errors="replace"))
+        return s.hexdigest()
 
     def __eq__(self, other):
         """compare Data checksum
