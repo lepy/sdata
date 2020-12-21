@@ -106,11 +106,7 @@ class Data(object):
             self.auto_correct = True
         else:
             self.auto_correct = False
-
-        logger.debug("sdata: set auto_correct={}".format(self.auto_correct))
-
-
-
+        # logger.debug("sdata: set auto_correct={}".format(self.auto_correct))
 
         if kwargs.get("name") is not None:
             self.name = kwargs.get("name")
@@ -124,9 +120,8 @@ class Data(object):
         self.description = kwargs.get("description", "")
         self.project = kwargs.get("project", "")
 
-        print(["uuid info", kwargs.get("uuid"), self.metadata.get(self.SDATA_UUID).value])
         if (kwargs.get("uuid")=="" or kwargs.get("uuid") is not None) and not self.metadata.get(self.SDATA_UUID).value and kwargs.get("uuid")!="hash":
-            logger.info("uuid in kwargs")
+            # logger.info("uuid in kwargs")
             try:
                 self._set_uuid(kwargs.get("uuid")) # store given uuid str or generate a new uuid
             except Sdata_Uuid_Exeption as exp:
@@ -136,16 +131,15 @@ class Data(object):
                 else:
                     raise
         elif (kwargs.get("uuid")=="" or kwargs.get("uuid") is None) and self.metadata.get(self.SDATA_UUID).value != "":
-            logger.info("uuid in metadata")
+            # logger.info("uuid in metadata")
             pass
         elif kwargs.get("uuid")=="hash":
             sha3_256 = self.gen_uuid_from_state()
-            logger.info("gen uuid from sha3_256 {}".format(sha3_256))
-
+            # logger.info("gen uuid from sha3_256 {}".format(sha3_256))
             new_uuid = uuid_from_str(sha3_256)
             self._set_uuid(new_uuid.hex)
         else:
-            logger.info("uuid new")
+            # logger.info("uuid new")
             self._set_uuid(uuid.uuid4())
 
     def gen_uuid_from_state(self):
@@ -571,7 +565,16 @@ class Data(object):
     @property
     def osname(self):
         """:returns: os compatible name (ascii?)"""
-        return self.name.replace(" ", "_").lower()
+        return self.asciiname.lower()
+
+    @property
+    def asciiname(self):
+        name = copy.copy(self.name)
+        mapper = [("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("Ä", "Ae"), ("Ö", "Oe"), ("Ü", "Ue"),
+                  ("ß", "sz"), (" ", "_"), ("/", "_"), ("\\", "_")]
+        for k, v in mapper:
+            name = name.replace(k, v)
+        return name.encode('ascii', 'replace').decode("ascii")
 
     def verify_attributes(self):
         """check mandatory attributes"""

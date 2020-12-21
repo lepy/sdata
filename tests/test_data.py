@@ -122,6 +122,10 @@ def test_uuid():
     data.uuid = u
     assert data.uuid == u0
 
+def test_asciiname():
+    assert sdata.Data(name="ö-ü-ä-Ö-Ü-Ä-?- -\\-/").osname == 'oe-ue-ae-oe-ue-ae-?-_-_-_'
+
+    assert sdata.Data(name="ö-ü-ä-Ö-Ü-Ä-?- -\\-/").asciiname == 'oe-ue-ae-Oe-Ue-Ae-?-_-_-_'
 
 if __name__ == '__main__':
     test_data()
