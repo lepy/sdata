@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import shutil
 import copy
-from sdata.metadata import Metadata, Attribute, MetadataSchema, AttributeSchema, extract_name_unit
+from sdata.metadata import Metadata, Attribute, extract_name_unit
 from sdata.timestamp import now_utc_str, now_local_str, today_str
 import inspect
 import json
