@@ -65,22 +65,23 @@ class Attribute(object):
         :param description
         :param dimension e.g. force, length, strain, count, energy
         :param unit
-
+        :param label
+        :param required
         """
         self._name = None
         self._value = None
         self._unit = "-"
-        self._dimension = kwargs.get("dimension", "?")
         self._description = ""
         self._label = ""
         self._dtype = None
         self.name = name
-        self.dtype = kwargs.get("dtype", None)
-        self.description = kwargs.get("description", "")
-        self.label = kwargs.get("label", "")
-        self.unit = kwargs.get("unit", "-")
+        self._set_dtype(kwargs.get("dtype", None))
+        self._set_description(kwargs.get("description", ""))
+        self._set_label(kwargs.get("label", ""))
+        self._set_unit(kwargs.get("unit", "-"))
+        self._set_required(kwargs.get("required", False))
         # set dtype first!
-        self.value = value
+        self._set_value(value)
 
     def _get_name(self):
         return self._name
@@ -198,51 +199,6 @@ s
 
     unit = property(fget=_get_unit, fset=_set_unit, doc="Attribute unit")
 
-    def to_dict(self):
-        """:returns dict of attribute items"""
-        return {'name': self.name,
-                'value': self.value,
-                'unit': self.unit,
-                'dtype': self.dtype,
-                'description': self.description,
-                'label': self.label,
-                }
-
-    def to_list(self):
-        return [self.name, self.value, self.unit, self.dtype, self.description, self.label]
-
-    def to_csv(self, prefix="", sep=",", quote=None):
-        """export Attribute to csv
-
-        :param prefix:
-        :param sep:
-        :param quote:
-        :return:
-        """
-        xs = []
-        for x in self.to_list():
-            if x is None:
-                xs.append("")
-            else:
-                xs.append(str(x))
-        return "{}{}".format(prefix, sep.join(xs))
-
-    def __str__(self):
-        return "(Attr'%s':%s(%s))" % (self.name, self.value, self.dtype)
-
-    __repr__ = __str__
-
-
-class AttributeSchema(Attribute):
-    """Attribute class"""
-
-    DTYPES = {'float': float, 'int': int, 'str': str, 'timestamp': TimeStamp, "bool": bool}
-
-    def __init__(self, name, value, **kwargs):
-        Attribute.__init__(self, name, value, **kwargs)
-        self._required = False
-        self.required = kwargs.get("required", False)
-
     def _get_required(self):
         return self._required
 
@@ -268,11 +224,27 @@ class AttributeSchema(Attribute):
     def to_list(self):
         return [self.name, self.value, self.unit, self.dtype, self.description, self.label, self.required]
 
+    def to_csv(self, prefix="", sep=",", quote=None):
+        """export Attribute to csv
+
+        :param prefix:
+        :param sep:
+        :param quote:
+        :return:
+        """
+        xs = []
+        for x in self.to_list():
+            if x is None:
+                xs.append("")
+            else:
+                xs.append(str(x))
+        return "{}{}".format(prefix, sep.join(xs))
 
     def __str__(self):
-        return "(AttrSchema'%s':%s(%s))" % (self.name, self.required, self.dtype)
+        return "(Attr'%s':%s(%s))" % (self.name, self.value, self.dtype)
 
     __repr__ = __str__
+
 
 class Metadata(object):
     """Metadata container class
@@ -285,7 +257,7 @@ class Metadata(object):
         * type (int, str, float, bool, timestamp)
         """
 
-    ATTRIBUTEKEYS = ["name", "value", "dtype", "unit", "description", "label"]
+    ATTRIBUTEKEYS = ["name", "value", "dtype", "unit", "description", "label", "required"]
 
     def __init__(self, **kwargs):
         """Metadata class
@@ -321,13 +293,18 @@ class Metadata(object):
         attrs = [(a.name, a) for a in self.attributes.values() if a.name.startswith("!sdata")]
         return SortedDict(attrs)
 
+    @property
+    def required_attributes(self):
+        required_attributes = [(attr.name, attr) for attr in self.attributes.values() if attr.required is True]
+        return SortedDict(required_attributes)
+
     def set_attr(self, name="N.N.", value=None, **kwargs):
         """set Attribute"""
         if isinstance(name, Attribute):
             attr = name
         else:
             attr = self.get_attr(name) or Attribute(name, value, **kwargs)
-        for key in ["dtype", "unit", "description", "label"]:
+        for key in ["dtype", "unit", "description", "label", "required"]:
             if key in kwargs:
                 setattr(attr, key, kwargs.get(key))
         if value is not None:
@@ -355,7 +332,7 @@ class Metadata(object):
         False -> 'bool'
 
         :param value:
-        :return: str ['int', 'float', 'bool', 'str']
+        :return: dtype(value), dtype ['int', 'float', 'bool', 'str']
         """
         if value.__class__.__name__ in ["int", "float", "bool"]:
             return value, value.__class__.__name__
@@ -374,24 +351,26 @@ class Metadata(object):
         return str(value), "str"
 
     def update_from_dict(self, d):
-        """set attributes from dict"""
+        """set attributes from dict
+
+        :param d: dict
+        :return:
+        """
         for k, v in d.items():
             value, dtype = self.guess_dtype_from_value(v)
             if dtype in ["float", "int", "bool"]:
-                v = {"name":k, "value":value, "dtype":dtype, "unit":"", "description":"", "label":""}
+                v = {"name":k, "value":value, "dtype":dtype, "unit":"", "description":"", "label":"", "required":False}
             elif isinstance(v, (str,)):
-                v = {"name":k, "value":v, "dtype":"str", "unit":"", "description":"", "label":""}
+                v = {"name":k, "value":v, "dtype":"str", "unit":"", "description":"", "label":"", "required":False}
             elif hasattr(v, "keys"):
-
                 dtype = v.get("dtype", self.guess_dtype_from_value(v.get("value"))[1])
                 value = v.get("value")
-
                 v = {"name":k, "value":value, "dtype":dtype,
                      "unit":v.get("unit", ""), "description":v.get("description", ""),
-                     "label":v.get("label", "")}
+                     "label":v.get("label", ""), "required":v.get("required", False)}
             else:
                 v, dtype = self.guess_dtype_from_value(v)
-                v = {"name":k, "value":v, "dtype":dtype, "unit":"", "description":"", "label":""}
+                v = {"name":k, "value":v, "dtype":dtype, "unit":"", "description":"", "label":"", "required":False}
             self.set_attr(**v)
 
     @classmethod
@@ -651,37 +630,11 @@ class Metadata(object):
                     pass
                     # print([attr.name, attr.value, dtype, exp])
 
-class MetadataSchema(Metadata):
-    """MetadataSchema container class
+    def is_complete(self):
+        """check all required attributes"""
+        required_attributes = self.required_attributes.values()
+        for attr in required_attributes:
+            if attr.value is None or attr.value=="":
+                return False
 
-    each Metadata entry has has a
-        * name (256)
-        * value
-        * unit
-        * description
-        * type (int, str, float, bool, timestamp)
-        * label
-        * required
-        * min_value
-        * max_value
-        """
-
-    ATTRIBUTEKEYS = ["name", "value", "dtype", "unit", "description", "label", "required"]
-
-    def __init__(self, **kwargs):
-        """MetadataSchema class"""
-        Metadata.__init__(self, **kwargs)
-
-    def set_attr(self, name="N.N.", value=None, **kwargs):
-        """set AttributeSchema"""
-        if isinstance(name, AttributeSchema):
-            attr = name
-        else:
-            attr = self.get_attr(name) or AttributeSchema(name, value, **kwargs)
-        for key in ["dtype", "unit", "description", "label", "required"]:
-            if key in kwargs:
-                setattr(attr, key, kwargs.get(key))
-        if value is not None:
-            attr.value = value
-
-        self._attributes[attr.name] = attr
+        return True
