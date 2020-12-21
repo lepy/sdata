@@ -293,6 +293,11 @@ class Metadata(object):
         attrs = [(a.name, a) for a in self.attributes.values() if a.name.startswith("!sdata")]
         return SortedDict(attrs)
 
+    @property
+    def required_attributes(self):
+        required_attributes = [(attr.name, attr) for attr in self.attributes.values() if attr.required is True]
+        return SortedDict(required_attributes)
+
     def set_attr(self, name="N.N.", value=None, **kwargs):
         """set Attribute"""
         if isinstance(name, Attribute):
@@ -624,3 +629,12 @@ class Metadata(object):
                 except (ValueError, TypeError) as exp:
                     pass
                     # print([attr.name, attr.value, dtype, exp])
+
+    def is_complete(self):
+        """check all required attributes"""
+        required_attributes = self.required_attributes.values()
+        for attr in required_attributes:
+            if attr.value is None or attr.value=="":
+                return False
+
+        return True

@@ -182,6 +182,15 @@ def test_metadata_from_dict():
     assert m["bbbb"].dtype == 'bool'
     assert m["s"].dtype == 'str'
 
+def test_required():
+    m = sdata.metadata.Metadata()
+    m.set_attr("foo", "bar")
+    assert m.is_complete() is True
+    m.set_attr("r1", "bar", required=True)
+    assert m.is_complete() is True
+    m.set_attr("r2", "", required=True)
+    assert m.is_complete() is False
+
 if __name__ == '__main__':
     # test_attribute()
     # test_metadata()
