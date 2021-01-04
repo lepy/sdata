@@ -13,7 +13,7 @@ import sys
 import uuid
 import logging
 from sdata.metadata import Metadata, Attribute
-from sdata.data import Data, Schema
+from sdata.data import Data
 from sdata.blob import Blob
 # import sdata.timestamp as timestamp
 from sdata.timestamp import today_str, now_utc_str, now_local_str
@@ -35,10 +35,9 @@ def uuid_from_str(name):
 
 SDATACLS = {"Data": Data,
             "Blob": Blob,
-            "Schema": Schema,
             }
 
-__all__ = ["Data", "Blob", "Schema"]
+__all__ = ["Data", "Blob"]
 
 
 def print_classes():
