@@ -877,7 +877,7 @@ class Data(object):
 
         if d:
             if "metadata" in d.keys():
-                data.metadata = data.metadata.from_dict(d["metadata"])
+                data.metadata.update_from_dict(d["metadata"])
             else:
                 logger.error("Data.from_json: table not available")
 
