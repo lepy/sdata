@@ -300,8 +300,9 @@ class Metadata(object):
 
     def set_attr(self, name="N.N.", value=None, **kwargs):
         """set Attribute"""
+        prefix = kwargs.get("prefix", "")
         if isinstance(name, Attribute):
-            attr = name
+            attr = name # name is the Attribute!
         else:
             attr = self.get_attr(name) or Attribute(name, value, **kwargs)
         for key in ["dtype", "unit", "description", "label", "required"]:
@@ -309,7 +310,7 @@ class Metadata(object):
                 setattr(attr, key, kwargs.get(key))
         if value is not None:
             attr.value = value
-        self._attributes[attr.name] = attr
+        self._attributes[prefix + attr.name] = attr
 
     def get_attr(self, name):
         """get Attribute by name"""

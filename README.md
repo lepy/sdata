@@ -76,6 +76,7 @@ Try to paste some Excel-Data in the forms ...
 * unit
 * description
 * label
+* required
 
 ### dtypes for attributes
 

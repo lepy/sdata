@@ -34,6 +34,26 @@ def test_attribute():
     assert np.isclose(a.value, 1)
     assert a.dtype=="int"
 
+def test_prefix():
+    m = sdata.metadata.Metadata()
+    m.set_attr("foo", "bar")
+    assert m.get("foo").name == "foo"
+
+    m = sdata.metadata.Metadata()
+    m.set_attr("foo", "bar", prefix="pre/")
+    assert m.get("foo") is None
+    assert m.get("pre/foo").name == "foo"
+
+    foo = sdata.metadata.Attribute(name="foo", value="1", dtype="int", description="a int value")
+    m.set_attr(foo, prefix="pre/")
+    assert m.get("foo") is None
+    assert m.get("pre/foo").name == "foo"
+
+    foo = sdata.metadata.Attribute(name="foo", value="1", dtype="int", description="a int value")
+    m.add(foo, prefix="pre/")
+    assert m.get("foo") is None
+    assert m.get("pre/foo").name == "foo"
+
 def test_metadata():
     m = sdata.metadata.Metadata()
     m.set_attr("foo", "bar")

@@ -862,7 +862,7 @@ class Data(object):
         :param filepath:
         :return: sdata.Data
         """
-        data = cls()
+        data = cls(name="N.N.")
         if s is None and filepath is not None:
             with open(filepath, "r") as fh:
                 d = json.load(fh)
