@@ -304,10 +304,12 @@ class Metadata(object):
         if isinstance(name, Attribute):
             attr = name # name is the Attribute!
         else:
-            attr = self.get_attr(name) or Attribute(name, value, **kwargs)
+            attr = self.get_attr(prefix + name) or Attribute(name, value, **kwargs)
         for key in ["dtype", "unit", "description", "label", "required"]:
             if key in kwargs:
-                setattr(attr, key, kwargs.get(key))
+                if key in kwargs:
+                    # print("!!!", attr, key, kwargs.get(key))
+                    setattr(attr, key, kwargs.get(key))
         if value is not None:
             attr.value = value
         self._attributes[prefix + attr.name] = attr

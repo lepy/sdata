@@ -35,6 +35,8 @@ def test_attribute():
     assert a.dtype=="int"
 
 def test_prefix():
+    prefix = "pre/"
+
     m = sdata.metadata.Metadata()
     m.set_attr("foo", "bar")
     assert m.get("foo").name == "foo"
@@ -53,6 +55,33 @@ def test_prefix():
     m.add(foo, prefix="pre/")
     assert m.get("foo") is None
     assert m.get("pre/foo").name == "foo"
+    assert m.get("pre/foo").value == 1
+    assert m.get("pre/foo").description == "a int value"
+    assert m.get("pre/foo").required == False
+
+    foo2 = m.get_attr("pre/" + "foo")
+    print(foo2, foo2.description)
+
+    m.set_attr("foo", value="2", dtype="int", required=False, prefix="pre/")
+    foo4 = m.get_attr("pre/" + "foo")
+    assert m.get("pre/foo").name == "foo"
+    assert m.get("pre/foo").value == 2
+    assert m.get("pre/foo").required == False
+    assert m.get("pre/foo").description == "a int value" #not given in kwargs -> old value
+    # assert m.get("pre/foo").description == "a int value"
+
+    foo = sdata.metadata.Attribute(name="foo", value="2", dtype="int", required=True)
+    m.add(foo, prefix="pre/")
+    foo3 = m.get_attr("pre/" + "foo")
+    print(foo3, foo3.description)
+    assert m.get("foo") is None
+    assert m.get("pre/foo").name == "foo"
+    assert m.get("pre/foo").value == 2
+    assert m.get("pre/foo").required == True
+    assert m.get("pre/foo").description == "" # not given in Attribute -> empty description
+
+
+
 
 def test_metadata():
     m = sdata.metadata.Metadata()
