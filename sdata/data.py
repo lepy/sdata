@@ -56,6 +56,9 @@ class Data(object):
     SDATA_CLASS = "!sdata_class"
     SDATA_PROJECT = "!sdata_project"
 
+    SDATA_ATTRIBUTES = [SDATA_VERSION, SDATA_NAME, SDATA_UUID, SDATA_CLASS, SDATA_PARENT, SDATA_PROJECT,
+                        SDATA_CTIME, SDATA_MTIME]
+
     def __init__(self, **kwargs):
         """create Data object
 
@@ -989,15 +992,31 @@ class Data(object):
 
 
     @classmethod
+    def metadata_from_hdf5(cls, filepath, **kwargs):
+        """import sdata.Data.Metadata from hdf5
+
+        :param filepath:
+        :return: sdata.Data
+        """
+        if not os.path.exists:
+            logger.error("hdf5 file '{}' not available".format(filepath))
+            return
+
+        with pd.HDFStore(filepath, mode="r+") as hdf:
+            metadata_path = "/metadata".format(uuid)
+            df_metadata = hdf.get(metadata_path)
+            metadata = Metadata.from_dataframe(df_metadata)
+            return metadata
+
+    @classmethod
     def from_hdf5(cls, filepath, **kwargs):
         """import sdata.Data from hdf5
 
         :param filepath:
-        :param sep: separator (default=";")
         :return: sdata.Data
         """
         if not os.path.exists:
-            logger.error("hdf5 file '' notr available".format(filepath))
+            logger.error("hdf5 file '{}' not available".format(filepath))
             return
         
         with pd.HDFStore(filepath, mode="r+") as hdf:

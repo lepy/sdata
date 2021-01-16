@@ -383,9 +383,27 @@ class Metadata(object):
         metadata.update_from_dict(d)
         return metadata
 
-    def to_dataframe(self):
-        """create dataframe"""
-        d = self.to_dict()
+    def _to_dict(self, attributes):
+        """
+
+        :param attributes:
+        :return:
+        """
+        d = {}
+        for attr in attributes.values():
+            d[attr.name] = attr.to_dict()
+        return d
+
+    def get_sdict(self):
+        """get sdata attribute as dict"""
+        d = {}
+        for attr in self.sdata_attributes.values():
+            d[attr.name] = attr.value
+        return d
+
+    def _to_dataframe(self, attributes):
+        """create dataframe from attributes"""
+        d = self._to_dict(attributes)
         if len(d) == 0:
             df = pd.DataFrame(columns=self.ATTRIBUTEKEYS)
         else:
@@ -393,15 +411,31 @@ class Metadata(object):
         df.index.name = "key"
         return df[self.ATTRIBUTEKEYS]
 
+    def to_dataframe(self):
+        """create dataframe"""
+        return self._to_dataframe(self.attributes)
+
     @property
     def df(self):
         """create dataframe"""
-        return self.to_dataframe()
+        return self._to_dataframe(self.attributes)
 
     @property
-    def user_df(self):
+    def udf(self):
         """create dataframe for user attributes"""
-        return self.to_dataframe()
+        return self._to_dataframe(self.user_attributes)
+
+    @property
+    def sdf(self):
+        """create dataframe for sdata attributes"""
+        return self._to_dataframe(self.sdata_attributes)
+
+    @property
+    def sdft(self):
+        """create transposed dataframe for sdata attributes"""
+        mt = self.sdf[["value"]].transpose(copy=True)
+        mt.index = [self.get("!sdata_uuid").value]
+        return mt
 
     @classmethod
     def from_dataframe(cls, df):

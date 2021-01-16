@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.16.4'
+__version__ = '0.17.0'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -15,17 +15,16 @@ import logging
 from sdata.metadata import Metadata, Attribute
 from sdata.data import Data
 from sdata.blob import Blob
+from sdata.io.vault import Vault
 # import sdata.timestamp as timestamp
 from sdata.timestamp import today_str, now_utc_str, now_local_str
 import inspect
-
-if sys.version_info < (3, 6):
-    import sha3
 
 try:
     import openpyxl
 except:
     logging.warning("openpyxl is not available -> no xlsx import")
+    openpyxl = None
 
 
 def uuid_from_str(name):
