@@ -53,12 +53,12 @@ class VaultIndex():
         :return:
         """
         hdf = pd.HDFStore(filepath, **kwargs)
-        hdf.put(self.INDEXDATAFRAME, self._df, format='fixed', data_columns=True)
+        hdf.put(self.INDEXDATAFRAME, self.df, format='fixed', data_columns=True)
         hdf.close()
 
     def get_names(self):
         """get all data names from index"""
-        return self.df[[Data.SDATA_NAME, Data.SDATA_UUID]].values.tolist()
+        return sorted(list(self.df[[Data.SDATA_NAME]].drop_duplicates().iloc[:,0]))
 
 class Vault():
     """data vault
@@ -92,8 +92,9 @@ class FileSystemVault(Vault):
         logging.info("create/open vault {}".format(self.rootpath))
 
         indexpath = os.path.join(rootpath, 'index')
-        # if os.path.exists(indexpath):
-        #     self.index.df = self.index.from_hdf(indexpath)
+        if os.path.exists(indexpath):
+            logging.debug("load vault index {}".format(self.rootpath))
+            self._index = VaultIndex.from_hdf5(indexpath)
 
     @property
     def rootpath(self):
