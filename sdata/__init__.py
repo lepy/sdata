@@ -15,7 +15,7 @@ import logging
 from sdata.metadata import Metadata, Attribute
 from sdata.data import Data
 from sdata.blob import Blob
-from sdata.io.vault import Vault
+
 # import sdata.timestamp as timestamp
 from sdata.timestamp import today_str, now_utc_str, now_local_str
 import inspect
