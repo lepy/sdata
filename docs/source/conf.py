@@ -37,7 +37,16 @@ extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.coverage',
     'sphinx.ext.imgmath',
     'sphinx.ext.viewcode',
-    'sphinx.ext.githubpages']
+    'sphinx.ext.githubpages',
+    'sphinxcontrib.plantuml',
+              ]
+def get_script_dir():
+    return os.path.dirname(os.path.realpath(__file__))
+
+rootpath = os.path.join(get_script_dir(), "..")
+
+plantuml = 'java -jar ' + os.path.abspath(os.path.join(rootpath, "source", "common", "plantuml.jar")) + ' -config "' + os.path.abspath(os.path.join(rootpath, "source", "common", "plantuml.cfg")) + '"'
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

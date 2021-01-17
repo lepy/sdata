@@ -23,6 +23,7 @@
    design_goals
    data_types
    paper
+   usage/usage
    api
    etc
    _dynamic/sdata
