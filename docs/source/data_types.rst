@@ -14,7 +14,8 @@ Attributes
 * ``dtype`` .. data type of the attribute (default: ``str``)
 * ``unit`` .. physical unit of an attribute (optional)
 * ``description`` .. a description of an attribute (optional)
-* ``label`` .. an fancy label of an attribute , e.g. for plotting (optional)
+* ``label`` .. a fancy label of an attribute , e.g. for plotting (optional)
+* ``required`` .. a boolean attribute for attribute checks  (optional)
 
 .. code-block:: python
     :linenos:
