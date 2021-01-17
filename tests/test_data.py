@@ -63,6 +63,20 @@ def test_to_json():
     assert data.description==data2.description
     assert data.sha3_256==data2.sha3_256
 
+def test_to_csv():
+    df = pd.DataFrame({'a': ['x', 'y', '', 'z'], 'b': [1, 2, 2, 3.2]})
+    data = sdata.Data(name="data", uuid="38b26864e7794f5182d38459bab8584d", table=df, description="abc")
+    data.metadata.add("a", 1.23, unit="N", description="force", required=True)
+    data.to_csv(filepath="/tmp/data1.csv")
+    data2 = sdata.Data.from_csv(filepath="/tmp/data1.csv")
+    print(data.name, data2.name)
+    assert data.name==data2.name
+    assert data.uuid==data2.uuid
+    assert data.df.shape == data2.df.shape
+    # assert data.description==data2.description
+    # assert data.sha3_256==data2.sha3_256
+
+
 def test_description():
     data = sdata.Data(name="data", uuid="38b26864e7794f5182d38459bab8584d", description="abc")
     assert data.description == "abc"

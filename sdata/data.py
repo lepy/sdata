@@ -948,7 +948,7 @@ class Data(object):
         """
         data = cls()
         if filepath:
-            df = pd.read_csv(filepath, sep=";", comment="#")
+            df = pd.read_csv(filepath, sep=";", comment="#", index_col=0)
             sio = open(filepath, "r")
         elif s is not None:
             sio = StringIO(s)
@@ -958,10 +958,13 @@ class Data(object):
             logger.error("data.from_csv: no csv data available")
             return
 
+        attritute_list = []
         for line in sio:
             if line.startswith("#;"):
-                print(line)
-
+                line = line.rstrip("\n")
+                line = line.split(sep)
+                attritute_list.append(line[1:8])
+        data.metadata = Metadata.from_list(attritute_list)
         data.table = df
         return data
 
