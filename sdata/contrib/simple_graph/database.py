@@ -10,6 +10,14 @@ using an atomic transaction wrapper function.
 """
 
 import sqlite3
+import numpy as np
+# sqlite3.register_adapter(np.int64, int)
+# # sqlite3.register_adapter(int, np.int64)
+# sqlite3.register_converter('integer', np.int64)
+
+# MAX_SQLITE_INT = 2 ** 63 - 1
+# sqlite3.register_adapter(int, lambda x: hex(x) if x > MAX_SQLITE_INT else x)
+# sqlite3.register_converter('integer', lambda b: int(b, 16 if b[:2] == b'0x' else 10))
 import json
 from itertools import tee
 import os
@@ -79,11 +87,19 @@ def remove_node(identifier):
     return _remove_node
 
 def _parse_search_results(results, idx=0):
-    return [json.loads(item[idx]) for item in results]
+    presults = []
+    for item in results:
+        try:
+            presults.append(json.loads(item[idx]))
+        except:
+            presults.append(item[idx])
+    return presults
+    # return [json.loads(item[idx]) for item in results]
 
 def find_node(identifier):
     def _find_node(cursor):
         results = cursor.execute("SELECT body FROM nodes WHERE json_extract(body, '$.id') = ?", (identifier,)).fetchall()
+        # results = cursor.execute("SELECT body FROM nodes WHERE json_extract(body, '$.id') = {}".format(identifier)).fetchall()
         if len(results) == 1:
             return _parse_search_results(results).pop()
         return {}
@@ -158,11 +174,6 @@ def get_connections(source_id, target_id):
         return cursor.execute("SELECT * FROM edges WHERE source = ? AND target = ?", (source_id, target_id,)).fetchall()
     return _get_connections
 
-def get_all_connections():
-    def _get_connections(cursor):
-        return cursor.execute("SELECT * FROM edges", None).fetchall()
-    return _get_connections
-
 def pairwise(iterable):
     a, b = tee(iterable)
     next(b, None)
@@ -174,7 +185,13 @@ def _fstring_from_keys(keys, hide_key, kv_separator):
     return '\\n'.join([k+kv_separator+'{'+k+'}' for k in keys])
 
 def _as_dot_label(body, exclude_keys, hide_key_name, kv_separator):
-    values = _fstring_from_keys([k for k in body.keys() if k not in exclude_keys], hide_key_name, kv_separator).format(**body)
+    sbody = {}
+    for k, v in body.items():
+        sbody[k.replace("!", "")] = v
+
+    # values = _fstring_from_keys([k for k in body.keys() if k not in exclude_keys], hide_key_name, kv_separator).format(**body)
+    values = _fstring_from_keys([k for k in sbody.keys() if k not in exclude_keys], hide_key_name, kv_separator).format(**sbody)
+    # print("!", values)
     return f"[label=\"{values}\"]"
 
 def _as_dot_node(body, exclude_keys=[], hide_key_name=False, kv_separator=' '):
