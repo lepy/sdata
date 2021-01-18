@@ -5,6 +5,8 @@ logger = logging.getLogger("sdata")
 import os
 import uuid
 from sdata import Data
+from sdata.contrib.simple_graph_db import Database
+
 import pandas as pd
 
 class VaultIndex():
@@ -63,6 +65,48 @@ class VaultIndex():
     def update_from_sdft(self, sdft):
         self.df = self.df.append(sdft)
 
+
+class VaultSqliteIndex():
+    """Index of a Vault
+
+    """
+    def __init__(self, db_file):
+        """Vault Index
+
+        """
+        self.db_file = db_file
+        self.initialize()
+
+    def initialize(self):
+        logger.debug(f"initialize db {self.db_file}")
+        self.db = Database(db_file=self.db_file)
+
+    def get_all_metadata(self):
+        """get all blob metadata
+
+        :return:
+        """
+        return self.db.get_all_nodes()
+
+    def update_from_metadata(self, metadata):
+        """store sdata metadata"""
+        d = metadata.get_sdict()
+        uid = d.get("!sdata_uuid")
+        logger.debug(f"add '{uid}' to vault index")
+        self.db.upsert_node(identifier=uid, data=d)
+        puid = d.get("!sdata_parent")
+        if len(puid)>0:
+            if len(self.db.find_node(puid))==0:
+                self.db.upsert_node(identifier=puid, data={"!sdata_uuid":puid, '!sdata_name':"?"})
+            self.db.connect_nodes(puid, uid, {"con_type":"parent"})
+
+    def drop_db(self):
+        """create new database"""
+        os.remove(self.db_file)
+        self.initialize()
+
+
+
 class Vault():
     """data vault
     
@@ -83,21 +127,33 @@ class FileSystemVault(Vault):
 
 
     def __init__(self, rootpath, **kwargs):
+        """
+
+        :param rootpath:
+        :param kwargs:
+        """
         Vault.__init__(self, **kwargs)
         self._rootpath = None
 
         try:
-            os.makedirs(os.path.dirname(rootpath), exist_ok=True)
+            rootpath = os.path.dirname(rootpath)
+            os.makedirs(rootpath, exist_ok=True)
             self._rootpath = rootpath
         except OSError as exp:
-            logging.error("Vault Error: {}".format(exp))
+            logging.error("Vault Error: '{}'".format(exp))
             raise exp
-        logging.info("create/open vault {}".format(self.rootpath))
+        logging.info("create/open vault '{}'".format(rootpath))
 
-        indexpath = os.path.join(rootpath, 'index')
-        if os.path.exists(indexpath):
-            logging.debug("load vault index {}".format(self.rootpath))
-            self._index = VaultIndex.from_hdf5(indexpath)
+        print(os.path.exists(self.rootpath))
+
+        indexpath = os.path.join(rootpath, 'vaultindex.sqlite')
+        logging.info(f"create/open vaultindex '{indexpath}'")
+        self._index = VaultSqliteIndex(indexpath)
+
+        # indexpath = os.path.join(rootpath, 'index')
+        # if os.path.exists(indexpath):
+        #      logging.debug("load vault index {}".format(self.rootpath))
+        #     self._index = VaultIndex.from_hdf5(indexpath)
 
     @property
     def rootpath(self):
@@ -124,6 +180,18 @@ class FileSystemVault(Vault):
         return self._index
 
     def reindex(self):
+        """create index from vault
+
+        :return:
+        """
+        self.index.drop_db()
+        objectpath = os.path.join(self.rootpath, self.OBJECTPATH)
+        for root, dirs, files in os.walk(objectpath, topdown=False):
+            for name in files:
+                blob_uuid = name
+                self.index.update_from_metadata(self.load_blob_metadata(blob_uuid))
+
+    def reindex_hfd5(self):
         """get index from vault
 
         :return: df
@@ -139,8 +207,8 @@ class FileSystemVault(Vault):
         self.index.to_hdf5(os.path.join(self.rootpath, self.INDEXFILENAME))
         return df
 
-    def dump_hdf5_index(self):
-        self.index.to_hdf5(os.path.join(self.rootpath, self.INDEXFILENAME))
+    # def dump_hdf5_index(self):
+    #     self.index.to_hdf5(os.path.join(self.rootpath, self.INDEXFILENAME))
 
     def keys(self):
         keys = []
@@ -150,8 +218,8 @@ class FileSystemVault(Vault):
                 keys.append(name)
         return keys
 
-    def _update_index(self, metadata):
-        return metadata.sdft
+    # def _update_index(self, metadata):
+    #     return metadata.sdft
 
     def dump_blob(self, blob):
         """store blob in vault"""
@@ -165,7 +233,8 @@ class FileSystemVault(Vault):
             raise exp
         filepath = os.path.join(path, blob.uuid)
         blob.to_hdf5(filepath)
-        self.index.update_from_sdft(blob.metadata.sdft)
+        # self.index.update_from_sdft(blob.metadata.sdft)
+        self.index.update_from_metadata(blob.metadata)
 
     def load_blob(self, blob_uuid):
         """get blob from vault"""
