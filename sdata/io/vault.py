@@ -60,6 +60,9 @@ class VaultIndex():
         """get all data names from index"""
         return sorted(list(self.df[[Data.SDATA_NAME]].drop_duplicates().iloc[:,0]))
 
+    def update_from_sdft(self, sdft):
+        self.df = self.df.append(sdft)
+
 class Vault():
     """data vault
     
@@ -136,6 +139,9 @@ class FileSystemVault(Vault):
         self.index.to_hdf5(os.path.join(self.rootpath, self.INDEXFILENAME))
         return df
 
+    def dump_hdf5_index(self):
+        self.index.to_hdf5(os.path.join(self.rootpath, self.INDEXFILENAME))
+
     def keys(self):
         keys = []
         objectpath = os.path.join(self.rootpath, self.OBJECTPATH)
@@ -143,6 +149,9 @@ class FileSystemVault(Vault):
             for name in files:
                 keys.append(name)
         return keys
+
+    def _update_index(self, metadata):
+        return metadata.sdft
 
     def dump_blob(self, blob):
         """store blob in vault"""
@@ -156,6 +165,7 @@ class FileSystemVault(Vault):
             raise exp
         filepath = os.path.join(path, blob.uuid)
         blob.to_hdf5(filepath)
+        self.index.update_from_sdft(blob.metadata.sdft)
 
     def load_blob(self, blob_uuid):
         """get blob from vault"""
