@@ -105,6 +105,15 @@ class VaultSqliteIndex():
         os.remove(self.db_file)
         self.initialize()
 
+    @property
+    def df(self):
+        """index dataframe
+
+        :return: pd.DataFrame
+        """
+        df = pd.DataFrame(self.get_all_metadata())
+        return df.set_index(keys=["id"])
+
 
 
 class Vault():
