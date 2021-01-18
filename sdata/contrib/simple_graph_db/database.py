@@ -10,14 +10,6 @@ using an atomic transaction wrapper function.
 """
 
 import sqlite3
-import numpy as np
-# sqlite3.register_adapter(np.int64, int)
-# # sqlite3.register_adapter(int, np.int64)
-# sqlite3.register_converter('integer', np.int64)
-
-# MAX_SQLITE_INT = 2 ** 63 - 1
-# sqlite3.register_adapter(int, lambda x: hex(x) if x > MAX_SQLITE_INT else x)
-# sqlite3.register_converter('integer', lambda b: int(b, 16 if b[:2] == b'0x' else 10))
 import json
 from itertools import tee
 import os
@@ -94,7 +86,6 @@ def _parse_search_results(results, idx=0):
         except:
             presults.append(item[idx])
     return presults
-    # return [json.loads(item[idx]) for item in results]
 
 def find_node(identifier):
     def _find_node(cursor):
@@ -198,15 +189,17 @@ def _as_dot_node(body, exclude_keys=[], hide_key_name=False, kv_separator=' '):
     name = body['id']
     exclude_keys.append('id')
     label = _as_dot_label(body, exclude_keys, hide_key_name, kv_separator)
-    return f"{name} {label};\n"
+    return f'"{name}" {label};\n'
 
 def _as_dot_edge(src, tgt, body, exclude_keys=[], hide_key_name=False, kv_separator=' '):
     label = _as_dot_label(body, exclude_keys, hide_key_name, kv_separator)
-    return f"{src} -> {tgt} {label};\n"
+    return f'"{src}" -> "{tgt}" {label};\n'
 
-def visualize(db_file, dot_file, path=[], \
+def visualize(db_file, dot_file=None, path=[], \
         exclude_node_keys=[], hide_node_key=False, node_kv=' ', \
         exclude_edge_keys=[], hide_edge_key=False, edge_kv=' '):
+    if dot_file is None:
+        dot_file = "simple_graph.dot"
     def _visualize(cursor):
         with open(dot_file, 'w') as w:
             w.write("digraph {\n")
@@ -218,4 +211,24 @@ def visualize(db_file, dot_file, path=[], \
                 for outbound in _get_edge_properties(atomic(db_file, get_connections(tgt, src))):
                     w.write(_as_dot_edge(tgt, src, outbound, exclude_edge_keys, hide_edge_key, edge_kv))
             w.write("}\n")
+    return atomic(db_file, _visualize)
+
+def get_dot(db_file, dot_file=None, path=[], \
+        exclude_node_keys=[], hide_node_key=False, node_kv=' ', \
+        exclude_edge_keys=[], hide_edge_key=False, edge_kv=' '):
+    def _visualize(cursor):
+        dots = []
+        dots.append("digraph {\n")
+        for node in [atomic(db_file, find_node(i)) for i in path]:
+            dots.append(_as_dot_node(node, exclude_node_keys, hide_node_key, node_kv))
+        for src, tgt in pairwise(path):
+            for inbound in _get_edge_properties(atomic(db_file, get_connections(src, tgt))):
+                dots.append(_as_dot_edge(src, tgt, inbound, exclude_edge_keys, hide_edge_key, edge_kv))
+            for outbound in _get_edge_properties(atomic(db_file, get_connections(tgt, src))):
+                dots.append(_as_dot_edge(tgt, src, outbound, exclude_edge_keys, hide_edge_key, edge_kv))
+        dots.append("}\n")
+        if dot_file is not None:
+            with open(dot_file, 'w') as fh:
+                fh.writelines(dots)
+            return "".join(dots)
     return atomic(db_file, _visualize)

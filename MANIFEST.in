@@ -1,2 +1,6 @@
 include LICENSE-MIT
 include README.md
+
+include sdata/contrib/simple_graph_db/*.sql
+include sdata/contrib/simple_graph_db/LICENSE
+include sdata/contrib/sortedcontainers/LICENSE
