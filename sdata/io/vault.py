@@ -1,15 +1,22 @@
 # -*- coding: utf-8 -*-
 
 import logging
+
 logger = logging.getLogger("sdata")
 import os
 import uuid
 from sdata import Data
+from sdata.metadata import Metadata
+from sdata.timestamp import now_utc_str
 from sdata.contrib.simple_graph_db import Database
 
 import pandas as pd
 
-class VaultIndex():
+class VaultException(Exception): pass
+class FilesystemVaultException(VaultException): pass
+class Hdf5VaultException(VaultException): pass
+
+class VaultIndex:
     """Index of a Vault
 
     """
@@ -60,24 +67,41 @@ class VaultIndex():
 
     def get_names(self):
         """get all data names from index"""
-        return sorted(list(self.df[[Data.SDATA_NAME]].drop_duplicates().iloc[:,0]))
+        return sorted(list(self.df[[Data.SDATA_NAME]].drop_duplicates().iloc[:, 0]))
 
     def update_from_sdft(self, sdft):
         self.df = self.df.append(sdft)
 
 
-class VaultSqliteIndex():
+class VaultSqliteIndex:
     """Index of a Vault
 
     """
+
     def __init__(self, db_file):
         """Vault Index
+
+        .. code-block:: python
+
+                db_file = "/tmp/test_sqlitevault.sqlite"
+                vi = VaultSqliteIndex(db_file=db_file)
+                vi.drop_db()
+
+                d1 = Data(name="d1", uuid=sdata.uuid_from_str("d1"))
+                vi.update_from_metadata(d1.metadata)
+
+                vi.get_all_metadata()
+
 
         """
         self.db_file = db_file
         self.initialize()
 
     def initialize(self):
+        """initialize index db
+
+        :return:
+        """
         logger.debug(f"initialize db {self.db_file}")
         self.db = Database(db_file=self.db_file)
 
@@ -95,10 +119,10 @@ class VaultSqliteIndex():
         logger.debug(f"add '{uid}' to vault index")
         self.db.upsert_node(identifier=uid, data=d)
         puid = d.get("!sdata_parent")
-        if len(puid)>0:
-            if len(self.db.find_node(puid))==0:
-                self.db.upsert_node(identifier=puid, data={"!sdata_uuid":puid, '!sdata_name':"?"})
-            self.db.connect_nodes(puid, uid, {"con_type":"parent"})
+        if len(puid) > 0:
+            if len(self.db.find_node(puid)) == 0:
+                self.db.upsert_node(identifier=puid, data={"!sdata_uuid": puid, '!sdata_name': "?"})
+            self.db.connect_nodes(puid, uid, {"con_type": "parent"})
 
     def drop_db(self):
         """create new database"""
@@ -115,7 +139,6 @@ class VaultSqliteIndex():
         return df.set_index(keys=["id"])
 
 
-
 class Vault():
     """data vault
     
@@ -123,17 +146,55 @@ class Vault():
     INDEXFILENAME = "index"
     OBJECTPATH = "objects"
 
-    def __init__(self, **kwargs):
+    def __init__(self, rootpath, **kwargs):
         """data vault
 
         :param kwargs:
         """
         self._index = VaultIndex()
+        if isinstance(rootpath, str):
+            self._rootpath = rootpath
+        else:
+            raise VaultException("invalid rootpath")
 
+    @property
+    def rootpath(self):
+        return self._rootpath
 
-class FileSystemVault(Vault):
+    def __str__(self):
+        return "({}:{})".format(self.__class__.__name__, self.rootpath)
+
+    def __repr__(self):
+        return "({}:{})".format(self.__class__.__name__, self.rootpath)
+
+    @property
+    def index(self):
+        """get vault index
+
+        :return:
+        """
+        raise NotImplementedError()
+
+    def reindex(self):
+        """create index from vault
+
+        :return:
+        """
+        raise NotImplementedError()
+
+    def keys(self):
+        raise NotImplementedError()
+
+    def dump_blob(self, blob):
+        """store blob in vault"""
+        raise NotImplementedError()
+
+    def load_blob(self, blob_uuid):
+        """get blob from vault"""
+        raise NotImplementedError()
+
+class Hdf5Vault(Vault):
     """data vault on the filesystem"""
-
 
     def __init__(self, rootpath, **kwargs):
         """
@@ -141,7 +202,69 @@ class FileSystemVault(Vault):
         :param rootpath:
         :param kwargs:
         """
-        Vault.__init__(self, **kwargs)
+        Vault.__init__(self, rootpath, **kwargs)
+        self.initialize(mode="a")
+
+    def initialize(self, **kwargs):
+        logger.info(f"initialize {self.rootpath}")
+        metadata = Metadata()
+        metadata.add("ctime", now_utc_str())
+        with pd.HDFStore(self.rootpath, **kwargs) as hdf:
+            hdf.put('metadata', metadata.df, format='fixed', data_columns=True)
+
+    def _objectpath(self, data_uuid):
+        return "/" + "/".join([self.OBJECTPATH, data_uuid[:2], data_uuid[-2:], data_uuid])
+
+    def dump_blob(self, data):
+        """store blob in vault"""
+        path = self._objectpath(data.uuid)
+        with pd.HDFStore(self.rootpath, mode="a") as hdf:
+            if not isinstance(data.df, pd.DataFrame):
+                df = pd.DataFrame()
+            else:
+                df = data.df
+            logger.debug(f"store {path}/metadata")
+            hdf.put(f'{path}/metadata', data.metadata.df, format='fixed', data_columns=True)
+            hdf.put(f'{path}/table', df, format='fixed', data_columns=True)
+            hdf.put(f'{path}/description', data.description_to_df(), format='fixed',
+                         data_columns=True)
+        return path
+
+    def load_blob(self, data_uuid, ignore_errors=True):
+        """get blob from vault"""
+        path = self._objectpath(data_uuid)
+        logging.info("load blob {}".format(path))
+        logger.debug (f'try to load {path}/metadata')
+
+        with pd.HDFStore(self.rootpath, mode="r") as hdf:
+            metadata_path = f'{path}/metadata'
+            table_path = f'{path}/table'
+            description_path = f'{path}/description'
+
+            try:
+                df_metadata = hdf.get(metadata_path)
+                df_table = hdf.get(table_path)
+                df_description = hdf.get(description_path)
+                metadata = Metadata.from_dataframe(df_metadata)
+                # logger.debug("hdf {}".format(metadata.get("!sdata_uuid").value))
+                data = Data(metadata=metadata, table=df_table)
+                data.description_from_df(df_description)
+                return data
+            except KeyError as exp:
+                logger.warning(exp)
+                if ignore_errors is False:
+                    raise Hdf5VaultException(exp)
+
+class FileSystemVault(Vault):
+    """data vault on the filesystem"""
+
+    def __init__(self, rootpath, **kwargs):
+        """
+
+        :param rootpath:
+        :param kwargs:
+        """
+        Vault.__init__(self, rootpath, **kwargs)
         self._rootpath = None
 
         try:
@@ -164,16 +287,6 @@ class FileSystemVault(Vault):
         #      logging.debug("load vault index {}".format(self.rootpath))
         #     self._index = VaultIndex.from_hdf5(indexpath)
 
-    @property
-    def rootpath(self):
-        return self._rootpath
-
-    def __str__(self):
-        return "({}:{})".format(self.__class__.__name__, self.rootpath)
-
-    def __repr__(self):
-        return "({}:{})".format(self.__class__.__name__, self.rootpath)
-
     def list(self):
         """get index from vault
 
@@ -186,6 +299,10 @@ class FileSystemVault(Vault):
 
     @property
     def index(self):
+        """get vault index
+
+        :return:
+        """
         return self._index
 
     def reindex(self):
@@ -211,7 +328,7 @@ class FileSystemVault(Vault):
             for name in files:
                 blob_uuid = name
                 dfs.append(self.load_blob_metadata_value_df(blob_uuid))
-        df =  pd.concat(dfs)
+        df = pd.concat(dfs)
         self.index.df = df
         self.index.to_hdf5(os.path.join(self.rootpath, self.INDEXFILENAME))
         return df
@@ -272,13 +389,12 @@ class FileSystemVault(Vault):
         :param name:
         :return:
         """
-        df_selected = self.index.df[(self.index.df[Data.SDATA_NAME]==name)]
+        df_selected = self.index.df[(self.index.df[Data.SDATA_NAME] == name)]
         print("df_selected", len(df_selected))
 
         datas = []
-        for uid, row in self.index.df[(self.index.df[Data.SDATA_NAME]==name)].iterrows():
+        for uid, row in self.index.df[(self.index.df[Data.SDATA_NAME] == name)].iterrows():
             logging.debug("get_blob_by_name: load {}".format(uid))
             data = self.load_blob(uid)
             datas.append(data)
         return datas
-
