@@ -1139,7 +1139,7 @@ class Data(object):
         except Exception as exp:
             raise
 
-    def copy(self):
+    def copy(self, **kwargs):
         """create a copy of the Data object
 
         .. code-block:: python
@@ -1162,6 +1162,12 @@ class Data(object):
         data.metadata.add(self.SDATA_PARENT, self.uuid)
         data.metadata.add(self.SDATA_UUID, self.gen_uuid())
         data.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str")
+        if "uuid" in kwargs:
+            data.uuid = kwargs.get("uuid")
+        if "name" in kwargs:
+            data.name = kwargs.get("name")
+        logger.debug(f"make copy of {self.uuid} -> {data.uuid}")
+
         return data
 
     def gen_uuid(self):

@@ -30,7 +30,14 @@ except:
 def uuid_from_str(name):
     return uuid.uuid3(uuid.NAMESPACE_DNS, name)
 
-
+def osname(name, lower=True):
+    mapper = [("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("Ä", "Ae"), ("Ö", "Oe"), ("Ü", "Ue"),
+              ("ß", "sz"), (" ", "_"), ("/", "_"), ("\\", "_")]
+    for k, v in mapper:
+        name = name.replace(k, v)
+    if lower is True:
+        name = name.lower()
+    return name.encode('ascii', 'replace').decode("ascii")
 
 SDATACLS = {"Data": Data,
             "Blob": Blob,

@@ -54,6 +54,47 @@ def test_filesystemvault():
     print(vault)
     assert os.path.exists(rootpath)
 
+    data = sdata.Data(name="otto",
+                      uuid=sdata.uuid_from_str("otto"),
+                      table=pd.DataFrame({"a": [1, 2, 3]}),
+                      description="Hallo\nSpencer")
+    datac = data.copy(uuid='18b26864e7794f5182d38459bab85842', name="copy")
+    print(datac)
+
+    ret = vault.dump_blob(data)
+    print(ret)
+    ret = vault.dump_blob(datac)
+    print(ret)
+    ldata = vault.load_blob(data.uuid)
+    assert data == ldata
+
+    ldatac = vault.load_blob(datac.uuid)
+    assert datac == ldatac
+
+    keys = vault.keys()
+    print(keys)
+    assert sorted(keys) == sorted(['18b26864e7794f5182d38459bab85842', '21b83703d98e38a7be2e50e38326d0ce'])
+
+    items = vault.items()
+    print("items", items)
+    assert len(items) == 2
+    for k, v in items:
+        print(f"{k}:{v}")
+
+    item_dict = dict(items)
+    assert item_dict['18b26864e7794f5182d38459bab85842'].uuid == datac.uuid
+    assert item_dict['18b26864e7794f5182d38459bab85842'].name == datac.name
+
+    values = vault.values()
+    print("values", values)
+    assert len(values) == 2
+    for v in values:
+        print(f"{v.name}:{v}")
+
+    o = values.find_blobs("otto")
+    print(o)
+    assert isinstance(o, list)
+
 def test_hdf5vault():
 
     rootpath = "/tmp/test_hdf5vault.h5"
@@ -68,14 +109,42 @@ def test_hdf5vault():
                       uuid=sdata.uuid_from_str("otto"),
                       table=pd.DataFrame({"a": [1, 2, 3]}),
                       description="Hallo\nSpencer")
-    datac = data.copy()
+    datac = data.copy(uuid='18b26864e7794f5182d38459bab85842', name="copy")
+    print(datac)
+
 
     ret = vault.dump_blob(data)
+    print(ret)
+    ret = vault.dump_blob(datac)
     print(ret)
 
     ldata = vault.load_blob(data.uuid)
     assert data == ldata
 
-    ldata = vault.load_blob(datac.uuid)
+    ldatac = vault.load_blob(datac.uuid)
+    assert datac == ldatac
+
+    keys = vault.keys()
+    print(keys)
+    assert sorted(keys) == sorted(['18b26864e7794f5182d38459bab85842', '21b83703d98e38a7be2e50e38326d0ce'])
+
+    items = vault.items()
+    print("items", items)
+    assert len(items) == 2
+    for k, v in items:
+        print(f"{k}:{v}")
+
+    item_dict = dict(items)
+    assert item_dict['18b26864e7794f5182d38459bab85842'].uuid == datac.uuid
+    assert item_dict['18b26864e7794f5182d38459bab85842'].name == datac.name
+
+    values = vault.values()
+    print("values", values)
+    assert len(values) == 2
+    for v in values:
+        print(f"{v.name}:{v}")
+
+
+    # vault.reindex()
 
     # assert 1==2

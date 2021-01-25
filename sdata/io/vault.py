@@ -139,7 +139,7 @@ class VaultSqliteIndex:
         return df.set_index(keys=["id"])
 
 
-class Vault():
+class Vault:
     """data vault
     
     """
@@ -192,6 +192,42 @@ class Vault():
     def load_blob(self, blob_uuid):
         """get blob from vault"""
         raise NotImplementedError()
+
+    def find_blobs(self, name=None, **kwargs):
+        """find blobs in vault"""
+        raise NotImplementedError()
+
+    def items(self):
+        """get vault items
+
+        :return: (key, blob)
+        """
+        keys = self.keys()
+        if len(keys) > 10:
+            logger.warning("Consider vault.iteritems!")
+        items = []
+        for key in keys:
+            items.append((key, self.load_blob(key)))
+        return items
+
+    def iteritems(self):
+        raise NotImplementedError()
+
+    def itervalues(self):
+        raise NotImplementedError()
+
+    def values(self):
+        """get vault values
+
+        :return: (key, blob)
+        """
+        keys = self.keys()
+        if len(keys) > 10:
+            logger.warning("Consider vault.iteritems ")
+        values = []
+        for key in keys:
+            values.append(self.load_blob(key))
+        return values
 
 class Hdf5Vault(Vault):
     """data vault on the filesystem"""
@@ -254,6 +290,32 @@ class Hdf5Vault(Vault):
                 logger.warning(exp)
                 if ignore_errors is False:
                     raise Hdf5VaultException(exp)
+
+    def keys(self):
+        """get all blob keys
+
+        .. code-block:: python
+
+            >>> keys = vault.keys()
+            ['b5d2d05638db48d69d044a34e83aaa41', '21b83703d98e38a7be2e50e38326d0ce']
+
+        :return: list of keys
+        """
+        keys = set()
+        with pd.HDFStore(self.rootpath, mode="r") as hdf:
+            hdf5_keys = hdf.keys()
+
+        for key in hdf5_keys:
+            kp = key.split("/")
+            if len(kp) == 5:
+                print(kp, len(kp))
+                keys.add(kp[4])
+        return list(keys)
+
+    def iteritems(self):
+        hdf = pd.HDFStore(self.rootpath, mode="r")
+        # todo: close hdf
+        return hdf.iteritems()
 
 class FileSystemVault(Vault):
     """data vault on the filesystem"""
@@ -350,7 +412,7 @@ class FileSystemVault(Vault):
     def dump_blob(self, blob):
         """store blob in vault"""
         path = os.path.join(self.rootpath, self.OBJECTPATH, blob.uuid[:2], blob.uuid[-2:]) + os.sep
-        logging.info("dump blob {}".format(path))
+        logging.debug("dump blob {}".format(path))
         try:
             if not os.path.exists(path):
                 os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -365,7 +427,7 @@ class FileSystemVault(Vault):
     def load_blob(self, blob_uuid):
         """get blob from vault"""
         path = os.path.join(self.rootpath, self.OBJECTPATH, blob_uuid[:2], blob_uuid[-2:]) + os.sep
-        logging.info("load blob {}".format(path))
+        logging.debug("load blob {}".format(path))
         filepath = os.path.join(path, blob_uuid)
         data = Data.from_hdf5(filepath)
         return data
@@ -373,7 +435,7 @@ class FileSystemVault(Vault):
     def load_blob_metadata(self, blob_uuid):
         """get blob.metadata from vault"""
         path = os.path.join(self.rootpath, 'objects', blob_uuid[:2], blob_uuid[-2:]) + os.sep
-        logging.info("get blob metadata {}".format(path))
+        logging.debug("get blob metadata {}".format(path))
         filepath = os.path.join(path, blob_uuid)
         metadata = Data.metadata_from_hdf5(filepath)
         return metadata
