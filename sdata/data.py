@@ -799,7 +799,6 @@ class Data(object):
         try:
             if os.path.exists(filepath):
                 wb = openpyxl.load_workbook(filename=filepath)
-                # sheetname = u'Übergabedaten VWD für BFA'
                 sheetnames = wb.sheetnames
 
                 tt = cls(name=filepath)

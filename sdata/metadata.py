@@ -401,6 +401,13 @@ class Metadata(object):
             d[attr.name] = attr.value
         return d
 
+    def get_udict(self):
+        """get user attribute as dict"""
+        d = {}
+        for attr in self.user_attributes.values():
+            d[attr.name] = attr.value
+        return d
+
     def _to_dataframe(self, attributes):
         """create dataframe from attributes"""
         d = self._to_dict(attributes)
