@@ -1,16 +1,4 @@
-# -*- coding: utf-8 -*-
-
-import logging
-logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s', level=logging.DEBUG, datefmt='%I:%M:%S')
-
-import sdata
-from sdata.io.vault import FileSystemVault, VaultIndex, VaultSqliteIndex, Hdf5Vault
-from sdata import Data
-import pandas as pd
-import numpy as np
-import shutil
-import os
-
+n
 
 def test_sqlitevault():
 
