@@ -451,6 +451,11 @@ class Metadata(object):
         metadata = cls.from_dict(d)
         return metadata
 
+    def update_from_usermetadata(self, metadata):
+        """update user metadata from metadata"""
+        for attribute in metadata.user_attributes.values():
+            self.add(attribute)
+
     def to_csv(self, filepath=None, sep=",", header=False):
         """serialize to csv"""
         try:
@@ -527,7 +532,7 @@ class Metadata(object):
         """create metadata from a list of Attribute values
 
         [['force_x', 1.2, 'float', 'kN', 'force in x-direction'],
-         ['force_y', 3.1, 'float', 'N', 'force in y-direction']]
+         ['force_y', 3.1, 'float', 'N', 'force in y-direction', 'label', True]]
          """
         metadata = cls()
         for alist in mlist:
@@ -537,7 +542,7 @@ class Metadata(object):
                 alist.extend(["", "", "", ""])
                 #["name", "value", "dtype", "unit", "description"]
                 metadata.add(alist[0], alist[1], dtype=alist[2], unit=alist[3], description=alist[4],
-                             label=alist[5])
+                             label=alist[5], required=alist[6])
         return metadata
 
     def __repr__(self):

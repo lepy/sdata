@@ -631,14 +631,14 @@ class Data(object):
 
     def add_data(self, data):
         """add data, if data.name is unique"""
-        if isinstance(data, Data):
+        if hasattr(data, "metadata"):
             names = [dat.name.lower() for uid, dat in self.group.items()]
             if data.name.lower() in names:
                 logger.error("{}: name '{}' aready exists".format(data.__class__.__name__, data.name))
                 return
             self.group[data.uuid] = data
         else:
-            logger.warning("ignore data %s (wrong type!)" % data)
+            logger.warning(f"ignore data {data}, {data.__class__.__name__} (wrong type!)")
 
     def get_data_by_uuid(self, uid):
         """get data by uuid"""
@@ -924,9 +924,11 @@ class Data(object):
         :param filepath:
         :return:
         """
+
         exportlines = []
         exportlines.append(self.metadata.to_csv_header(prefix="#;", sep=";", filepath=None))
-        exportlines.append(self.df.to_csv(sep=";"))
+        if self.df is not None:
+            exportlines.append(self.df.to_csv(sep=";"))
 
         exportstr = "".join(exportlines)
 
