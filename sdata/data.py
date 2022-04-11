@@ -595,7 +595,7 @@ class Data(object):
         return invalid_attrs
 
     def __str__(self):
-        return "(Data '%s':%s)" % (self.name, self.uuid)
+        return f"({self.__class__.__name__} '{self.name}':{self.uuid})"
 
     __repr__ = __str__
 

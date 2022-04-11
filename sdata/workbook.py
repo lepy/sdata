@@ -11,6 +11,7 @@ from sdata.metadata import Metadata, Attribute
 import json
 import os
 import hashlib
+import uuid
 
 class Workbook(Data):
     """Workbook with Sheets
@@ -61,12 +62,13 @@ class Workbook(Data):
         """return sheet names of the workbook"""
         return list(self._sheets.keys())
 
-    def get_sheet(self, name):
+    def get_sheet(self, name, default=None):
         """get Sheet from Workbook
 
         :param name:
-        :return: df
+        :return: sheet data
         """
+        return self._sheets.get(name, default)
 
     @property
     def sheets(self):
@@ -91,3 +93,102 @@ class Workbook(Data):
             return self._sheets.get(list(self._sheets.keys())[self._isheet-1])
         else:
             raise StopIteration
+
+
+    def to_hdf5(self, filepath, **kwargs):
+        """export sdata.Data to hdf5
+
+        :param filepath:
+        :param complib: default='zlib' ['zlib', 'lzo', 'bzip2', 'blosc', 'blosc:blosclz', 'blosc:lz4', 'blosc:lz4hc', 'blosc:snappy', 'blosc:zlib', 'blosc:zstd']
+        :param complevel: default=9 [0-9]
+
+        :return:
+        """
+        if not isinstance(self.df, pd.DataFrame):
+            df = pd.DataFrame()
+        else:
+            df = self.df
+        kwargs["mode"] = "w"
+        if kwargs.get("complib") is None:
+            kwargs["complib"] = "zlib"
+
+        if kwargs.get("complevel") is None:
+            kwargs["complevel"] = 9
+
+        with pd.HDFStore(filepath, **kwargs) as hdf:
+            hdf.put('metadata', self.metadata.df, format='fixed', data_columns=True)
+            hdf.put('table', df, format='fixed', data_columns=True)
+            hdf.put('description', self.description_to_df(), format='fixed', data_columns=True)
+
+            for sheet in self.sheets:
+                if not isinstance(self.df, pd.DataFrame):
+                    df = pd.DataFrame()
+                else:
+                    df = sheet.df
+                hdf.put(f'/sheets/uuid_{sheet.uuid}/metadata', sheet.metadata.df, format='fixed', data_columns=True)
+                hdf.put(f'/sheets/uuid_{sheet.uuid}/table', df, format='fixed', data_columns=True)
+                hdf.put(f'/sheets/uuid_{sheet.uuid}/description', sheet.description_to_df(), format='fixed', data_columns=True)
+
+    @classmethod
+    def metadata_from_hdf5(cls, filepath, **kwargs):
+        """import sdata.Data.Metadata from hdf5
+
+        :param filepath:
+        :return: sdata.Data
+        """
+        if not os.path.exists:
+            logger.error("hdf5 file '{}' not available".format(filepath))
+            return
+
+        with pd.HDFStore(filepath, mode="r+") as hdf:
+            metadata_path = "/metadata".format(uuid)
+            df_metadata = hdf.get(metadata_path)
+            metadata = Metadata.from_dataframe(df_metadata)
+            return metadata
+
+    @classmethod
+    def from_hdf5(cls, filepath, **kwargs):
+        """import sdata.Data from hdf5
+
+        :param filepath:
+        :return: sdata.Data
+        """
+        if not os.path.exists:
+            logger.error("hdf5 file '{}' not available".format(filepath))
+            return
+
+        def read_data(nodepath):
+            metadata_path = f"{nodepath}/metadata".format(uuid)
+            table_path = f"{nodepath}/table".format(uuid)
+            description_path = f"{nodepath}/description".format(uuid)
+            df_metadata = hdf.get(metadata_path)
+            df_table = hdf.get(table_path)
+            df_description = hdf.get(description_path)
+            metadata = Metadata.from_dataframe(df_metadata)
+            # logger.debug("hdf {}".format(metadata.get("!sdata_uuid").value))
+            sheetdata = Data(metadata=metadata, table=df_table)
+            sheetdata.description_from_df(df_description)
+            return sheetdata
+
+
+        with pd.HDFStore(filepath, mode="r+") as hdf:
+            metadata_path = "/metadata".format(uuid)
+            table_path = "/table".format(uuid)
+            description_path = "/description".format(uuid)
+            df_metadata = hdf.get(metadata_path)
+            df_table = hdf.get(table_path)
+            df_description = hdf.get(description_path)
+            metadata = Metadata.from_dataframe(df_metadata)
+            # logger.debug("hdf {}".format(metadata.get("!sdata_uuid").value))
+            wb = Workbook(metadata=metadata, table=df_table)
+            wb.description_from_df(df_description)
+            s = hdf.get_node("/sheets")
+            for g in s._v_groups:
+                print(g)
+                nodepath = f"/sheets/{g}"
+                sheetdata = read_data(nodepath)
+                wb.add_sheet(sheetdata)
+
+        return wb
+
+

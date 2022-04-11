@@ -5,6 +5,13 @@ from sdata.workbook import Workbook
 import pandas as pd
 import numpy as np
 
+def test_workbook():
+    wb = Workbook(name="workbook",
+                  description="A excel like workbook",
+                  )
+    print(wb)
+    assert wb.name == "workbook"
+
 def test_blob():
     wb = Workbook(name="workbook",
                   description="A excel like workbook",
