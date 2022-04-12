@@ -1,11 +1,13 @@
 # -*-coding: utf-8-*-
 
 import logging
+
 logger = logging.getLogger("sdata")
 import collections
 import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
+import sdata
 from sdata.data import Data
 from sdata.metadata import Metadata, Attribute
 import json
@@ -13,13 +15,13 @@ import os
 import hashlib
 import uuid
 
+
 class Workbook(Data):
     """Workbook with Sheets
 
     .. warning::
 
         highly experimental"""
-
 
     def __init__(self, **kwargs):
         """Workbook with Sheets
@@ -31,7 +33,6 @@ class Workbook(Data):
         Data.__init__(self, **kwargs)
 
         self._sheets = collections.OrderedDict()
-
 
     def create_sheet(self, name):
         """create a sheet to the Workbook
@@ -52,7 +53,7 @@ class Workbook(Data):
         :param data:
         :return: sdata.Data
         """
-        if isinstance(data, Data):
+        if isinstance(data, (Data, sdata.Data)):
             self._sheets[data.name] = data
         else:
             logger.error("{}.add_sheet: need sdata.Data, got {}".format(self.__class__.__name__, type(data)))
@@ -90,10 +91,36 @@ class Workbook(Data):
         """
         if self._isheet <= (len(self._sheets.keys()) - 1):
             self._isheet += 1
-            return self._sheets.get(list(self._sheets.keys())[self._isheet-1])
+            return self._sheets.get(list(self._sheets.keys())[self._isheet - 1])
         else:
             raise StopIteration
 
+    def get(self, name, default=None):
+        if self.get_sheet(name) is not None:
+            return self.get_sheet(name)
+        else:
+            return default
+
+    def keys(self):
+        """
+
+        :return: list of Attribute names
+        """
+        return list(self._sheets.keys())
+
+    def values(self):
+        """
+
+        :return: list of Attribute values
+        """
+        return list(self._sheets.values())
+
+    def items(self):
+        """
+
+        :return: list of Attribute items (keys, values)
+        """
+        return list(self._sheets.items())
 
     def to_hdf5(self, filepath, **kwargs):
         """export sdata.Data to hdf5
@@ -121,13 +148,15 @@ class Workbook(Data):
             hdf.put('description', self.description_to_df(), format='fixed', data_columns=True)
 
             for sheet in self.sheets:
-                if not isinstance(self.df, pd.DataFrame):
+                if not isinstance(sheet.df, pd.DataFrame):
+                    logger.warning("no df in sheet!")
                     df = pd.DataFrame()
                 else:
                     df = sheet.df
                 hdf.put(f'/sheets/uuid_{sheet.uuid}/metadata', sheet.metadata.df, format='fixed', data_columns=True)
                 hdf.put(f'/sheets/uuid_{sheet.uuid}/table', df, format='fixed', data_columns=True)
-                hdf.put(f'/sheets/uuid_{sheet.uuid}/description', sheet.description_to_df(), format='fixed', data_columns=True)
+                hdf.put(f'/sheets/uuid_{sheet.uuid}/description', sheet.description_to_df(), format='fixed',
+                        data_columns=True)
 
     @classmethod
     def metadata_from_hdf5(cls, filepath, **kwargs):
@@ -162,14 +191,16 @@ class Workbook(Data):
             table_path = f"{nodepath}/table".format(uuid)
             description_path = f"{nodepath}/description".format(uuid)
             df_metadata = hdf.get(metadata_path)
+            # print(df_metadata)
             df_table = hdf.get(table_path)
             df_description = hdf.get(description_path)
             metadata = Metadata.from_dataframe(df_metadata)
             # logger.debug("hdf {}".format(metadata.get("!sdata_uuid").value))
             sheetdata = Data(metadata=metadata, table=df_table)
+            sheetdata.metadata = metadata
             sheetdata.description_from_df(df_description)
+            # print(sheetdata.df)
             return sheetdata
-
 
         with pd.HDFStore(filepath, mode="r+") as hdf:
             metadata_path = "/metadata".format(uuid)
@@ -181,14 +212,12 @@ class Workbook(Data):
             metadata = Metadata.from_dataframe(df_metadata)
             # logger.debug("hdf {}".format(metadata.get("!sdata_uuid").value))
             wb = Workbook(metadata=metadata, table=df_table)
+            wb.metadata = metadata
             wb.description_from_df(df_description)
             s = hdf.get_node("/sheets")
             for g in s._v_groups:
-                print(g)
+                # print(g)
                 nodepath = f"/sheets/{g}"
                 sheetdata = read_data(nodepath)
                 wb.add_sheet(sheetdata)
-
         return wb
-
-

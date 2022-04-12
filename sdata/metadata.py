@@ -118,6 +118,8 @@ class Attribute(object):
                 self._value = None
             elif not value and self.dtype in ["int", "float"]:
                 self._value = np.nan
+            elif pd.isna(value) and self.dtype in ["int", "float"]:
+                self._value = np.nan
             elif dtype.__name__ == "bool" and value not in [1, "1", "true", "True"]:
                 self._value = False
             elif dtype.__name__ == "bool" and value in [1, "1", "true", "True"]:
