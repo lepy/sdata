@@ -4,7 +4,7 @@ Data types
 Metadata
 --------
 
-Metadata describing EVERY object within the the datastructure.
+Metadata describing EVERY object within the data structure.
 
 Attributes
 ..........

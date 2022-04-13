@@ -162,5 +162,5 @@ Components of sdata.Data
     # Dataframe
     data.df
 
-    # Descriptiom
+    # Description
     data.description

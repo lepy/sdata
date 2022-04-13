@@ -631,14 +631,14 @@ class Data(object):
 
     def add_data(self, data):
         """add data, if data.name is unique"""
-        if isinstance(data, Data):
+        if hasattr(data, "metadata"):
             names = [dat.name.lower() for uid, dat in self.group.items()]
             if data.name.lower() in names:
                 logger.error("{}: name '{}' aready exists".format(data.__class__.__name__, data.name))
                 return
             self.group[data.uuid] = data
         else:
-            logger.warning("ignore data %s (wrong type!)" % data)
+            logger.warning(f"ignore data {data}, {data.__class__.__name__} (wrong type!)")
 
     def get_data_by_uuid(self, uid):
         """get data by uuid"""
@@ -799,7 +799,6 @@ class Data(object):
         try:
             if os.path.exists(filepath):
                 wb = openpyxl.load_workbook(filename=filepath)
-                # sheetname = u'Übergabedaten VWD für BFA'
                 sheetnames = wb.sheetnames
 
                 tt = cls(name=filepath)
@@ -925,9 +924,11 @@ class Data(object):
         :param filepath:
         :return:
         """
+
         exportlines = []
         exportlines.append(self.metadata.to_csv_header(prefix="#;", sep=";", filepath=None))
-        exportlines.append(self.df.to_csv(sep=";"))
+        if self.df is not None:
+            exportlines.append(self.df.to_csv(sep=";"))
 
         exportstr = "".join(exportlines)
 
@@ -1139,7 +1140,7 @@ class Data(object):
         except Exception as exp:
             raise
 
-    def copy(self):
+    def copy(self, **kwargs):
         """create a copy of the Data object
 
         .. code-block:: python
@@ -1162,6 +1163,12 @@ class Data(object):
         data.metadata.add(self.SDATA_PARENT, self.uuid)
         data.metadata.add(self.SDATA_UUID, self.gen_uuid())
         data.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str")
+        if "uuid" in kwargs:
+            data.uuid = kwargs.get("uuid")
+        if "name" in kwargs:
+            data.name = kwargs.get("name")
+        logger.debug(f"make copy of {self.uuid} -> {data.uuid}")
+
         return data
 
     def gen_uuid(self):

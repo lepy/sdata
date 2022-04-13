@@ -117,6 +117,10 @@ class TestSeries(TestProgram):
             self._set_name(kwargs.get("name_testseries"))
         if kwargs.get("uuid_testseries") is not None:
             self._set_uuid(kwargs.get("uuid_testseries"))
+        if kwargs.get("name") is not None:
+            self._set_name(kwargs.get("name"))
+        if kwargs.get("uuid") is not None:
+            self._set_uuid(kwargs.get("uuid"))
         if kwargs.get("name_testprogram") is not None:
             self._set_name_testprogram(kwargs.get("name_testprogram"))
         if kwargs.get("uuid_testprogram") is not None:
