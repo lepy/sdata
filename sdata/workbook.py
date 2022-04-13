@@ -76,6 +76,9 @@ class Workbook(Data):
         """all sheets of the workbook"""
         return list(self._sheets.values())
 
+    def __getitem__(self, name):
+        return self.get(name)
+
     def __iter__(self):
         """
 
