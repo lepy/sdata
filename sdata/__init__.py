@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.18.0'
+__version__ = '0.19.0'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -12,6 +12,12 @@ basic sdata types
 import sys
 import uuid
 import logging
+
+# fix "ValueError: unsupported pickle protocol: 5"
+import pickle
+pickle.HIGHEST_PROTOCOL = 4
+import pandas
+
 from sdata.metadata import Metadata, Attribute
 from sdata.data import Data
 from sdata.blob import Blob
