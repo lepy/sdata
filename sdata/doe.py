@@ -68,6 +68,18 @@ class DOE():
             df[param_name] += r.min
         return df
 
+    def to_data(self, name, df_doe, uid=None):
+        """
+
+        :param df_doe: design table
+        :return: sdata.Data
+        """
+        data = sdata.Data(name=name, uuid=uid, table=df_doe, description="my DoE")
+        for parameter_name, r in self.ranges.items():
+            data.metadata.add(parameter_name, r, unit="?", description=f"parameter range {parameter_name}",
+                              label=rf"${parameter_name}$")
+        return data
+
 
 try:
     from itertools import combinations

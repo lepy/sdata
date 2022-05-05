@@ -399,7 +399,8 @@ class Data(object):
     def _set_table(self, df):
         if isinstance(df, pd.DataFrame):
             self._table = df
-            self._table.index.name = "index"
+            if self._table.index.name is None:
+                self._table.index.name = "index"
 
     table = property(fget=_get_table, fset=_set_table, doc="table object(pandas.DataFrame)")
     df = table
@@ -771,7 +772,8 @@ class Data(object):
 
             # data
             if self.table is not None:
-                self.table.index.name = "index"
+                if self._table.index.name is None:
+                    self._table.index.name = "index"
                 self.table.to_excel(writer, sheet_name='table')
                 adjust_col_width('table', self.table, writer, width=15)
             else:
@@ -805,7 +807,7 @@ class Data(object):
 
                 # read df
                 if "table" in sheetnames:
-                    tt.table = pd.read_excel(filepath, sheet_name="table", index_col='index')
+                    tt.table = pd.read_excel(filepath, sheet_name="table", index_col=0)
                 else:
                     logger.info("no table data in '{}'".format(filepath))
                 dfm = pd.read_excel(filepath, sheet_name="metadata")
@@ -957,7 +959,7 @@ class Data(object):
             sio.seek(0)
         else:
             logger.error("data.from_csv: no csv data available")
-            return
+            raise
 
         attritute_list = []
         for line in sio:
