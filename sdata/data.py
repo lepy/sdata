@@ -1,6 +1,8 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
+import sdata
+
 '''
 basic sdata types 
 '''
@@ -23,6 +25,7 @@ import hashlib
 import base64
 import requests
 from tabulate import tabulate
+from sdata.contrib.sqlitedict import SqliteDict
 
 if sys.version_info < (3, 0):
     from StringIO import StringIO
@@ -996,6 +999,44 @@ class Data(object):
             hdf.put('table'.format(self.uuid), df, format='fixed', data_columns=True)
             hdf.put('description'.format(self.uuid), self.description_to_df(), format='fixed', data_columns=True)
 
+    def to_sqlite(self, filepath, **kwargs):
+        """export sdata.Data to sqlite
+
+        :param filepath:
+        :param kwargs:
+        :return:
+        """
+
+        if not isinstance(self.df, pd.DataFrame):
+            df = pd.DataFrame()
+        else:
+            df = self.df
+        df.columns = df.columns.astype(str)
+
+        with SqliteDict(filepath, autocommit=True) as sqdict:
+            sqdict['metadata'] = self.metadata.df.to_parquet()
+            sqdict['table'] = df.to_parquet()
+
+            description = self.description_to_df().copy()
+            description.columns = description.columns.astype(str)
+            sqdict['description'] = description.to_parquet()
+
+    @classmethod
+    def from_sqlite(cls, filepath, **kwargs):
+        """import sdata.Data from sqlite
+
+        :param filepath:
+        :param kwargs:
+        :return: sdata.Data
+        """
+
+        with SqliteDict(filepath) as sqdict:
+            metadata = sdata.Metadata.from_dataframe(pd.read_parquet(BytesIO(sqdict['metadata'])))
+            df_table = pd.read_parquet(BytesIO(sqdict['table']))
+            df_description = pd.read_parquet(BytesIO(sqdict['description']))
+            data = Data(metadata=metadata, table=df_table)
+            data.description_from_df(df_description)
+            return data
 
     @classmethod
     def metadata_from_hdf5(cls, filepath, **kwargs):

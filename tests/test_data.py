@@ -141,6 +141,17 @@ def test_asciiname():
 
     assert sdata.Data(name="ö-ü-ä-Ö-Ü-Ä-?- -\\-/").asciiname == 'oe-ue-ae-Oe-Ue-Ae-?-_-_-_'
 
+def test_to_sqlite():
+    df = pd.DataFrame({'a': ['x', 'y', '', 'z'], 'b': [1, 2, 2, 3.2]})
+    data = sdata.Data(name="data", uuid="48b26864e7794f5182d38459bab8584d", table=df, description="abc")
+    sq = data.to_sqlite("/tmp/sq.sqlite")
+    # data2 = sdata.Data.from_json(s=js)
+    # print(data.name, data2.name)
+    # assert data.name==data2.name
+    # assert data.uuid==data2.uuid
+    # assert data.description==data2.description
+    # assert data.sha3_256==data2.sha3_256
+
 if __name__ == '__main__':
     test_data()
     test_group()
