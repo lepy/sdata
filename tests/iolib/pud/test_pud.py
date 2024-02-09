@@ -2,13 +2,13 @@
 
 import sys
 import os
-import sdata.io.pud
+import sdata.iolib.pud
 
 modulepath = os.path.dirname(__file__)
 
 def test_pud():
     filepath = os.path.join(modulepath, "ut_flat.txt")
-    pud = sdata.io.pud.Pud.from_file(filepath)
+    pud = sdata.iolib.pud.Pud.from_file(filepath)
     print(pud)
     print(pud.metadata)
     # print(pud.data.head())

@@ -1,37 +1,37 @@
-sdata.io package
+sdata.iolib package
 ================
 
 Submodules
 ----------
 
-sdata.io.hdf module
+sdata.iolib.hdf module
 -------------------
 
-.. automodule:: sdata.io.hdf
+.. automodule:: sdata.iolib.hdf
    :members:
    :undoc-members:
    :show-inheritance:
 
-sdata.io.pgp module
+sdata.iolib.pgp module
 -------------------
 
-.. automodule:: sdata.io.pgp
+.. automodule:: sdata.iolib.pgp
    :members:
    :undoc-members:
    :show-inheritance:
 
-sdata.io.pud module
+sdata.iolib.pud module
 -------------------
 
-.. automodule:: sdata.io.pud
+.. automodule:: sdata.iolib.pud
    :members:
    :undoc-members:
    :show-inheritance:
 
-sdata.io.vault module
+sdata.iolib.vault module
 ---------------------
 
-.. automodule:: sdata.io.vault
+.. automodule:: sdata.iolib.vault
    :members:
    :undoc-members:
    :show-inheritance:
@@ -39,7 +39,7 @@ sdata.io.vault module
 Module contents
 ---------------
 
-.. automodule:: sdata.io
+.. automodule:: sdata.iolib
    :members:
    :undoc-members:
    :show-inheritance:

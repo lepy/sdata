@@ -722,7 +722,7 @@ class Data(object):
         df_description.to_excel(writer, sheet_name='description', index=False, header=None)
         adjust_col_width('description', df_description, writer, width=200)
 
-        writer.save()
+        writer.close()
         processed_data = output.getvalue()
         return processed_data
 

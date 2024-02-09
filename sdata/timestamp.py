@@ -2,7 +2,7 @@
 
 Basic usage:
 
->>> parse_date("2007-01-25T12:00:00Z")
+    #>>> parse_date("2007-01-25T12:00:00Z")
 
 datetime.datetime(2007, 1, 25, 12, 0, tzinfo=<iso8601.Utc ...>)
 
@@ -327,3 +327,6 @@ def now_utc_str():
     """
     todaystr = datetime.datetime.now().isoformat()
     return TimeStamp(todaystr).utc
+
+if __name__ == '__main__':
+    print(now_utc_str())

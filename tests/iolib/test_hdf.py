@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.join(modulepath, "..", "..", "..", "src"))
 
 import sdata
 import uuid
-from sdata.io.hdf import FlatHDFDataStore
+from sdata.iolib.hdf import FlatHDFDataStore
 
 def test_flathdfstore():
     store = FlatHDFDataStore("/tmp/flatstore1.h5", mode="w")

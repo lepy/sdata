@@ -1,5 +1,6 @@
 # -*-coding: utf-8-*-
 
+
 import collections
 from sdata.contrib.ranger import Range
 import sdata.contrib.sobol_seq
@@ -80,19 +81,20 @@ class DOE():
                               label=rf"${parameter_name}$")
         return data
 
-
-try:
-    from itertools import combinations
-    import matplotlib.pyplot as plt
-    def plot_doe(df, figsize=(10,10), alpha=.5, s=5, dpi=150):
-        dim_num = len(df.columns)
-        fig, axs = plt.subplots(dim_num-1, dim_num-1, figsize=figsize, dpi=dpi)
-        for i, j in list(combinations(range(dim_num), 2)):
-            xi = df.columns[i]
-            xj = df.columns[j]
-            axs[i][j-1].scatter(df.iloc[:,i], df.iloc[:,j], alpha=alpha, s=s)
-            axs[i][j-1].set_xlabel(xi)
-            axs[i][j-1].set_ylabel(xj)
-        fig.tight_layout()
-except Exception as exp:
-    logging.warning(f"doe: {exp}")
+if __name__ == '__main__':
+    import logging
+    try:
+        from itertools import combinations
+        import matplotlib.pyplot as plt
+        def plot_doe(df, figsize=(10,10), alpha=.5, s=5, dpi=150):
+            dim_num = len(df.columns)
+            fig, axs = plt.subplots(dim_num-1, dim_num-1, figsize=figsize, dpi=dpi)
+            for i, j in list(combinations(range(dim_num), 2)):
+                xi = df.columns[i]
+                xj = df.columns[j]
+                axs[i][j-1].scatter(df.iloc[:,i], df.iloc[:,j], alpha=alpha, s=s)
+                axs[i][j-1].set_xlabel(xi)
+                axs[i][j-1].set_ylabel(xj)
+            fig.tight_layout()
+    except Exception as exp:
+        logging.warning(f"doe: {exp}")

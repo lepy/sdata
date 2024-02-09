@@ -23,3 +23,6 @@ def test_blob():
 #
 #     # sdf.to_xlsx(path="/tmp")
 #
+
+if __name__ == '__main__':
+    test_blob()

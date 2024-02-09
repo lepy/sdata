@@ -6,7 +6,7 @@ import os
 import uuid
 import numpy as np
 import pandas as pd
-from sdata.io import PID
+from sdata.iolib import PID
 from sdata import Data
 from sdata.metadata import Metadata
 

@@ -1,5 +1,5 @@
-from sdata.io.vault import Vault, VaultIndex
-from sdata.io.vault import FileSystemVault, VaultIndex, VaultSqliteIndex, Hdf5Vault
+from sdata.iolib.vault import Vault, VaultIndex
+from sdata.iolib.vault import FileSystemVault, VaultIndex, VaultSqliteIndex, Hdf5Vault
 from sdata import Data
 import pandas as pd
 import numpy as np

@@ -9,7 +9,7 @@ Subpackages
 
    sdata.contrib
    sdata.experiments
-   sdata.io
+   sdata.iolib
 
 Submodules
 ----------

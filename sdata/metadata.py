@@ -138,9 +138,9 @@ class Attribute(object):
         :param value:
         :return: __class__
         """
-        if isinstance(value, (int, np.int)):
+        if isinstance(value, (int)):
             return value.__class__
-        elif isinstance(value, (float, np.float)):
+        elif isinstance(value, (float)):
             return value.__class__
         elif isinstance(value, (str)):
             return value.__class__
