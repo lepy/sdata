@@ -5,7 +5,7 @@ import hashlib
 class SUUID:
 
     def __init__(self, class_name, huuid=None):
-        """generate SUUID (b'DATA'|b'e1e9eaa45eba5cc1b5f035317771b22c')
+        """generate SUUID ('DATA'|'e1e9eaa45eba5cc1b5f035317771b22c')
 
 
         :param class_name: name of the class, e.g. b'Data'
@@ -14,14 +14,14 @@ class SUUID:
 
         """
         try:
-            class_name = class_name.encode()
+            class_name = class_name
         except Exception as exp:
             pass
 
         self.class_name = class_name
 
         if huuid is None:
-            huuid = uuid.uuid4().hex.encode()
+            huuid = uuid.uuid4().hex
 
         self.huuid = huuid
 
@@ -33,12 +33,12 @@ class SUUID:
 
     @property
     def uuid(self):
-        s = self.huuid.decode()
+        s = self.huuid
         return uuid.UUID(s)
 
     @property
     def hex(self):
-        return self.huuid.decode()
+        return self.huuid
 
     @property
     def idstr(self):
@@ -46,16 +46,24 @@ class SUUID:
 
     @property
     def id(self):
-        s = b"".join([self.huuid, self.class_name])
-        return base64.encodebytes(s)
+        s = "".join([self.huuid, self.class_name])
+        return base64.encodebytes(s.encode())
 
     @property
     def suuid(self):
-        s = b"".join([self.huuid, self.class_name])
+        s = "".join([self.huuid, self.class_name])
         return base64.encodebytes(s)
 
-    def from_uuid(cls, class_name, uuid_string):
-        return cls(class_name.encode(), uuid_string.hex.encode())
+    @classmethod
+    def from_uuid(cls, class_name, uuid_obj):
+        """generate suuid from classname and uuid object
+
+        :param class_name: 'otto'
+        :param uuid_string: uuid
+        :return: suuid
+        """
+
+        return cls(class_name, uuid_obj.hex)
 
     @classmethod
     def get_namespace_from_name(cls, name):
@@ -103,7 +111,7 @@ class SUUID:
         :return: suuid
         """
         uid = cls.get_uuid_from_name(name=name, ns_name=ns_name)
-        suuid = cls(class_name=class_name, huuid=uid.hex.encode())
+        suuid = cls(class_name=class_name, huuid=uid.hex)
         return suuid
 
     @classmethod
@@ -155,20 +163,21 @@ class SUUID:
     @classmethod
     def from_suuid_bytes(cls, bytestring):
         """
-        b'NTcxYzNlY2E1NGYwNWNlY2E4MzFlOGNkNjYxNjMwOWFDTE5fQ1M=\n'
+        :param bytestring: b'NTcxYzNlY2E1NGYwNWNlY2E4MzFlOGNkNjYxNjMwOWFDTE5fQ1M=\n'
         """
 
-        id_string = base64.decodebytes(bytestring)
+        id_string = base64.decodebytes(bytestring).decode()
         s = cls(class_name=id_string[32:], huuid=id_string[:32])
         return s
 
     @classmethod
     def from_suuid_str(cls, string):
         """
-        'NTcxYzNlY2E1NGYwNWNlY2E4MzFlOGNkNjYxNjMwOWFDTE5fQ1M=\n'
+        :param string: 'NTcxYzNlY2E1NGYwNWNlY2E4MzFlOGNkNjYxNjMwOWFDTE5fQ1M=\n'
+
         """
 
-        id_string = base64.decodebytes(string.encode())
+        id_string = base64.decodebytes(string.encode()).decode()
         s = cls(class_name=id_string[32:], huuid=id_string[:32])
         return s
 
