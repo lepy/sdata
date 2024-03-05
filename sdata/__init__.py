@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.22.3'
+__version__ = '0.22.4'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -22,6 +22,7 @@ from sdata.metadata import Metadata, Attribute
 from sdata.data import Data
 from sdata.blob import Blob
 from sdata.suuid import SUUID
+from sdata.image import Image
 
 # import sdata.timestamp as timestamp
 from sdata.timestamp import today_str, now_utc_str, now_local_str
@@ -49,11 +50,12 @@ def osname(name, lower=True):
 
 
 SDATACLS = {"Data": Data,
+            "Image": Image,
             "Blob": Blob,
             "SUUID": SUUID,
             }
 
-__all__ = ["Data", "Blob", "SUUID"]
+__all__ = ["Data", "Image", "Blob", "SUUID"]
 
 
 def print_classes():

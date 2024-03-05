@@ -617,6 +617,13 @@ class Data(object):
         return f"({self.__class__.__name__} '{self.name}':{self.uuid})"
 
     __repr__ = __str__
+    @property
+    def mdf(self):
+        return self.metadata.df
+
+    @property
+    def md(self):
+        return self.metadata
 
     def get_group(self):
         return self._group
