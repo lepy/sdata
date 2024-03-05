@@ -70,7 +70,7 @@ class Image(Data):
         if PIL is None:
             logging.warning("PIL is not available -> no image import")
             return
-        data = cls.from_filepath(filepath, **filepath)
+        data = cls.from_filepath(filepath, **kwargs)
         data.load()
         if "sdata" in data.img.info:
             d = json.loads(data.img.info.get("sdata"))
@@ -87,12 +87,24 @@ class Image(Data):
             return
         data = cls.from_filepath(filepath, **kwargs)
         # data.load()
-        exif_dict = sdata.contrib.piexif.load(filepath)
-        user_comment = exif_dict["Exif"][sdata.contrib.piexif.ExifIFD.UserComment]
-        json_string = sdata.contrib.piexif.helper.UserComment.load(user_comment)
-        d = json.loads(json_string)
-        data.metadata = data.metadata.from_json(d)
+        d = cls._get_jpg_metadata(filepath)
+        if d is not None:
+            data.metadata = data.metadata.from_json(d)
         return data
+
+    @staticmethod
+    def _get_jpg_metadata(filepath):
+        """load metadata json dict from exif usercomment
+
+        """
+        exif_dict = sdata.contrib.piexif.load(filepath)
+        exif = exif_dict.get("Exif")
+        user_comment = exif.get(sdata.contrib.piexif.ExifIFD.UserComment)
+        d = None
+        if user_comment is not None:
+            json_string = sdata.contrib.piexif.helper.UserComment.load(user_comment)
+            d = json.loads(json_string)
+        return d
 
     def save(self, filepath):
         if self.img is None:
@@ -101,7 +113,7 @@ class Image(Data):
         if filepath.lower().endswith(".png"):
             self.save_png(filepath)
         elif filepath.lower().endswith(".jpg"):
-            self.save_png(filepath)
+            self.save_jpg(filepath)
         else:
             logging.warning(f"metadata not supported for {filepath}")
             self.img.save(filepath)

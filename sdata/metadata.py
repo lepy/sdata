@@ -505,7 +505,7 @@ class Metadata(object):
         return json.dumps(d)
 
     @classmethod
-    def from_json(cls,jsonstr=None, filepath=None):
+    def from_json(cls, jsonstr=None, filepath=None):
         """create metadata from json file
 
         :param jsonstr: json str
