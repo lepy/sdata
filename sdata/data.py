@@ -53,13 +53,14 @@ class Data(object):
     SDATA_VERSION = "!sdata_version"
     SDATA_NAME = "!sdata_name"
     SDATA_UUID = "!sdata_uuid"
+    SDATA_SUUID = "!sdata_suuid"
     SDATA_CTIME = "!sdata_ctime"
     SDATA_MTIME = "!sdata_mtime"
     SDATA_PARENT = "!sdata_parent"
     SDATA_CLASS = "!sdata_class"
     SDATA_PROJECT = "!sdata_project"
 
-    SDATA_ATTRIBUTES = [SDATA_VERSION, SDATA_NAME, SDATA_UUID, SDATA_CLASS, SDATA_PARENT, SDATA_PROJECT,
+    SDATA_ATTRIBUTES = [SDATA_VERSION, SDATA_NAME, SDATA_UUID, SDATA_SUUID, SDATA_CLASS, SDATA_PARENT, SDATA_PROJECT,
                         SDATA_CTIME, SDATA_MTIME]
 
     def __init__(self, **kwargs):
@@ -94,6 +95,7 @@ class Data(object):
         self.metadata.add(self.SDATA_VERSION, __version__, dtype="str", description="sdata package version")
         self.metadata.add(self.SDATA_NAME, "N.N.", dtype="str", description="name of the data object")
         self.metadata.add(self.SDATA_UUID, "", dtype="str", description="Universally Unique Identifier")
+        self.metadata.add(self.SDATA_SUUID, "", dtype="str", description="Super Universally Unique Identifier")
         self.metadata.add(self.SDATA_PARENT, "", dtype="str", description="uuid of the parent sdata object")
         self.metadata.add(self.SDATA_CLASS, self.__class__.__name__, dtype="str", description="sdata class")
         self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="creation date")
@@ -147,6 +149,11 @@ class Data(object):
         else:
             # logger.info("uuid new")
             self._set_uuid(uuid.uuid4())
+
+        self.gen_suuid()
+
+    def gen_suuid(self):
+        self.suuid = sdata.SUUID(self.__class__.__name__, self.name, huuid=self.uuid).idstr
 
     def gen_uuid_from_state(self):
         """generate the same uuid for the same data
@@ -301,6 +308,14 @@ class Data(object):
         """create default Attributes in data.metadata"""
         for attr_name, value, dtype, unit, description, required in default_attributes:
             self.metadata.set_attr(name=attr_name, value=value, dtype=dtype, description=description)
+
+    def _get_suuid(self):
+        return self.metadata.get(self.SDATA_SUUID).value
+
+    def _set_suuid(self, value):
+        self.metadata.set_attr(self.SDATA_SUUID, value)
+
+    suuid = property(fget=_get_suuid, fset=_set_suuid, doc="suuid of the object")
 
     def _get_uuid(self):
         return self.metadata.get(self.SDATA_UUID).value
@@ -1211,6 +1226,7 @@ class Data(object):
         if "name" in kwargs:
             data.name = kwargs.get("name")
         logger.debug(f"make copy of {self.uuid} -> {data.uuid}")
+        data.gen_suuid()
 
         return data
 
