@@ -11,7 +11,7 @@ with open('sdata/__init__.py', 'r') as f:
 with open('README.md', 'rb') as f:
     readme = f.read().decode('utf-8')
 
-REQUIRES = ['numpy', 'pandas', 'tabulate', 'xlrd', 'openpyxl', 'xlsxwriter', 'pytz', 'requests']
+REQUIRES = ['numpy', 'pandas', 'tabulate', 'xlrd', 'openpyxl', 'xlsxwriter', 'pytz', 'requests', 'pillow']
 
 setup(
     name='sdata',
@@ -22,7 +22,7 @@ setup(
     author="Lepy",
     author_email="lepy@mailbox.org",
     maintainer='Lepy',
-    maintainer_email='lepy@mailbox.org',
+    maintainer_email='lepy@tuta.io',
     url="https://github.com/lepy/sdata",
     license='MIT/Apache-2.0',
 
