@@ -184,6 +184,19 @@ class Data(object):
             return False
         return self.sha3_256 == other.sha3_256
 
+    def rename(self, name, random=True):
+        """change name, uuid and suuid
+        """
+        self.name = name
+        project = self.metadata.get(self.SDATA_PROJECT).value
+        if random is False:
+            suuid = sdata.SUUID.from_name(self.__class__.__name__, name, ns_name=project)
+        else:
+            suuid = sdata.SUUID(self.__class__.__name__, name)
+        self._set_suuid(suuid.idstr)
+        self._set_uuid(suuid.huuid)
+        return self
+
     def update_mtime(self):
         """update modification time
 

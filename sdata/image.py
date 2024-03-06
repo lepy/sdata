@@ -1,3 +1,4 @@
+import copy
 import logging
 import collections
 import pandas as pd
@@ -31,14 +32,29 @@ class Image(Data):
         self.img = None
 
     @classmethod
-    def from_filepath(cls, filepath, **kwargs):
-        """
+    def _from_filepath(cls, filepath, **kwargs):
+        """read image from file
 
         """
         project = kwargs.get("project")
         suuid = SUUID.from_file(cls.__class__.__name__, filepath, ns_name=project)
-        d = cls(name=os.path.basename(filepath), uuid=suuid.huuid, url=filepath, **kwargs)
-        return d
+        data = cls(name=os.path.basename(filepath), uuid=suuid.huuid, url=filepath, **kwargs)
+        return data
+
+    @classmethod
+    def from_file(cls, filepath, **kwargs):
+        """read image from file
+
+        """
+        project = kwargs.get("project")
+        suuid = SUUID.from_file(cls.__class__.__name__, filepath, ns_name=project)
+        if filepath.lower().endswith(".png"):
+            data = cls.from_png(filepath, **kwargs)
+        elif filepath.lower().endswith(".jpg"):
+            data = cls.from_jpg(filepath, **kwargs)
+        else:
+            data = cls(name=os.path.basename(filepath), uuid=suuid.huuid, url=filepath, **kwargs)
+        return data
 
     def get_sha3_256(self, filepath):
         sh = hashlib.sha3_256()
@@ -70,12 +86,20 @@ class Image(Data):
         if PIL is None:
             logging.warning("PIL is not available -> no image import")
             return
-        data = cls.from_filepath(filepath, **kwargs)
+        data = cls._from_filepath(filepath, **kwargs)
         data.load()
         if "sdata" in data.img.info:
             d = json.loads(data.img.info.get("sdata"))
             data.metadata = data.metadata.from_json(d)
         return data
+
+    @staticmethod
+    def _get_png_metadata(filepath, **kwargs):
+        """load metadata json dict from img.info
+        """
+        img = PIL.Image.open(filepath)
+        d = json.loads(img.info.get("sdata"))
+        return d
 
     @classmethod
     def from_jpg(cls, filepath, **kwargs):
@@ -85,7 +109,7 @@ class Image(Data):
         if PIL is None:
             logging.warning("PIL is not available -> no image import")
             return
-        data = cls.from_filepath(filepath, **kwargs)
+        data = cls._from_filepath(filepath, **kwargs)
         # data.load()
         d = cls._get_jpg_metadata(filepath)
         if d is not None:
@@ -106,19 +130,30 @@ class Image(Data):
             d = json.loads(json_string)
         return d
 
-    def save(self, filepath):
-        if self.img is None:
-            self.load()
+    def save(self, filepath, rename=True, random=True, **kwargs):
+        """save image
+
+        """
+        other = copy.deepcopy(self) # keep parent ...
+        if rename is True:
+            basename = os.path.basename(filepath)
+            other.rename(basename, random=random)
+
+        if other.img is None:
+            other.load()
 
         if filepath.lower().endswith(".png"):
-            self.save_png(filepath)
+            other._save_png(filepath)
         elif filepath.lower().endswith(".jpg"):
-            self.save_jpg(filepath)
+            other._save_jpg(filepath)
         else:
             logging.warning(f"metadata not supported for {filepath}")
-            self.img.save(filepath)
+            other.img.save(filepath)
 
-    def save_png(self, filepath):
+    def _save_png(self, filepath):
+        """save png with metadata
+
+        """
         if self.img is None:
             self.load()
 
@@ -128,7 +163,10 @@ class Image(Data):
 
         self.img.save(filepath, "PNG", pnginfo=metadaten)
 
-    def save_jpg(self, filepath):
+    def _save_jpg(self, filepath):
+        """save jpg with metadata
+
+        """
         if self.img is None:
             self.load()
         json_string = json.dumps(self.metadata.to_json())
