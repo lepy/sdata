@@ -59,9 +59,10 @@ class Data(object):
     SDATA_PARENT = "!sdata_parent"
     SDATA_CLASS = "!sdata_class"
     SDATA_PROJECT = "!sdata_project"
+    SDATA_URL = "!sdata_url"
 
     SDATA_ATTRIBUTES = [SDATA_VERSION, SDATA_NAME, SDATA_UUID, SDATA_SUUID, SDATA_CLASS, SDATA_PARENT, SDATA_PROJECT,
-                        SDATA_CTIME, SDATA_MTIME]
+                        SDATA_CTIME, SDATA_MTIME, SDATA_URL]
 
     def __init__(self, **kwargs):
         """create Data object
@@ -969,7 +970,6 @@ class Data(object):
         exportlines.append(self.metadata.to_csv_header(prefix="#;", sep=";", filepath=None))
         if self.df is not None:
             exportlines.append(self.df.to_csv(sep=";"))
-
         exportstr = "".join(exportlines)
 
         if filepath is None:
@@ -988,16 +988,21 @@ class Data(object):
         :return: sdata.Data
         """
         data = cls()
-        if filepath:
-            df = pd.read_csv(filepath, sep=";", comment="#", index_col=0)
-            sio = open(filepath, "r")
-        elif s is not None:
-            sio = StringIO(s)
-            pd.read_csv(sio, sep=";", comment="#")
-            sio.seek(0)
-        else:
-            logger.error("data.from_csv: no csv data available")
+        df = None
+        try:
+            if filepath:
+                df = pd.read_csv(filepath, sep=";", comment="#", index_col=0)
+                sio = open(filepath, "r")
+            elif s is not None:
+                sio = StringIO(s)
+                pd.read_csv(sio, sep=";", comment="#")
+                sio.seek(0)
+            else:
+                logger.error("data.from_csv: no csv data available")
+        except Exception as exp:
+            logging.error(f"{exp}")
             raise
+            return
 
         attritute_list = []
         for line in sio:

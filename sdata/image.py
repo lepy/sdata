@@ -7,6 +7,7 @@ from sdata.timestamp import TimeStamp
 from sdata.data import Data
 from sdata.suuid import SUUID
 from sdata.metadata import Metadata, Attribute
+import sdata.contrib
 import sdata.contrib.piexif
 import sdata.contrib.piexif.helper
 import json
@@ -25,11 +26,22 @@ class Image(Data):
         highly experimental"""
 
 
-    def __init__(self, **kwargs):
+    def __init__(self, url, **kwargs):
         """Image Object"""
+
+        # url = kwargs.get("url", "")
+        load = kwargs.get("load", False)
+        try:
+            name = os.path.basename(url)
+        except Exception as exp:
+            name = None
+        if "name" not in kwargs:
+            kwargs["name"] = name
         Data.__init__(self, **kwargs)
-        self.url = kwargs.get("url", "")
+        self.url = url
         self.img = None
+        if load is True:
+            self.load()
 
     @classmethod
     def _from_filepath(cls, filepath, **kwargs):
@@ -94,11 +106,27 @@ class Image(Data):
         return data
 
     @staticmethod
+    def _get_metadata(filepath, **kwargs):
+        """
+
+        """
+        if filepath.lower().endswith(".png"):
+            d = Image._get_png_metadata(filepath, **kwargs)
+        elif filepath.lower().endswith(".jpg"):
+            d = Image._get_png_metadata(filepath, **kwargs)
+        else:
+            d = {}
+        return d
+
+    @staticmethod
     def _get_png_metadata(filepath, **kwargs):
         """load metadata json dict from img.info
         """
         img = PIL.Image.open(filepath)
-        d = json.loads(img.info.get("sdata"))
+        try:
+            d = json.loads(img.info.get("sdata"))
+        except Exception as exp:
+            d = {}
         return d
 
     @classmethod
@@ -130,7 +158,7 @@ class Image(Data):
             d = json.loads(json_string)
         return d
 
-    def save(self, filepath, rename=True, random=True, **kwargs):
+    def saveas(self, filepath, rename=True, random=True, **kwargs):
         """save image
 
         """
@@ -138,17 +166,22 @@ class Image(Data):
         if rename is True:
             basename = os.path.basename(filepath)
             other.rename(basename, random=random)
+        other.update_mtime()
+        other.save(filepath)
+        return other
 
-        if other.img is None:
-            other.load()
+    def save(self, filepath, **kwargs):
 
-        if filepath.lower().endswith(".png"):
-            other._save_png(filepath)
+        if self.img is None:
+            self.load()
+
+        if filepath.endswith(".png"):
+            self._save_png(filepath)
         elif filepath.lower().endswith(".jpg"):
-            other._save_jpg(filepath)
+            self._save_jpg(filepath)
         else:
             logging.warning(f"metadata not supported for {filepath}")
-            other.img.save(filepath)
+            self.img.save(filepath)
 
     def _save_png(self, filepath):
         """save png with metadata

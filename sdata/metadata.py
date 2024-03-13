@@ -56,6 +56,7 @@ class Attribute(object):
     """Attribute class"""
 
     DTYPES = {'float': float, 'int': int, 'str': str, 'timestamp': TimeStamp, "bool": bool}
+    DTYPES_INV = {v: k for k, v in DTYPES.items()}
 
     def __init__(self, name, value, **kwargs):
         """Attribute
@@ -158,6 +159,8 @@ s
         """
         if value is None:
             return None
+        if value in self.DTYPES_INV.keys():
+            value = self.DTYPES_INV.get(value, "str")
         elif "float" in value:
             value = "float"
         elif "int" in value:
@@ -533,17 +536,17 @@ class Metadata(object):
     def from_list(cls, mlist):
         """create metadata from a list of Attribute values
 
-        [['force_x', 1.2, 'float', 'kN', 'force in x-direction'],
-         ['force_y', 3.1, 'float', 'N', 'force in y-direction', 'label', True]]
+        [['force_x', 1.2, 'kN', 'float', 'force in x-direction'],
+         ['force_y', 3.1, 'N', 'float', 'force in y-direction', 'label', True]]
          """
         metadata = cls()
         for alist in mlist:
             if len(alist) < 2:
                 logger.error("Metadata.from_list skip {}".format(alist))
             else:
-                alist.extend(["", "", "", ""])
-                #["name", "value", "dtype", "unit", "description"]
-                metadata.add(alist[0], alist[1], dtype=alist[2], unit=alist[3], description=alist[4],
+                alist.extend(["", "", "", "", ""])
+                #["name", "value", "unit", "dtype", "description", "label", "required"]
+                metadata.add(alist[0], alist[1], unit=alist[2], dtype=alist[3], description=alist[4],
                              label=alist[5], required=alist[6])
         return metadata
 
