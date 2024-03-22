@@ -1,6 +1,7 @@
 import uuid
 import base64
 import hashlib
+import os
 
 """
 SUUID
@@ -54,7 +55,14 @@ class SUUID:
         if name is None:
             name = ""
 
-        self.name = name
+        self.name = self._clean_name(name)
+
+    @staticmethod
+    def _clean_name(name):
+        rs = ["|", ";"]
+        for r in rs:
+            name = name.replace(r, "")
+        return name
 
     def __str__(self):
         return f"({self.class_name}|{self.name}|{self.huuid})"
@@ -87,6 +95,11 @@ class SUUID:
     def id(self):
         s = "".join([self.huuid, self.class_name + "|" + self.name])
         return base64.b64encode(s.encode())
+
+    @property
+    def sname(self):
+        s = "|".join([self.class_name, self.name, self.huuid])
+        return s
 
     @property
     def suuid(self):
@@ -149,6 +162,7 @@ class SUUID:
         :param ns_string: e.g. projectname "MyProject"
         :return: suuid
         """
+        name = cls._clean_name(name)
         uid = cls.get_uuid_from_name(name=name, ns_name=ns_name)
         suuid = cls(class_name=class_name, name=name, huuid=uid.hex)
         return suuid
@@ -167,6 +181,7 @@ class SUUID:
         :param ns_string: e.g. projectname "MyProject"
         :return: suuid
         """
+        name = cls._clean_name(name)
         suuid = cls.from_name(class_name, name=name, ns_name=ns_name)
         return suuid.id
 
@@ -188,7 +203,9 @@ class SUUID:
         sh = hashlib.sha3_256()
         with open(filepath, "rb") as fh:
             sh.update(fh.read())
+        basename = os.path.basename(filepath)
         suuid = cls.from_name(class_name=class_name, name=sh.hexdigest(), ns_name=ns_name)
+        suuid.name = basename
         return suuid
 
     @classmethod
@@ -210,7 +227,7 @@ class SUUID:
     @classmethod
     def from_suuid_bytes(cls, bytestring):
         """
-        :param bytestring: b'NTcxYzNlY2E1NGYwNWNlY2E4MzFlOGNkNjYxNjMwOWFDTE5fQ1M=\n'
+        :param bytestring: 'MTNhNjMxMWNjZDFlNDFiOGI2MzJhNGY0ZTIzMjdiNTFQYXJ0fG15dGVzdG5hbWUwMQ=='
         """
         id_string = base64.b64decode(bytestring).decode()
         return cls.from_idstr(id_string)
@@ -218,12 +235,22 @@ class SUUID:
     @classmethod
     def from_suuid_str(cls, string):
         """
-        :param string: 'NTcxYzNlY2E1NGYwNWNlY2E4MzFlOGNkNjYxNjMwOWFDTE5fQ1M=\n'
+        :param string: 'MTNhNjMxMWNjZDFlNDFiOGI2MzJhNGY0ZTIzMjdiNTFQYXJ0fG15dGVzdG5hbWUwMQ=='
 
         """
 
         id_string = base64.b64decode(string.encode()).decode()
         return cls.from_idstr(id_string)
+
+
+    @classmethod
+    def from_suuid_sname(cls, s):
+        """
+        :param string: 'Part|mytestname01|22a476e75a68486a92764eb830395923'
+
+        """
+        class_name, name, huuid = s.split("|")
+        return cls(class_name=class_name, name=name, huuid=huuid)
 
     @classmethod
     def from_idstr(cls, id_string):

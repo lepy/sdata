@@ -262,7 +262,7 @@ class Metadata(object):
         * type (int, str, float, bool, timestamp)
         """
 
-    ATTRIBUTEKEYS = ["name", "value", "dtype", "unit", "description", "label", "required"]
+    ATTRIBUTEKEYS = ["name", "value", "unit", "dtype", "description", "label", "required"]
 
     def __init__(self, **kwargs):
         """Metadata class
@@ -310,7 +310,7 @@ class Metadata(object):
             attr = name # name is the Attribute!
         else:
             attr = self.get_attr(prefix + name) or Attribute(name, value, **kwargs)
-        for key in ["dtype", "unit", "description", "label", "required"]:
+        for key in ["unit", "dtype", "description", "label", "required"]:
             if key in kwargs:
                 if key in kwargs:
                     # print("!!!", attr, key, kwargs.get(key))
@@ -358,16 +358,21 @@ class Metadata(object):
             pass
         return str(value), "str"
 
-    def update_from_dict(self, d):
+    def update_from_dict(self, d, guess_dtype=True):
         """set attributes from dict
 
         :param d: dict
         :return:
         """
         for k, v in d.items():
-            value, dtype = self.guess_dtype_from_value(v)
+            if guess_dtype is False:
+                value = v
+                dtype = None
+            else:
+                value, dtype = self.guess_dtype_from_value(v)
             if dtype in ["float", "int", "bool"]:
-                v = {"name":k, "value":value, "dtype":dtype, "unit":"", "description":"", "label":"", "required":False}
+                v = {"name":k, "value":value}
+                # v = {"name":k, "value":value, "dtype":dtype, "unit":"", "description":"", "label":"", "required":False}
             elif isinstance(v, (str,)):
                 v = {"name":k, "value":v, "dtype":"str", "unit":"", "description":"", "label":"", "required":False}
             elif hasattr(v, "keys"):
@@ -378,7 +383,8 @@ class Metadata(object):
                      "label":v.get("label", ""), "required":v.get("required", False)}
             else:
                 v, dtype = self.guess_dtype_from_value(v)
-                v = {"name":k, "value":v, "dtype":dtype, "unit":"", "description":"", "label":"", "required":False}
+                # v = {"name":k, "value":v, "dtype":dtype, "unit":"", "description":"", "label":"", "required":False}
+                v = {"name":k, "value":v, "dtype":dtype}
             self.set_attr(**v)
 
     @classmethod

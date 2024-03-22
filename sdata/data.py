@@ -52,6 +52,7 @@ class Data(object):
 
     SDATA_VERSION = "!sdata_version"
     SDATA_NAME = "!sdata_name"
+    SDATA_SNAME = "!sdata_sname"
     SDATA_UUID = "!sdata_uuid"
     SDATA_SUUID = "!sdata_suuid"
     SDATA_CTIME = "!sdata_ctime"
@@ -95,12 +96,14 @@ class Data(object):
         # set default sdata attributes
         self.metadata.add(self.SDATA_VERSION, __version__, dtype="str", description="sdata package version")
         self.metadata.add(self.SDATA_NAME, "N.N.", dtype="str", description="name of the data object")
+        self.metadata.add(self.SDATA_SNAME, "", dtype="str", description="sname of the data object")
         self.metadata.add(self.SDATA_UUID, "", dtype="str", description="Universally Unique Identifier")
         self.metadata.add(self.SDATA_SUUID, "", dtype="str", description="Super Universally Unique Identifier")
         self.metadata.add(self.SDATA_PARENT, "", dtype="str", description="uuid of the parent sdata object")
         self.metadata.add(self.SDATA_CLASS, self.__class__.__name__, dtype="str", description="sdata class")
         self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="creation date")
         self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str", description="modification date")
+        self.metadata.add(self.SDATA_URL, "", dtype="str", description="url of the data object")
 
         metadata = kwargs.get("metadata")
         if metadata is not None:
@@ -151,10 +154,19 @@ class Data(object):
             # logger.info("uuid new")
             self._set_uuid(uuid.uuid4())
 
-        self.gen_suuid()
+        if "suuid" not in kwargs:
+            self.gen_suuid()
+        else:
+            suuid = sdata.SUUID.from_suuid_str(kwargs.get("suuid"))
+            self.suuid = kwargs.get("suuid")
+            self.sname = suuid.sname
+
+        if "sname" in kwargs:
+            self.sname = kwargs.get("sname")
 
     def gen_suuid(self):
         self.suuid = sdata.SUUID(self.__class__.__name__, self.name, huuid=self.uuid).idstr
+        self.sname = sdata.SUUID(self.__class__.__name__, self.name, huuid=self.uuid).sname
 
     def gen_uuid_from_state(self):
         """generate the same uuid for the same data
@@ -330,6 +342,15 @@ class Data(object):
         self.metadata.set_attr(self.SDATA_SUUID, value)
 
     suuid = property(fget=_get_suuid, fset=_set_suuid, doc="suuid of the object")
+
+
+    def _get_sname(self):
+        return self.metadata.get(self.SDATA_SNAME).value
+
+    def _set_sname(self, value):
+        self.metadata.set_attr(self.SDATA_SNAME, value)
+
+    sname = property(fget=_get_sname, fset=_set_sname, doc="sname of the object")
 
     def _get_uuid(self):
         return self.metadata.get(self.SDATA_UUID).value

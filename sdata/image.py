@@ -50,7 +50,10 @@ class Image(Data):
         """
         project = kwargs.get("project")
         suuid = SUUID.from_file(cls.__class__.__name__, filepath, ns_name=project)
-        data = cls(name=os.path.basename(filepath), uuid=suuid.huuid, url=filepath, **kwargs)
+        kwargs["uuid"] = suuid.huuid
+        kwargs["url"] = filepath
+
+        data = cls(name=os.path.basename(filepath), **kwargs)
         return data
 
     @classmethod
@@ -59,13 +62,21 @@ class Image(Data):
 
         """
         project = kwargs.get("project")
-        suuid = SUUID.from_file(cls.__class__.__name__, filepath, ns_name=project)
+        class_name = "Image" #cls.__class__.__name__
+        suuid = SUUID.from_file(class_name, filepath, ns_name=project)
+        kwargs["sname"] = suuid.sname
+        kwargs["uuid"] = suuid.huuid
+        kwargs["suuid"] = suuid.idstr
+        kwargs["url"] = filepath
+        name = os.path.basename(filepath)
+
+
         if filepath.lower().endswith(".png"):
             data = cls.from_png(filepath, **kwargs)
         elif filepath.lower().endswith(".jpg"):
             data = cls.from_jpg(filepath, **kwargs)
         else:
-            data = cls(name=os.path.basename(filepath), uuid=suuid.huuid, url=filepath, **kwargs)
+            data = cls(name=name, **kwargs)
         return data
 
     def get_sha3_256(self, filepath):
@@ -89,6 +100,15 @@ class Image(Data):
         if os.path.exists(self.url):
             self.img = PIL.Image.open(self.url)
         return self.img
+
+    def to_numpy(self):
+        """returns a NumPy array created from the color channels of the given Image object
+
+            array([[[192, 190, 187],
+                    [193, 190, 187],
+                    [193, 190, 185],
+        """
+        return np.array(self.img)
 
     @classmethod
     def from_png(cls, filepath, **kwargs):
@@ -139,9 +159,12 @@ class Image(Data):
             return
         data = cls._from_filepath(filepath, **kwargs)
         # data.load()
-        d = cls._get_jpg_metadata(filepath)
-        if d is not None:
-            data.metadata = data.metadata.from_json(d)
+        try:
+            d = cls._get_jpg_metadata(filepath)
+            if d is not None:
+                data.metadata = data.metadata.from_json(d)
+        except Exception as exp:
+            logging.debug(exp)
         return data
 
     @staticmethod
