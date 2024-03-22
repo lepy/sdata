@@ -458,6 +458,9 @@ class Metadata(object):
     @classmethod
     def from_dataframe(cls, df):
         """create metadata from dataframe"""
+        df.unit.fillna("", inplace=True)
+        df.label.fillna("", inplace=True)
+        df.description.fillna("", inplace=True)
         d = df.to_dict(orient='index')
         metadata = cls.from_dict(d)
         return metadata
@@ -626,6 +629,31 @@ class Metadata(object):
 
     def __getitem__(self, name):
         return self.get(name)
+
+    def __setitem__(self, name, value):
+        """update value in Attribute or create new Attribute"""
+        attr = self.get(name)
+
+        if attr is None:
+            attr = Attribute(name=name, value=value, dtype=type(value).__name__)
+            self._attributes[attr.name] = attr
+        else:
+            dtype = attr.guess_dtype(value)
+            attr.dtype = dtype
+            attr.value = dtype(value)
+
+    def __contains__(self, item):
+        return item in self.attributes.keys()
+
+    def pop(self, item):
+        try:
+            return self._attributes.pop(item)
+        except KeyError as exp:
+            return None
+
+    def __iter__(self):
+        for x in self.attributes.items():
+            yield x
 
     @property
     def sha3_256(self):
