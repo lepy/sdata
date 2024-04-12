@@ -189,7 +189,7 @@ class Data(object):
     def __eq__(self, other):
         """compare Data checksum
         
-        :param other: sdata.Data objecet
+        :param other: sdata.Data object
         :return: True or False
         """
         if not isinstance(other, self.__class__):

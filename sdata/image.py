@@ -12,6 +12,8 @@ import sdata.contrib.piexif
 import sdata.contrib.piexif.helper
 import json
 import os
+from io import BytesIO
+import base64
 import hashlib
 try:
     import PIL
@@ -47,14 +49,67 @@ class Image(Data):
     def _from_filepath(cls, filepath, **kwargs):
         """read image from file
 
+        :param fielpath: image file path
+        :return: sdata.Image
         """
         project = kwargs.get("project")
         suuid = SUUID.from_file(cls.__class__.__name__, filepath, ns_name=project)
         kwargs["uuid"] = suuid.huuid
         kwargs["url"] = filepath
-
         data = cls(name=os.path.basename(filepath), **kwargs)
         return data
+
+    @classmethod
+    def from_image(cls, name, img, **kwargs):
+        """read image from PIL.Image
+
+        """
+        project = kwargs.get("project", "")
+        parent = kwargs.get("parent", "")
+        class_name = "Image" #cls.__class__.__name__
+
+        sh = hashlib.sha3_256()
+        sh.update(img.tobytes())
+        suuid = SUUID.from_name(class_name=class_name, name=sh.hexdigest(), ns_name=project)
+        suuid.project = project
+        kwargs["parent"] = parent
+        kwargs["project"] = suuid.project
+        kwargs["sname"] = suuid.sname
+        kwargs["uuid"] = suuid.huuid
+        kwargs["suuid"] = suuid.idstr
+        kwargs["url"] = sdata.osname(name)
+        # name = os.path.basename(filepath)
+        data = cls(name=name, **kwargs)
+        data.img = img
+        return data
+
+
+    @classmethod
+    def from_bytes(cls, name, image_data, **kwargs):
+        """read image from file
+
+        """
+        project = kwargs.get("project")
+        class_name = "Image" #cls.__class__.__name__
+        suuid = SUUID.from_str(class_name, name, ns_name=project)
+        kwargs["sname"] = suuid.sname
+        kwargs["uuid"] = suuid.huuid
+        kwargs["suuid"] = suuid.idstr
+        kwargs["url"] = name
+        data = cls(name=name, **kwargs)
+        data.img = PIL.Image.open(BytesIO(image_data))
+        try:
+            d = None
+            if name.lower().endswith(".png"):
+                d = cls._get_png_metadata(image_data)
+            elif name.lower().endswith(("jpg", "jpeg")):
+                d = cls._get_jpg_metadata(image_data)
+            if d is not None:
+                data.metadata = data.metadata.from_json(d)
+        except:
+            pass
+        return data
+
 
     @classmethod
     def from_file(cls, filepath, **kwargs):
@@ -73,7 +128,7 @@ class Image(Data):
 
         if filepath.lower().endswith(".png"):
             data = cls.from_png(filepath, **kwargs)
-        elif filepath.lower().endswith(".jpg"):
+        elif filepath.lower().endswith(("jpg", "jpeg")):
             data = cls.from_jpg(filepath, **kwargs)
         else:
             data = cls(name=name, **kwargs)
@@ -229,3 +284,25 @@ class Image(Data):
         exif_dict = {"Exif": {sdata.contrib.piexif.ExifIFD.UserComment: sdata.contrib.piexif.helper.UserComment.dump(json_string)}}
         exif_bytes = sdata.contrib.piexif.dump(exif_dict)
         self.img.save(filepath, "jpeg", exif=exif_bytes)
+
+    def get_image_download_link(self, img, filename, text):
+
+        json_string = json.dumps(self.metadata.to_json())
+        buffered = BytesIO()
+
+        if filename.endswith(".png"):
+            metadaten = PIL.PngImagePlugin.PngInfo()
+            metadaten.add_text("sdata", json_string)
+            img.save(buffered, "PNG", pnginfo=metadaten)
+        elif filename.lower().endswith(".jpg"):
+            exif_dict = {"Exif": {
+                sdata.contrib.piexif.ExifIFD.UserComment: sdata.contrib.piexif.helper.UserComment.dump(json_string)}}
+            exif_bytes = sdata.contrib.piexif.dump(exif_dict)
+            img.save(buffered, format="JPEG", exif=exif_bytes)
+        else:
+            logging.warning(f"metadata not supported for {filepath}")
+            img.save(buffered)
+
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        href = f'<a href="data:file/txt;base64,{img_str}" download="{filename}">{text}</a>'
+        return href
