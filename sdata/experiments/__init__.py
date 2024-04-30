@@ -21,6 +21,21 @@ class TestProgram(Data):
     """A sdata Testprogram
 
     """
+    ATTRIBUTES = [
+        ['material_name', '', 'str', '-', 'Der Name des Materials.', '', False],
+        ['material_norm_name', '', 'str', '-', 'Der normative Name des Materials.', '', False],
+        ['material_number_norm', '', 'str', '-', 'Die normative Nummer des Materials.', '', False],
+        ['material_manifacturer', '', 'str', '-', 'Die Hersteller des Materials.', '', False],
+        ['material_grade', '', 'str', '-', 'Der Zustand des Materials.', '', False],
+        ['material_coating', '', 'str', '-', 'Die Beschichtung des Materials.', '', False],
+        ['material_density', '', 'float', 'g/cm^3', 'Die Dichte des Materials.', '', False],
+        ['material_production_date', '', 'str', '-', 'Das Produktionsdatum des Materials.', '', False],
+        ['responsible_person', '', 'str', '-', 'Verantwortlicher des Testprogramms.', '', False],
+        ['responsible_person_phone', '', 'str', '-', 'Telefonnummer des Verantwortlichen vom Testprogramms.', '', False],
+        ['responsible_person_email', '', 'str', '-', 'Emailadressen des Verantwortlichen vom Testprogramms.', '', False],
+        ['responsible_person_organisation', '', 'str', '-', 'Organisation des Verantwortlichen vom Testprogramms.', '', False],
+        ['notes', '', 'str', '-', 'Notizen zum Testprogramm.', '', False],
+        ]
 
     def __init__(self, **kwargs):
         """
@@ -48,13 +63,26 @@ class TestProgram(Data):
         if kwargs.get("uuid_testprogram") is not None:
             self._set_uuid(kwargs.get("uuid_testprogram"))
 
+        for attrlist in self.ATTRIBUTES:
+            self.metadata.set_attr(attrlist[0], attrlist[1],
+                                   dtype=attrlist[2],
+                                   unit=attrlist[3],
+                                   description=attrlist[4],
+                                   label=attrlist[5],
+                                   required=attrlist[6])
+
+
     def gen_testseries(self, **kwargs):
         """generate TestSeries instance
 
         :param kwargs:
         :return: TestSeries()
         """
-        ts = TestSeries(**kwargs)
+        class_name = kwargs.get("class_name", TestSeries)
+        if "class_name" in kwargs:
+            kwargs.pop("class_name")
+
+        ts = class_name(**kwargs)
         ts.project = self.project
         ts.name_testprogram = self.name_testprogram
         ts.uuid_testprogram = self.uuid_testprogram
@@ -63,7 +91,7 @@ class TestProgram(Data):
 
     @property
     def longname(self):
-        return "_".join([self.name_testprogram])
+        return "|".join([self.name_testprogram])
 
 class TestSeries(TestProgram):
     """A sdata TestSeries
@@ -74,6 +102,8 @@ class TestSeries(TestProgram):
     SDATA_TESTPROGRAM_UUID = "!sdata_testprogram_uuid"
 
     SDATA_TESTTYPE = "!sdata_testtype"
+
+
 
     def __init__(self, **kwargs):
         """Test Series
@@ -185,7 +215,11 @@ class TestSeries(TestProgram):
         :param kwargs:
         :return: Test()
         """
-        t = Test(**kwargs)
+        class_name = kwargs.get("class_name", Test)
+        if "class_name" in kwargs:
+            kwargs.pop("class_name")
+
+        t = class_name(**kwargs)
         t.name_testprogram = self.name_testprogram
         t.uuid_testprogram = self.uuid_testprogram
         t.name_testseries = self.name_testseries
@@ -198,7 +232,7 @@ class TestSeries(TestProgram):
 
     @property
     def longname(self):
-        return "_".join([self.name_testprogram, self.name])
+        return "|".join([self.name_testprogram, self.name])
 
 
 class Test(TestSeries):
@@ -209,14 +243,15 @@ class Test(TestSeries):
     SDATA_TESTSERIES_NAME = "!sdata_testseries_name"
     SDATA_TESTSERIES_UUID = "!sdata_testseries_uuid"
 
+
     def __init__(self, **kwargs):
         """Test
 
         :param kwargs:
         """
         TestSeries.__init__(self, **kwargs)
-        self.metadata.add(name=self.SDATA_TESTSERIES_NAME, value="N.N.", dtype="str")
-        self.metadata.add(name=self.SDATA_TESTSERIES_UUID, value="", dtype="str")
+        self.metadata.add(name=self.SDATA_TESTSERIES_NAME, value="N.N.", dtype="str", description="name of the testseries")
+        self.metadata.add(name=self.SDATA_TESTSERIES_UUID, value="", dtype="str", description="uuid of the testseries")
 
         if kwargs.get("name") is not None:
             self._set_name(kwargs.get("name"))
@@ -234,6 +269,7 @@ class Test(TestSeries):
         if kwargs.get("uuid_testprogram") is not None:
             # print("uuid_testprogram", kwargs.get("uuid_testprogram"), self._set_uuid_testprogram)
             self._set_uuid_testprogram(kwargs.get("uuid_testprogram"))
+
 
     def _get_uuid_testseries(self):
         return self.metadata.get(self.SDATA_TESTSERIES_UUID).value
@@ -284,7 +320,7 @@ class Test(TestSeries):
 
     @property
     def longname(self):
-        return "_".join([self.name_testprogram, self.name_testseries, self.name])
+        return "|".join([self.name_testprogram, self.name_testseries, self.name])
 
 
 

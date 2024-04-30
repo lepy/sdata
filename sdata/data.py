@@ -657,6 +657,14 @@ class Data(object):
         return self.metadata.df
 
     @property
+    def udf(self):
+        return self.metadata.udf
+
+    @property
+    def sdf(self):
+        return self.metadata.sdf
+
+    @property
     def md(self):
         return self.metadata
 
