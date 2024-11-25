@@ -104,6 +104,7 @@ class Data(object):
         self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="creation date")
         self.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str", description="modification date")
         self.metadata.add(self.SDATA_URL, "", dtype="str", description="url of the data object")
+        self.metadata.add(self.SDATA_PROJECT, "", dtype="str", description="project name")
 
         metadata = kwargs.get("metadata")
         if metadata is not None:
@@ -130,7 +131,8 @@ class Data(object):
         self.table = kwargs.get("table", None)
         self._description = ""
         self.description = kwargs.get("description", "")
-        self.project = kwargs.get("project", "")
+        self.project = kwargs.get("project", "N.N.")
+        self.metadata.add(self.SDATA_PROJECT, self.project, dtype="str", description="project name")
 
         if (kwargs.get("uuid")=="" or kwargs.get("uuid") is not None) and not self.metadata.get(self.SDATA_UUID).value and kwargs.get("uuid")!="hash":
             # logger.info("uuid in kwargs")

@@ -59,7 +59,7 @@ class Attribute(object):
     DTYPES_INV = {v: k for k, v in DTYPES.items()}
 
     def __init__(self, name, value, **kwargs):
-        """Attribute
+        """Attribute(name, value, dtype=str, unit="-", description="", label="", required=False)
         :param name
         :param value
         :param dtype ['float', 'int', 'str', 'timestamp', 'uuid?', 'unicode?']
@@ -303,10 +303,15 @@ class Metadata(object):
         required_attributes = [(attr.name, attr) for attr in self.attributes.values() if attr.required is True]
         return SortedDict(required_attributes)
 
+    def add_attribute(self, attr, **kwargs):
+        """set Attribute"""
+        prefix = kwargs.get("prefix", "")
+        self._attributes[prefix + attr.name] = attr
+
     def set_attr(self, name="N.N.", value=None, **kwargs):
         """set Attribute"""
         prefix = kwargs.get("prefix", "")
-        if isinstance(name, Attribute):
+        if isinstance(name, Attribute) or "Attribute" in name.__class__.__name__:
             attr = name # name is the Attribute!
         else:
             attr = self.get_attr(prefix + name) or Attribute(name, value, **kwargs)
@@ -416,6 +421,13 @@ class Metadata(object):
         """get user attribute as dict"""
         d = {}
         for attr in self.user_attributes.values():
+            d[attr.name] = attr.value
+        return d
+
+    def get_dict(self):
+        """get user attribute as dict"""
+        d = {}
+        for attr in self.attributes.values():
             d[attr.name] = attr.value
         return d
 
