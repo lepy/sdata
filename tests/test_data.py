@@ -25,6 +25,28 @@ def test_data():
 
     assert data2.uuid == uuidobj.hex
 
+def test_column_units():
+    columns = ["Länge [mm]", "Breite [cm]", "wtf", "Spannung[MPa]"]
+    df = pd.DataFrame(columns=columns)
+    d = sdata.Data(table=df)
+    d.set_column_metadata()
+    print(d.sdf)
+    c0 = d.m.get("!sdata_column_0")
+
+    assert "!sdata_column_3" in d.m.keys()
+    assert c0
+    print(c0.value, c0.unit)
+    assert c0.value == "Länge"
+    assert c0.unit == "mm"
+
+    c3 = d.m.get("!sdata_column_3")
+    print(c3.value, c3.unit)
+    assert c3.value == "Spannung"
+    assert c3.unit == "MPa"
+    c4 = d.m.get("!sdata_column_4")
+    assert c4 is None
+
+
 def test_group():
 
     data1 = sdata.Data(name="data1", uuid="38b26864e7794f5182d38459bab8584f")

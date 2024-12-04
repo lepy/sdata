@@ -456,6 +456,22 @@ class Metadata(object):
         return self._to_dataframe(self.user_attributes)
 
     @property
+    def dft(self):
+        """create transposed dataframe for sdata attributes"""
+        mt = self.df[["value"]].transpose(copy=True)
+        mt.index = [self.get("!sdata_sname").value]
+        return mt
+
+    def get_dft(self, index_name=None):
+        """create transposed dataframe for sdata attributes"""
+        if index_name is None:
+            index_name = "!sdata_sname"
+        mt = self.df[["value"]].transpose(copy=True)
+        mt.index = [self.get(index_name).value]
+        return mt
+
+
+    @property
     def sdf(self):
         """create dataframe for sdata attributes"""
         return self._to_dataframe(self.sdata_attributes)

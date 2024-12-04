@@ -236,6 +236,10 @@ class Image(Data):
             d = json.loads(json_string)
         return d
 
+    @property
+    def basename(self):
+        return os.path.basename(self.url)
+
     def saveas(self, filepath, rename=True, random=True, **kwargs):
         """save image
 

@@ -24,6 +24,7 @@ import json
 import hashlib
 import base64
 import requests
+import re
 from tabulate import tabulate
 from sdata.contrib.sqlitedict import SqliteDict
 
@@ -46,6 +47,24 @@ except:
 def uuid_from_str(name):
     return uuid.uuid3(uuid.NAMESPACE_DNS, name)
 
+def nameunit_from_colname(column_name):
+    """
+
+    """
+    #pattern = r"^(.*?)\s*\[(.+)\]$"
+    pattern = r"^(.*?)\s*\[([^\]]+)\]$"
+
+    # Anwenden des Regex
+    match = re.match(pattern, column_name)
+
+    if match:
+        name = match.group(1)  # Der Name der Spalte
+        unit = match.group(2)  # Die Einheit
+    else:
+        name = column_name
+        unit = "-"
+    return name.strip(), unit.strip()
+
 class Data(object):
     """Base sdata object"""
     ATTR_NAMES = []
@@ -61,6 +80,7 @@ class Data(object):
     SDATA_CLASS = "!sdata_class"
     SDATA_PROJECT = "!sdata_project"
     SDATA_URL = "!sdata_url"
+    SDATA_COLUMN = "!sdata_column"
 
     SDATA_ATTRIBUTES = [SDATA_VERSION, SDATA_NAME, SDATA_UUID, SDATA_SUUID, SDATA_CLASS, SDATA_PARENT, SDATA_PROJECT,
                         SDATA_CTIME, SDATA_MTIME, SDATA_URL]
@@ -166,6 +186,10 @@ class Data(object):
         if "sname" in kwargs:
             self.sname = kwargs.get("sname")
 
+
+        if "parent" in kwargs:
+            self.metadata.add(self.SDATA_PARENT, kwargs.get("parent"))
+
     def gen_suuid(self):
         self.suuid = sdata.SUUID(self.__class__.__name__, self.name, huuid=self.uuid).idstr
         self.sname = sdata.SUUID(self.__class__.__name__, self.name, huuid=self.uuid).sname
@@ -211,6 +235,10 @@ class Data(object):
         self._set_suuid(suuid.idstr)
         self._set_uuid(suuid.huuid)
         return self
+
+    @property
+    def m(self):
+        return self.metadata
 
     def update_mtime(self):
         """update modification time
@@ -519,6 +547,49 @@ class Data(object):
             exportpath = os.path.join(path, "{}-{}".format(data.__class__.__name__.lower(), data.osname))
             data.to_folder(exportpath, dtype=dtype)
         return path
+
+    def set_column_metadata(self):
+        """convert 'Force [N]' -> 'Force', 'N'
+
+        add Attribute for each column
+
+            sdata_column_0: value="Force", unit="N"
+            sdata_column_1
+            ...
+            sdata_column_n
+
+
+        """
+        if self.df is None:
+            return
+        for i, col in enumerate(self.df.columns):
+            name, unit = nameunit_from_colname(col)
+            scolname = f"{self.SDATA_COLUMN}_{i}"
+            self.metadata.add(scolname, value=name, unit=unit, label=col)
+
+    def set_columnnames_from_metadata(self):
+        """Use '!sdata_column_*' to reformat columns names
+
+                '!sdata_column_0',  value='Force', unit='N' -> 'Force [N]'
+
+                > f'{name} [{unit}]'
+
+        """
+        if self.df is None:
+            return
+
+        cols = []
+        for i, col in enumerate(self.df.columns):
+            scolname = f"{self.SDATA_COLUMN}_{i}"
+            attr = self.metadata.get(scolname)
+            if attr is None:
+                name, unit = nameunit_from_colname(col)
+            else:
+                name = attr.value
+                unit = attr.unit
+            new_colname = f'{name} [{unit}]'
+            cols.append(new_colname)
+        self.df.columns = cols
 
     @classmethod
     def from_folder(cls, path):
@@ -1018,15 +1089,19 @@ class Data(object):
         :param sep: separator (default=";")
         :return: sdata.Data
         """
+        if s is None and filepath is None:
+            logging.error("specify string if filepath")
+            return
         data = cls()
         df = None
         try:
             if filepath:
                 df = pd.read_csv(filepath, sep=";", comment="#", index_col=0)
                 sio = open(filepath, "r")
+                sio.seek(0)
             elif s is not None:
                 sio = StringIO(s)
-                pd.read_csv(sio, sep=";", comment="#")
+                df = pd.read_csv(sio, sep=";", comment="#")
                 sio.seek(0)
             else:
                 logger.error("data.from_csv: no csv data available")
@@ -1274,7 +1349,7 @@ class Data(object):
         :return: Data
         """
         data = copy.deepcopy(self)
-        data.metadata.add(self.SDATA_PARENT, self.uuid)
+        data.metadata.add(self.SDATA_PARENT, self.suuid)
         data.metadata.add(self.SDATA_UUID, self.gen_uuid())
         data.metadata.add(self.SDATA_MTIME, now_utc_str(), dtype="str")
         if "uuid" in kwargs:
