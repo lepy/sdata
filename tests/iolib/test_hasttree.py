@@ -43,3 +43,16 @@ def test_stable_uuids_from_nested_list():
                           ['f09e3370d8f953398366753ca7e16eb9',
                            'b0465a6b35ce5fd28338e04233c422d7',
                            '68bb365dbf5c556faf848a6c8c72b205'])
+
+
+def test_stable_cum_uuids_from_nested_list():
+    nested_list = [[3.14159265, 42, "hello", 2.7182818],
+                   [1, 1.2, "ssd"],
+                   ["a"],
+                   ]
+    uuids = sdata.iolib.hashtree.stable_cum_uuids_from_nested_list(nested_list)
+    print(uuids)
+    assert np.array_equal(uuids,
+                          ['f09e3370d8f953398366753ca7e16eb9',
+                           'b8f6eb73756c5d3d8f7456003bf0dc6d',
+                           'f6dd12b913135291b58bcd2f5f63f157'])

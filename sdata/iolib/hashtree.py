@@ -37,6 +37,11 @@ def stable_uuid_from_list(input_list):
     hashstr = stable_hash_from_list(input_list)
     return generate_uuid_from_hash(hashstr)
 
+def uuids_from_hashes(hashes):
+    """
+
+    """
+    return [generate_uuid_from_hash(hashstr) for hashstr in hashes]
 
 def stable_hash_from_nested_list(nested_list):
     """
@@ -65,6 +70,74 @@ def stable_uuids_from_nested_list(nested_list):
     """
     return [stable_uuid_from_list(x) for x in nested_list]
 
+
+def generate_combined_hash(parent_hash, own_hash):
+    """
+    Berechnet einen neuen Hash basierend auf einem Parent-Hash und einem eigenen Hash.
+    Falls der Parent-Hash None ist, wird ein leerer String verwendet.
+
+    :param parent_hash: Der Hash des Elternknotens (String, None für Root).
+    :param own_hash: Der eigene Hash des aktuellen Knotens (String).
+    :return: Der kombinierte Hash (String).
+    """
+    parent_hash = parent_hash or ""  # Falls None, verwende leeren String
+    combined = parent_hash + own_hash
+    return hashlib.sha256(combined.encode('utf-8')).hexdigest()
+
+
+def cumulative_hash_list(hashes):
+    """
+    Berechnet kumulative Hashes basierend auf einer Liste, wobei der parent_hash
+    jeweils der vorherige Hash in der Liste ist.
+
+    :param hashes: Liste von Hashes (Strings).
+    :return: Liste der kumulativ berechneten Hashes.
+    """
+    if not hashes:
+        return []
+
+    cumulative_hashes = [hashes[0]]  # Der erste Hash ist unverändert
+    for i in range(1, len(hashes)):
+        parent_hash = cumulative_hashes[i - 1]
+        current_hash = hashes[i]
+        cumulative_hashes.append(generate_combined_hash(parent_hash, current_hash))
+    return cumulative_hashes
+
+def stable_cum_uuids_from_nested_list(nested_list):
+    """
+            nested_list = [[3.14159265, 42, "hello", 2.7182818],
+                       [1, 1.2,"ssd"],
+                       ["a"],
+                      ]
+
+            ['f09e3370d8f953398366753ca7e16eb9',
+             'b8f6eb73756c5d3d8f7456003bf0dc6d',
+             'f6dd12b913135291b58bcd2f5f63f157']
+
+    """
+
+    hashes = stable_hash_from_nested_list(nested_list)
+    cum_hashes = cumulative_hash_list(hashes)
+    uuids = uuids_from_hashes(cum_hashes)
+    return uuids
+
+
+def stable_cum_hashes_from_nested_list(nested_list):
+    """
+            nested_list = [[3.14159265, 42, "hello", 2.7182818],
+                       [1, 1.2,"ssd"],
+                       ["a"],
+                      ]
+
+            ['3a316d6d3226f84c1e46e4447fa8d5fd800bff4a1bc6498152523cd4a602b69b',
+             '9f8ba3b772342d1f57ae6fe37e7e0da8f93f5ccacaf943d605d254d57489c7e3',
+             '03da67b7f8157f7413861ffa25069581ae5d95d59eeb0c2f599f48539dcdf38c']
+
+    """
+
+    hashes = stable_hash_from_nested_list(nested_list)
+    cum_hashes = cumulative_hash_list(hashes)
+    return cum_hashes
 
 class TreeNode:
     def __init__(self, name, parent=None):
