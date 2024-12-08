@@ -56,3 +56,12 @@ def test_stable_cum_uuids_from_nested_list():
                           ['f09e3370d8f953398366753ca7e16eb9',
                            'b8f6eb73756c5d3d8f7456003bf0dc6d',
                            'f6dd12b913135291b58bcd2f5f63f157'])
+
+def test_stable_cum_uuid_from_nested_list():
+    nested_list = [[3.14159265, 42, "hello", 2.7182818],
+                   [1, 1.2, "ssd"],
+                   ["a"],
+                   ]
+    uuidstr = sdata.iolib.hashtree.stable_cum_uuid_from_nested_list(nested_list)
+    print(uuidstr)
+    assert uuidstr == 'f6dd12b913135291b58bcd2f5f63f157'

@@ -104,7 +104,7 @@ def cumulative_hash_list(hashes):
     return cumulative_hashes
 
 def stable_cum_uuids_from_nested_list(nested_list):
-    """
+    """calculate stable uuids from cumulative hashes of a nested list
             nested_list = [[3.14159265, 42, "hello", 2.7182818],
                        [1, 1.2,"ssd"],
                        ["a"],
@@ -116,11 +116,25 @@ def stable_cum_uuids_from_nested_list(nested_list):
 
     """
 
-    hashes = stable_hash_from_nested_list(nested_list)
-    cum_hashes = cumulative_hash_list(hashes)
+    cum_hashes = stable_cum_hashes_from_nested_list(nested_list)
     uuids = uuids_from_hashes(cum_hashes)
     return uuids
 
+def stable_cum_uuid_from_nested_list(nested_list):
+    """calculate stable uuid from cumulative hashes of a nested list
+            nested_list = [[3.14159265, 42, "hello", 2.7182818],
+                       [1, 1.2,"ssd"],
+                       ["a"],
+                      ]
+
+
+            'f6dd12b913135291b58bcd2f5f63f157'
+
+    """
+
+    hashes = stable_cum_hashes_from_nested_list(nested_list)
+    cum_uuid = generate_uuid_from_hash(hashes[-1])
+    return cum_uuid
 
 def stable_cum_hashes_from_nested_list(nested_list):
     """
