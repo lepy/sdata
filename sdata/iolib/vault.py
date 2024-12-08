@@ -141,7 +141,7 @@ class VaultSqliteIndex:
 
 class Vault:
     """data vault
-    
+
     """
     INDEXFILENAME = "index"
     OBJECTPATH = "objects"
@@ -330,7 +330,7 @@ class FileSystemVault(Vault):
         self._rootpath = None
 
         try:
-            rootpath = os.path.dirname(rootpath)
+            #rootpath = os.path.dirname(rootpath)
             os.makedirs(rootpath, exist_ok=True)
             self._rootpath = rootpath
         except OSError as exp:
@@ -379,7 +379,7 @@ class FileSystemVault(Vault):
                 blob_uuid = name
                 self.index.update_from_metadata(self.load_blob_metadata(blob_uuid))
 
-    def reindex_hfd5(self):
+    def reindex(self):
         """get index from vault
 
         :return: df
@@ -409,6 +409,19 @@ class FileSystemVault(Vault):
     # def _update_index(self, metadata):
     #     return metadata.sdft
 
+    def create_folder(self, blob):
+        """create folder with blob.uuid"""
+        path = os.path.join(self.rootpath, self.OBJECTPATH, blob.uuid[:2], blob.uuid[-2:]) + os.sep
+        logging.debug("dump blob {}".format(path))
+        try:
+            if not os.path.exists(path):
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+        except OSError as exp:
+            logging.error("Vault Error: {}".format(exp))
+            raise exp
+        #TODO: update index
+        return path
+
     def dump_blob(self, blob):
         """store blob in vault"""
         path = os.path.join(self.rootpath, self.OBJECTPATH, blob.uuid[:2], blob.uuid[-2:]) + os.sep
@@ -421,8 +434,8 @@ class FileSystemVault(Vault):
             raise exp
         filepath = os.path.join(path, blob.uuid)
         blob.to_hdf5(filepath)
-        # self.index.update_from_sdft(blob.metadata.sdft)
         self.index.update_from_metadata(blob.metadata)
+        return path
 
     def load_blob(self, blob_uuid):
         """get blob from vault"""
