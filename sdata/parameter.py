@@ -89,12 +89,14 @@ class Distribution:
 
 
 class Parameter:
-    def __init__(self, name: str, value: Union[float, int, str],
+    def __init__(self, name: str,
+                 value: Union[float, int, str],
                  range: Optional[Union[Tuple[float, float], List[Union[int, str]]]] = None,
                  distribution: Optional[Distribution] = None,
                  type: Optional[str] = None,
                  description: Optional[str] = None,
-                 discrete_values: Optional[List[Union[int, str]]] = None):
+                 discrete_values: Optional[List[Union[int, str]]] = None,
+                 constant: Optional[bool] = False, ):
         """
         Unified class for a parameter.
 
@@ -112,6 +114,7 @@ class Parameter:
         self.distribution = distribution
         self.description = description
         self.discrete_values = discrete_values
+        self.constant = constant
 
         if type:
             self.type = type
