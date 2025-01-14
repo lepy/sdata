@@ -486,9 +486,9 @@ class Metadata(object):
     @classmethod
     def from_dataframe(cls, df):
         """create metadata from dataframe"""
-        df.unit.fillna("", inplace=True)
-        df.label.fillna("", inplace=True)
-        df.description.fillna("", inplace=True)
+        df["unit"] = df.unit.fillna("")
+        df["label"] =df.label.fillna("")
+        df["description"] =df.description.fillna("")
         d = df.to_dict(orient='index')
         metadata = cls.from_dict(d)
         return metadata

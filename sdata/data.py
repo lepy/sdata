@@ -266,6 +266,13 @@ class Data(object):
         return s.hexdigest()
 
     @property
+    def sha3_256_metadata(self):
+        s = hashlib.sha3_256()
+        metadatastr = self.metadata.to_json().encode(errors="replace")
+        s.update(metadatastr)
+        return s.hexdigest()
+
+    @property
     def sha3_256(self):
         """Return a SHA3 hash of the sData object with a hashbit length of 32 bytes.
 
@@ -281,8 +288,8 @@ class Data(object):
         metadatastr = self.metadata.to_json().encode(errors="replace")
         s.update(metadatastr)
         if self.table is not None:
-            tablestr = self.table.to_json().encode(errors="replace")
-            s.update(tablestr)
+            # tablestr = self.table.to_json().encode(errors="replace")
+            s.update(self.sha3_256_table.encode(errors="replace"))
         s.update(self.description.encode(errors="replace"))
         return s.hexdigest()
 
@@ -831,6 +838,39 @@ class Data(object):
         """
         return [(x.name, x.dir()) for x in self.group.values()]
 
+    def to_parquet(self, filepath=None, **kwargs):
+        """
+
+        """
+        engine = kwargs.get("engine", "pyarrow")
+        df = self.df.copy()
+        #df["!sdata_index"] = df.index
+        #df.reset_index(inplace=True)
+        df.attrs = {"metadata": self.metadata.to_dict(),
+                    "description": self.description}
+        df.to_parquet(filepath, engine=engine)
+
+    @classmethod
+    def from_parquet(cls, filepath):
+        """load data from parquet file
+
+        :param filepath:
+        :return: Data object
+        """
+        try:
+            if os.path.exists(filepath):
+                df = pd.read_parquet(filepath)
+                tt = cls(name=filepath)
+                tt.table = df
+                attrs = df.attrs
+                tt.metadata = tt.metadata.from_dict(attrs["metadata"])
+                tt.description = attrs.get("description")
+                return tt
+            else:
+                raise Exception("parquet file '{}' not available".format(filepath))
+        except Exception as exp:
+            raise
+
     def to_xlsx_byteio(self):
         """get xlsx as byteio
 
@@ -941,36 +981,31 @@ class Data(object):
         """
         try:
             if os.path.exists(filepath):
-                wb = openpyxl.load_workbook(filename=filepath)
-                sheetnames = wb.sheetnames
-
                 tt = cls(name=filepath)
 
                 # read df
-                if "table" in sheetnames:
+                try:
                     tt.table = pd.read_excel(filepath, sheet_name="table", index_col=0)
-                else:
+                except:
                     logger.info("no table data in '{}'".format(filepath))
                 dfm = pd.read_excel(filepath, sheet_name="metadata")
-                dfm = dfm.set_index(dfm.name.values)
+                dfm.set_index(dfm.name.values, inplace=True)
                 # dfm["value"] = dfm["value"].replace(np.nan, None)
                 dfm["description"] = dfm["description"].replace(np.nan, '')
                 dfm["label"] = dfm["label"].replace(np.nan, '')
-                # print("!data.from_xlsx", dfm)
+
+                # read metadata
                 tt.metadata = tt.metadata.from_dataframe(dfm)
+                for attr in tt.metadata.sdata_attributes.values():
+                    if attr.value == "nan":
+                        attr.value = ""
 
                 # read description
-                if "description" in sheetnames:
-                    cells = []
-                    for cell in wb["description"]["A"]:
-                        if cell.value is not None:
-                            cells.append(cell.value)
-                        else:
-                            cells.append("")
-                    tt.description = "\n".join(cells)
-                else:
+                try:
+                    dfd = pd.read_excel(filepath, sheet_name="description", header=None)
+                    tt.description = "\n".join(dfd[0])
+                except:
                     logger.info("no description in '{}'".format(filepath))
-
                 return tt
             else:
                 raise Exception("excel file '{}' not available".format(filepath))
