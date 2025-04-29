@@ -838,6 +838,20 @@ class Data(object):
         """
         return [(x.name, x.dir()) for x in self.group.values()]
 
+    def to_dataframe(self):
+        """Export the DataFrame with additional metadata and description.
+
+        Returns:
+            pandas.DataFrame: A copy of the DataFrame with added attributes.
+        """
+        df = self.df.copy()
+        df.attrs["!sdata"] = {
+            "metadata": self.metadata.to_dict(),
+            "description": self.description
+        }
+        return df
+
+
     def to_parquet(self, filepath=None, **kwargs):
         """
 
@@ -846,7 +860,7 @@ class Data(object):
         df = self.df.copy()
         #df["!sdata_index"] = df.index
         #df.reset_index(inplace=True)
-        df.attrs = {"metadata": self.metadata.to_dict(),
+        df.attrs["!sdata"] = {"metadata": self.metadata.to_dict(),
                     "description": self.description}
         df.to_parquet(filepath, engine=engine)
 
@@ -862,12 +876,21 @@ class Data(object):
                 df = pd.read_parquet(filepath)
                 tt = cls(name=filepath)
                 tt.table = df
-                attrs = df.attrs
-                tt.metadata = tt.metadata.from_dict(attrs["metadata"])
-                tt.description = attrs.get("description")
+
+                attrs = df.attrs.get("!sdata")
+                try:
+                    tt.metadata = tt.metadata.from_dict(attrs["metadata"])
+                except:
+                    logger.warning(f"ignore metadata {filepath}")
+                try:
+                    tt.description = attrs.get("description")
+                except:
+                    logger.warning(f"ignore description {filepath}")
+                if attrs is not None:
+                    tt.df.attrs.pop("!sdata")
+                else:
+                    raise Exception("parquet file '{}' not available".format(filepath))
                 return tt
-            else:
-                raise Exception("parquet file '{}' not available".format(filepath))
         except Exception as exp:
             raise
 

@@ -57,7 +57,7 @@ force    force                             1.234  float   kN     x force
 
   
 * [Das sdata-Format - slides](https://lepy.github.io/sdata/ipynb/Das_sdata_Format.slides.html#)
-
+* https://deepwiki.com/lepy/sdata
 
 ## Demo App
 
