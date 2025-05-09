@@ -186,6 +186,24 @@ class SUUID:
         return suuid.id
 
     @classmethod
+    def get_sname_from_name(cls, class_name, name, ns_name=None):
+        """generate uuid from string and ns_string
+
+            SUUID.get_uuid_from_str(string="otto", ns_name="project_xy")
+
+            nsuuid = uuid.uuid5(uuid.NAMESPACE_OID, ns_string.upper())
+            uid = uuid.uuid5(nsuuid, name.upper())
+
+        :param class_name: e.g. "otto"
+        :param name: e.g. "otto"
+        :param ns_string: e.g. projectname "MyProject"
+        :return: suuid
+        """
+        name = cls._clean_name(name)
+        suuid = cls.from_name(class_name, name=name, ns_name=ns_name)
+        return suuid.sname
+
+    @classmethod
     def from_file(cls, class_name, filepath, ns_name=None):
         """generate uuid from string and ns_string
 

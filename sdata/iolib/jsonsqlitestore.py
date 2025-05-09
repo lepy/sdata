@@ -8,8 +8,8 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
-class JSONSQLiteStore:
 
+class JSONSQLiteStore:
     """
     JSON-based store on SQLite with:
     - CRUD methods
@@ -47,14 +47,14 @@ class JSONSQLiteStore:
     """
 
     def __init__(
-        self,
-        filename: str,
-        index_keys: Optional[List[str]] = None,
-        timeout: float = 5.0,
-        check_same_thread: bool = True,
-        compression: bool = False,
-        type_parsers: Optional[Dict[str, Callable[[Any], Any]]] = None,
-        hooks: Optional[Dict[str, Callable[..., None]]] = None,
+            self,
+            filename: str,
+            index_keys: Optional[List[str]] = None,
+            timeout: float = 5.0,
+            check_same_thread: bool = True,
+            compression: bool = False,
+            type_parsers: Optional[Dict[str, Callable[[Any], Any]]] = None,
+            hooks: Optional[Dict[str, Callable[..., None]]] = None,
     ):
         """
         Initializes the JSONSQLiteStore with the specified parameters.
@@ -149,7 +149,11 @@ class JSONSQLiteStore:
         Returns:
             str: The serialized JSON string.
         """
-        js = json.dumps(obj, separators=(',', ':'))
+        try:
+            js = json.dumps(obj, separators=(',', ':'))
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Serialization error: {e} for object: {obj}")
+
         if self.compression:
             comp = zlib.compress(js.encode('utf-8'))
             return base64.b64encode(comp).decode('ascii')
@@ -238,13 +242,13 @@ class JSONSQLiteStore:
             List[Dict[str, Any]]: A list of all records.
         """
         cur = self.conn.execute("SELECT payload FROM data")
-        return [self._deserialize(r['payload']) for r in cur]
+        return [self._deserialize(r[0]) for r in cur]  # Access the first element of the tuple
 
     def find_by(
-        self,
-        key: str,
-        op: str,
-        value: Any
+            self,
+            key: str,
+            op: str,
+            value: Any
     ) -> List[Dict[str, Any]]:
         """
         Finds records based on a specific key and operation.
@@ -288,9 +292,9 @@ class JSONSQLiteStore:
         return self.find_by(key, '=', value)
 
     def update(
-        self,
-        record_id: int,
-        new_obj: Dict[str, Any]
+            self,
+            record_id: int,
+            new_obj: Dict[str, Any]
     ) -> None:
         """
         Updates an existing record in the database.
@@ -394,10 +398,10 @@ class JSONSQLiteStore:
         return self.conn.execute("SELECT COUNT(*) FROM data").fetchone()[0]
 
     def count_where(
-        self,
-        key: str,
-        op: str,
-        value: Any
+            self,
+            key: str,
+            op: str,
+            value: Any
     ) -> int:
         """
         Counts the number of records that match a specific key and operation.
@@ -426,12 +430,12 @@ class JSONSQLiteStore:
         return self.conn.execute(sql, (val,)).fetchone()[0]
 
     def fetch_page(
-        self,
-        limit: int,
-        offset: int,
-        key: Optional[str] = None,
-        op: str = '=',
-        value: Any = None
+            self,
+            limit: int,
+            offset: int,
+            key: Optional[str] = None,
+            op: str = '=',
+            value: Any = None
     ) -> List[Dict[str, Any]]:
         """
         Fetches a paginated list of records from the database.
@@ -538,9 +542,9 @@ class JSONSQLiteStore:
         self.conn = sqlite3.connect(self.filename)
 
     def execute_raw(
-        self,
-        sql: str,
-        params: Optional[Union[Tuple[Any, ...], List[Any]]] = None
+            self,
+            sql: str,
+            params: Optional[Union[Tuple[Any, ...], List[Any]]] = None
     ) -> sqlite3.Cursor:
         """
         Executes a raw SQL command against the database.
@@ -584,8 +588,8 @@ class JSONSQLiteStore:
             raise
 
     def delete_expired(
-        self,
-        created_before: Union[datetime, str]
+            self,
+            created_before: Union[datetime, str]
     ) -> int:
         """
         Deletes records that were created before a specified date.
@@ -649,6 +653,7 @@ class JSONSQLiteStore:
                 print(record)
         """
         yield from self.fetch_all()
+
 
 if __name__ == '__main__':
 
