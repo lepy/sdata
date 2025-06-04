@@ -117,6 +117,30 @@ class Base:
 
     name = property(fget=_get_name, fset=_set_name, doc="name of the object")
 
+    @property
+    def parent(self):
+        return self.metadata.get(self.SDATA_PARENT).value
+
+    def get_parent(self):
+        return SUUID.from_suuid_sname(self.metadata.get(self.SDATA_PARENT).value)
+
+    def __str__(self):
+        return f"<{self.__class__.__name__}:{self.name}:{self.uuid}>"
+
+    __repr__ = __str__
+
+    @property
+    def udf(self):
+        return self.metadata.udf
+
+    @property
+    def sdf(self):
+        return self.metadata.sdf
+
+    @property
+    def md(self):
+        return self.metadata
+
 if __name__ == '__main__':
     class MyFancyClass(Base):
         def __init__(self, **kwargs):
