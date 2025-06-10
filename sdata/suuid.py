@@ -163,7 +163,7 @@ class SUUID:
         :return: suuid
         """
         name = cls._clean_name(name)
-        uid = cls.get_uuid_from_name(name=name, ns_name=ns_name)
+        uid = cls.get_uuid_from_name(name=class_name+name, ns_name=ns_name)
         suuid = cls(class_name=class_name, name=name, huuid=uid.hex)
         return suuid
 

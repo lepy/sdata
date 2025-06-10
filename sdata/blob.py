@@ -5,14 +5,14 @@ import collections
 import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
-from sdata.data import Data
+from sdata.base import Base
 from sdata.metadata import Metadata, Attribute
 import json
 import os
 import hashlib
 
 
-class Blob(Data):
+class Blob(Base):
     """Binary Large Object as reference
 
     .. warning::
@@ -31,7 +31,7 @@ class Blob(Data):
         :param kwargs:
 
         """
-        Data.__init__(self, **kwargs)
+        super().__init__(**kwargs)
         self.metadata.add("blob_name", kwargs.get("name", ""))
         self.metadata.add("blob_type", "unknown")
         self.url = kwargs.get("url", "")

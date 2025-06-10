@@ -1139,7 +1139,33 @@ class Data(object):
                 fh.write(exportstr)
 
     @classmethod
-    def from_csv(cls, s=None, filepath=None, sep=";"):
+    def from_csv(cls, filepath, sep=";"):
+        """import sdata.Data from csv
+
+        :param filepath:
+        :param sep: separator (default=";")
+        :return: sdata.Data
+        """
+        data = cls()
+        df = pd.read_csv(filepath, sep=";", comment="#", index_col=0)
+
+
+        #attr
+        sio = open(filepath, "r")
+        sio.seek(0)
+        attritute_list = []
+        for line in sio:
+            if line.startswith("#;"):
+                line = line.rstrip("\n")
+                line = line.split(sep)
+                attritute_list.append(line[1:8])
+        data.metadata = Metadata.from_list(attritute_list)
+        data.table = df
+        return data
+
+
+    @classmethod
+    def from_csv_string(cls, s=None, sep=";"):
         """import sdata.Data from csv
 
         :param s: csv str
@@ -1153,20 +1179,12 @@ class Data(object):
         data = cls()
         df = None
         try:
-            if filepath:
-                df = pd.read_csv(filepath, sep=";", comment="#", index_col=0)
-                sio = open(filepath, "r")
-                sio.seek(0)
-            elif s is not None:
-                sio = StringIO(s)
-                df = pd.read_csv(sio, sep=";", comment="#")
-                sio.seek(0)
-            else:
-                logger.error("data.from_csv: no csv data available")
+            sio = StringIO(s)
+            df = pd.read_csv(sio, sep=";", comment="#")
+            sio.seek(0)
         except Exception as exp:
             logging.error(f"{exp}")
             raise
-            return
 
         attritute_list = []
         for line in sio:
