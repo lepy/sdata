@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 import re
+import warnings
 
 class JSON1SQLiteStore:
     """
@@ -48,20 +49,6 @@ class JSON1SQLiteStore:
         hooks: Optional[Dict[str, Callable[..., None]]] = None,
         json1_extension: Optional[str] = None,
     ):
-        """
-        Initialize the store and ensure JSON1 availability.
-
-        :param filename: Path to SQLite database file
-        :param index_keys: List of JSON keys to create non-unique indices for
-        :param unique_index_keys: List of JSON keys to create unique indices for
-        :param timeout: DB connection timeout in seconds
-        :param check_same_thread: Allow connection sharing across threads
-        :param compression: Enable compression of JSON data
-        :param type_parsers: Mapping of JSON key to parser callable for reads
-        :param hooks: Event hooks such as on_insert, on_update, etc.
-        :param json1_extension: Path to loadable JSON1 extension if not compiled-in
-        :raises RuntimeError: If JSON1 is unavailable and no extension provided
-        """
         self.filename = filename
         self.compression = compression
         self.type_parsers = type_parsers or {}
@@ -73,8 +60,10 @@ class JSON1SQLiteStore:
             isolation_level=None,
             detect_types=sqlite3.PARSE_DECLTYPES
         )
-        if not self.compression:
-            # Check if JSON1 is available by trying a json function
+        if self.compression:
+            warnings.warn("Compression enabled: Native JSON1 queries and indexing are disabled. Use with caution for large datasets.")
+        else:
+            # Check if JSON1 is available
             try:
                 self.conn.execute("SELECT json('{}')")
             except sqlite3.OperationalError:
@@ -82,32 +71,26 @@ class JSON1SQLiteStore:
                     self.conn.enable_load_extension(True)
                     self.conn.load_extension(json1_extension)
                     self.conn.enable_load_extension(False)
-                    # Verify after loading
                     try:
                         self.conn.execute("SELECT json('{}')")
                     except sqlite3.OperationalError:
                         raise RuntimeError("Failed to load JSON1 extension.")
                 else:
-                    raise RuntimeError(
-                        "SQLite without JSON1 support. Compile with ENABLE_JSON1 or provide json1_extension path."
-                    )
-        # Basic PRAGMAs
+                    raise RuntimeError("SQLite without JSON1 support. Compile with ENABLE_JSON1 or provide extension.")
+        # PRAGMAs for performance
         self.conn.execute("PRAGMA journal_mode = WAL")
         self.conn.execute("PRAGMA synchronous = NORMAL")
         self.conn.execute("PRAGMA temp_store = MEMORY")
         self.conn.row_factory = sqlite3.Row
         self._ensure_table()
-        if index_keys:
-            for key in index_keys:
-                self.create_index(key, unique=False)
-        if unique_index_keys:
-            for key in unique_index_keys:
-                self.create_index(key, unique=True)
+        index_keys = index_keys or []
+        unique_index_keys = unique_index_keys or []
+        for key in index_keys:
+            self.create_index(key, unique=False)
+        for key in unique_index_keys:
+            self.create_index(key, unique=True)
 
     def _ensure_table(self) -> None:
-        """
-        Create the base table if it does not exist.
-        """
         self.conn.execute(
             """
             CREATE TABLE IF NOT EXISTS data (
@@ -140,450 +123,230 @@ class JSON1SQLiteStore:
     def _get_by_path(self, obj: Any, path: str) -> Any:
         if not path.startswith('$'):
             path = '$' + path
-        parts = path[1:].lstrip('.').split('.')
+        parts = re.split(r'\.|\[|\]', path[1:].lstrip('.'))  # Verbessert: Besserer Split für Pfade
+        parts = [p for p in parts if p]  # Entferne leere Teile von []
         current = obj
-        for part in parts:
-            idx = None
-            key = part
-            if '[' in part:
-                key_idx = part.split('[', 1)
-                key = key_idx[0]
-                idx_str = key_idx[1].rstrip(']')
-                idx = int(idx_str)
-            if key:
-                current = current[key]
-            if idx is not None:
-                current = current[idx]
-        return current
+        try:
+            for part in parts:
+                if part.isdigit():
+                    current = current[int(part)]
+                else:
+                    current = current[part]
+            return current
+        except (KeyError, IndexError, TypeError) as e:
+            raise KeyError(f"Path '{path}' not found or type mismatch: {e}")
 
     def _set_by_path(self, obj: Any, path: str, value: Any, mode: str = 'set') -> None:
-        # mode: 'set', 'insert', 'replace'
+        # Verbessert: Sauberere Handhabung, mit Default-Werten für fehlende Container
         if not path.startswith('$'):
             path = '$' + path
-        parts = path[1:].lstrip('.').split('.')
+        parts = re.split(r'\.|\[|\]', path[1:].lstrip('.'))
+        parts = [p for p in parts if p]
         current = obj
         for i, part in enumerate(parts[:-1]):
-            idx = None
-            key = part
-            if '[' in part:
-                key_idx = part.split('[', 1)
-                key = key_idx[0]
-                idx_str = key_idx[1].rstrip(']')
-                idx = int(idx_str)
-            if key:
-                if key not in current:
-                    if mode == 'replace':
-                        return
-                    next_part = parts[i + 1]
-                    current[key] = [] if next_part.startswith('[') else {}
-                if not isinstance(current[key], dict) and key:
-                    raise ValueError("Path type mismatch")
-                current = current[key]
-            if idx is not None:
+            if part.isdigit():
+                idx = int(part)
                 if not isinstance(current, list):
-                    raise ValueError("Path type mismatch")
-                if idx > len(current) - 1:
-                    if mode == 'replace':
-                        return
-                    num_append = idx - len(current) + 1
-                    current.extend([None] * num_append)
+                    raise ValueError("Path type mismatch: Expected list")
+                while len(current) <= idx:
+                    current.append(None)
                 if current[idx] is None:
                     next_part = parts[i + 1]
-                    current[idx] = [] if next_part.startswith('[') else {}
+                    current[idx] = [] if next_part.isdigit() else {}
                 current = current[idx]
-        # Last part
+            else:
+                if part not in current:
+                    if mode == 'replace':
+                        return
+                    next_part = parts[i + 1]
+                    current[part] = [] if next_part.isdigit() else {}
+                current = current[part]
+        # Letzter Teil
         last = parts[-1]
-        idx = None
-        key = last
-        if '[' in last:
-            key_idx = last.split('[', 1)
-            key = key_idx[0]
-            idx_str = key_idx[1].rstrip(']')
-            idx = int(idx_str)
-        container = current
-        if key:
-            if key not in container:
+        if last.isdigit():
+            idx = int(last)
+            if not isinstance(current, list):
                 if mode == 'replace':
                     return
-                container[key] = {}  # temporary, will override if no idx
-            container = container[key]
-        if idx is not None:
-            if not isinstance(container, list):
-                if mode == 'replace':
-                    return
-                container = []
-                if key:
-                    current[key] = container
-                else:
-                    current = container  # rare for root
-            exists = idx < len(container)
+                current = []  # Konvertiere zu List
+            exists = idx < len(current)
             if mode == 'insert' and exists:
                 return
             if mode == 'replace' and not exists:
                 return
-            while len(container) <= idx:
-                container.append(None)
-            container[idx] = value
+            while len(current) <= idx:
+                current.append(None)
+            current[idx] = value
         else:
-            exists = key in current
+            exists = last in current
             if mode == 'insert' and exists:
                 return
             if mode == 'replace' and not exists:
                 return
-            current[key] = value
+            current[last] = value
 
     def _remove_by_path(self, obj: Any, path: str) -> None:
-        if not path.startswith('$'):
-            path = '$' + path
-        parts = path[1:].lstrip('.').split('.')
-        current = obj
-        for part in parts[:-1]:
-            idx = None
-            key = part
-            if '[' in part:
-                key_idx = part.split('[', 1)
-                key = key_idx[0]
-                idx_str = key_idx[1].rstrip(']')
-                idx = int(idx_str)
-            if key:
-                if key not in current:
-                    return
-                current = current[key]
-            if idx is not None:
-                if not isinstance(current, list) or idx >= len(current):
-                    return
-                current = current[idx]
-        # Last part
-        last = parts[-1]
-        idx = None
-        key = last
-        if '[' in last:
-            key_idx = last.split('[', 1)
-            key = key_idx[0]
-            idx_str = key_idx[1].rstrip(']')
-            idx = int(idx_str)
-        if key:
-            if key in current:
-                del current[key]
-        if idx is not None:
-            container = current[key] if key else current
-            if isinstance(container, list) and 0 <= idx < len(container):
-                container.pop(idx)
+        # Verbessert: Sauberer mit try-except
+        try:
+            parent = self._get_by_path(obj, path.rsplit('.', 1)[0] if '.' in path else '$')
+            key = path.rsplit('.', 1)[-1]
+            if '[' in key:
+                key, idx_str = key.split('[')
+                idx = int(idx_str.rstrip(']'))
+                if isinstance(parent.get(key, []), list):
+                    parent[key].pop(idx)
+            else:
+                parent.pop(key, None)
+        except KeyError:
+            pass  # Ignoriere, wenn nicht existent (pythonic: EAFP)
 
     def _compare(self, a: Any, op: str, b: Any) -> bool:
         op = op.upper()
-        if op == '=':
-            return a == b
-        elif op == '>':
-            return a > b
-        elif op == '<':
-            return a < b
-        elif op == '>=':
-            return a >= b
-        elif op == '<=':
-            return a <= b
-        elif op == 'LIKE':
-            if not isinstance(a, str):
-                return False
-            pat = re.escape(str(b)).replace('%', '.*').replace('_', '.')
-            return re.match('^' + pat + '$', a) is not None
-        else:
+        ops = {
+            '=': lambda: a == b,
+            '>': lambda: a > b,
+            '<': lambda: a < b,
+            '>=': lambda: a >= b,
+            '<=': lambda: a <= b,
+            'LIKE': lambda: re.match('^' + re.escape(str(b)).replace('%', '.*').replace('_', '.' ) + '$', str(a)) is not None if isinstance(a, str) else False,
+        }
+        try:
+            return ops[op]()
+        except KeyError:
             raise ValueError(f"Unsupported operator: {op}")
 
     def _each_python(self, obj: Any, json_path: str) -> List[Dict[str, Any]]:
         sub = self._get_by_path(obj, json_path)
-        res = []
         if isinstance(sub, list):
-            for i, v in enumerate(sub):
-                res.append({'key': i, 'value': v})
+            return [{'key': i, 'value': v} for i, v in enumerate(sub)]
         elif isinstance(sub, dict):
-            for k, v in sorted(sub.items()):
-                res.append({'key': k, 'value': v})
-        return res
+            return [{'key': k, 'value': v} for k, v in sorted(sub.items())]
+        return []
 
-    def _tree_python(self, obj: Any, path: str = '$') -> List[Dict[str, Any]]:
-        res = [{'path': path, 'key': None, 'value': obj}]
+    def _tree_python(self, obj: Any, path: str = '$') -> Iterator[Dict[str, Any]]:
+        # Verbessert: Generator für Memory-Effizienz bei tiefen Trees
+        yield {'path': path, 'key': None, 'value': obj}
         if isinstance(obj, dict):
             for k, v in obj.items():
-                res += self._tree_python(v, path + '.' + k)
+                yield from self._tree_python(v, f"{path}.{k}")
         elif isinstance(obj, list):
             for i, v in enumerate(obj):
-                res += self._tree_python(v, path + '[' + str(i) + ']')
-        return res
+                yield from self._tree_python(v, f"{path}[{i}]")
 
     def create_index(self, key: str, unique: bool = False) -> None:
-        """
-        Create an index on json_extract(payload, '$.key').
-
-        :param key: JSON path to index
-        :param unique: If True, create a unique index
-
-        Example:
-            store.create_index('user', unique=True)
-        """
         if self.compression:
-            raise RuntimeError("Indexing is not supported when compression is enabled")
+            raise RuntimeError("Indexing not supported with compression")
         idx_name = f"idx_json_{key.replace('.', '_').replace('[', '_').replace(']', '_').replace('!', '_')}"
         unique_str = 'UNIQUE ' if unique else ''
-        sql = (
-            f"CREATE {unique_str}INDEX IF NOT EXISTS {idx_name} "
-            f"ON data ( json_extract(payload, '$.{key}') );"
-        )
+        sql = f"CREATE {unique_str}INDEX IF NOT EXISTS {idx_name} ON data (json_extract(payload, '$.{key}'));"
         self.conn.execute(sql)
 
     def list_indices(self) -> List[Tuple[str, bool]]:
-        """
-        List all indices on the 'data' table.
-
-        :return: List of (index_name, is_unique)
-
-        Example:
-            print(store.list_indices())
-        """
         cur = self.conn.execute("PRAGMA index_list('data')")
-        return [(row['name'], bool(row['unique'])) for row in cur]
+        return [(row['name'], bool(row['unique'])) for row in cur.fetchall()]
 
     def regenerate_index(self, key: str, unique: bool = False) -> None:
-        """
-        Drop and recreate the index for the given key.
-
-        :param key: JSON path to index
-        :param unique: If True, recreate as unique index
-
-        Example:
-            store.regenerate_index('user', unique=True)
-        """
         if self.compression:
-            raise RuntimeError("Indexing is not supported when compression is enabled")
+            raise RuntimeError("Indexing not supported with compression")
         idx_name = f"idx_json_{key.replace('.', '_').replace('[', '_').replace(']', '_').replace('!', '_')}"
         self.conn.execute(f"DROP INDEX IF EXISTS {idx_name}")
         self.create_index(key, unique=unique)
 
     def get_id_by_key(self, key: str, value: Any) -> Optional[int]:
-        """
-        Get the record ID by a JSON field value.
-
-        :param key: JSON path key
-        :param value: Value to match
-        :return: Record ID or None
-
-        Example:
-            rid = store.get_id_by_key('!sdata_suuid', suuid)
-        """
         if self.compression:
-            cur = self.conn.execute("SELECT id, payload FROM data")
-            for row in cur:
+            for row in self.conn.execute("SELECT id, payload FROM data"):
                 obj = self._deserialize(row['payload'])
-                val = self._get_by_path(obj, f'$.{key}')
-                if val == value:
+                if self._get_by_path(obj, key) == value:
                     return row['id']
             return None
         else:
-            cur = self.conn.execute(
+            row = self.conn.execute(
                 "SELECT id FROM data WHERE json_extract(payload, ?) = ?", (f'$.{key}', value)
-            )
-            row = cur.fetchone()
+            ).fetchone()
             return row['id'] if row else None
 
     def insert(self, obj: Dict[str, Any]) -> int:
-        """
-        Insert a JSON object.
-
-        :param obj: Dictionary to store
-        :return: Generated record ID
-
-        Example:
-            rid = store.insert({'user':'bob'})
-        """
         payload = self._serialize(obj)
         sql = "INSERT INTO data (payload) VALUES (?)" if self.compression else "INSERT INTO data (payload) VALUES (json(?))"
         cur = self.conn.execute(sql, (payload,))
         rid = cur.lastrowid
-        if hook := self.hooks.get('on_insert'):
-            hook(rid, obj)
+        if 'on_insert' in self.hooks:
+            self.hooks['on_insert'](rid, obj)
         return rid
 
     def insert_many(self, objs: List[Dict[str, Any]]) -> List[int]:
-        """
-        Batch insert multiple objects.
-
-        :param objs: List of dictionaries
-        :return: List of newly inserted IDs
-
-        Example:
-            ids = store.insert_many([{'a':1},{'a':2}])
-        """
         arr = [(self._serialize(o),) for o in objs]
         sql = "INSERT INTO data (payload) VALUES (?)" if self.compression else "INSERT INTO data (payload) VALUES (json(?))"
         self.conn.executemany(sql, arr)
         max_id = self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
-        return list(range(max_id - len(objs) + 1, max_id + 1))
+        ids = list(range(max_id - len(objs) + 1, max_id + 1))
+        if 'on_insert_many' in self.hooks:  # Neu: Batch-Hook
+            self.hooks['on_insert_many'](list(zip(ids, objs)))
+        return ids
 
     def get(self, record_id: int) -> Optional[Dict[str, Any]]:
-        """
-        Read the JSON document by its ID.
-
-        :param record_id: Record ID
-        :return: Dictionary or None
-
-        Example:
-            doc = store.get(rid)
-        """
-        row = self.conn.execute(
-            "SELECT payload FROM data WHERE id = ?", (record_id,)
-        ).fetchone()
+        row = self.conn.execute("SELECT payload FROM data WHERE id = ?", (record_id,)).fetchone()
         return self._deserialize(row['payload']) if row else None
 
-    def fetch_all(self) -> List[Dict[str, Any]]:
-        """
-        Read all records.
-
-        :return: List of dictionaries
-
-        Example:
-            all_docs = store.fetch_all()
-        """
+    def fetch_all(self) -> Iterator[Dict[str, Any]]:  # Verbessert: Generator für Lazy-Loading
         cur = self.conn.execute("SELECT payload FROM data")
-        return [self._deserialize(r['payload']) for r in cur]
+        for row in cur:
+            yield self._deserialize(row['payload'])
 
     def update(self, identifier: Union[int, str], new_obj: Dict[str, Any]) -> None:
-        """
-        Overwrite the object with a new version.
-
-        :param identifier: Record ID (int) or '!sdata_suuid' (str)
-        :param new_obj: New dictionary
-
-        Example:
-            store.update(rid, {'user':'carol'})  # by ID
-            store.update(suuid, {'user':'carol'})  # by suuid
-        """
         if isinstance(identifier, str):
             rid = self.get_id_by_key('!sdata_suuid', identifier)
             if rid is None:
-                raise ValueError(f"No record found with '!sdata_suuid': {identifier}")
+                raise ValueError(f"No record with '!sdata_suuid': {identifier}")
         else:
             rid = identifier
         payload = self._serialize(new_obj)
         sql = "UPDATE data SET payload = ? WHERE id = ?" if self.compression else "UPDATE data SET payload = json(?) WHERE id = ?"
         self.conn.execute(sql, (payload, rid))
-        if hook := self.hooks.get('on_update'):
-            hook(rid, new_obj)
+        if 'on_update' in self.hooks:
+            self.hooks['on_update'](rid, new_obj)
 
     def update_many(self, pairs: List[Tuple[int, Dict[str, Any]]]) -> None:
-        """
-        Batch update multiple records.
-
-        :param pairs: List of (ID, dictionary) pairs
-
-        Example:
-            store.update_many([(1,{'a':9}), (2,{'a':8})])
-        """
         arr = [(self._serialize(obj), rid) for rid, obj in pairs]
         sql = "UPDATE data SET payload = ? WHERE id = ?" if self.compression else "UPDATE data SET payload = json(?) WHERE id = ?"
         self.conn.executemany(sql, arr)
-        if hook := self.hooks.get('on_update_many'):
-            hook(pairs)
+        if 'on_update_many' in self.hooks:
+            self.hooks['on_update_many'](pairs)
 
     def delete(self, record_id: int) -> None:
-        """
-        Delete a record.
-
-        :param record_id: Record ID
-
-        Example:
-            store.delete(rid)
-        """
         self.conn.execute("DELETE FROM data WHERE id = ?", (record_id,))
-        if hook := self.hooks.get('on_delete'):
-            hook(record_id)
+        if 'on_delete' in self.hooks:
+            self.hooks['on_delete'](record_id)
 
     def exists(self, record_id: int) -> bool:
-        """
-        Check if a record exists.
-
-        :return: True/False
-
-        Example:
-            print(store.exists(rid))
-        """
-        cur = self.conn.execute(
-            "SELECT 1 FROM data WHERE id = ? LIMIT 1", (record_id,)
-        )
-        return cur.fetchone() is not None
+        return self.conn.execute("SELECT 1 FROM data WHERE id = ? LIMIT 1", (record_id,)).fetchone() is not None
 
     def exists_where(self, key: str, value: Any) -> bool:
-        """
-        Check existence based on a JSON field.
-
-        :param key: JSON path key
-        :param value: Comparison value
-        :return: True/False
-
-        Example:
-            store.exists_where('user','alice')
-        """
         if self.compression:
-            cur = self.conn.execute("SELECT payload FROM data")
-            for row in cur:
+            for row in self.conn.execute("SELECT payload FROM data"):
                 obj = self._deserialize(row['payload'])
-                val = self._get_by_path(obj, f'$.{key}')
-                if val == value:
+                if self._get_by_path(obj, key) == value:
                     return True
             return False
         else:
-            cur = self.conn.execute(
-                "SELECT 1 FROM data WHERE json_extract(payload, ?) = ? LIMIT 1", (f'$.{key}', value,)
-            )
-            return cur.fetchone() is not None
+            return self.conn.execute(
+                "SELECT 1 FROM data WHERE json_extract(payload, ?) = ? LIMIT 1", (f'$.{key}', value)
+            ).fetchone() is not None
 
     def count(self) -> int:
-        """
-        Count all records.
-
-        :return: Count
-
-        Example:
-            print(store.count())
-        """
         return self.conn.execute("SELECT COUNT(*) FROM data").fetchone()[0]
 
-    def count_where(
-        self,
-        key: str,
-        op: str,
-        value: Any
-    ) -> int:
-        """
-        Count records matching a condition.
-
-        :param key: JSON field
-        :param op: Comparison operator (=, >, <, LIKE)
-        :param value: Comparison value
-        :return: Number of matches
-
-        Example:
-            print(store.count_where('age','>',30))
-        """
+    def count_where(self, key: str, op: str, value: Any) -> int:
         op_sql = op.upper()
-        val = value
-        if isinstance(value, str) and '*' in value:
-            op_sql = 'LIKE'
-            val = value.replace('*','%')
+        val = value if '%' not in str(value) else value.replace('*', '%')  # Auto-Handle Wildcards
+        if op_sql == 'LIKE':
+            val = val.replace('*', '%')
         if self.compression:
-            count = 0
-            cur = self.conn.execute("SELECT payload FROM data")
-            for row in cur:
-                obj = self._deserialize(row['payload'])
-                v = self._get_by_path(obj, f'$.{key}')
-                if self._compare(v, op_sql, val):
-                    count += 1
-            return count
+            return sum(1 for row in self.conn.execute("SELECT payload FROM data")
+                       if self._compare(self._get_by_path(self._deserialize(row['payload']), key), op_sql, val))
         else:
-            sql = (
-                "SELECT COUNT(*) FROM data "
-                f"WHERE json_extract(payload, '$.{key}') {op_sql} ?"
-            )
-            return self.conn.execute(sql,(val,)).fetchone()[0]
+            sql = f"SELECT COUNT(*) FROM data WHERE json_extract(payload, '$.{key}') {op_sql} ?"
+            return self.conn.execute(sql, (val,)).fetchone()[0]
 
     def fetch_page(
         self,
@@ -591,335 +354,189 @@ class JSON1SQLiteStore:
         offset: int,
         key: Optional[str] = None,
         op: str = '=',
-        value: Any = None
+        value: Any = None,
+        sort_by: str = 'id ASC'  # Neu: Sortier-Option
     ) -> List[Dict[str, Any]]:
-        """
-        Paginated query with optional filter.
-
-        :param limit: Page size
-        :param offset: Offset
-        :param key: Optional filter key
-        :param op: Comparison operator
-        :param value: Comparison value
-        :return: List of dictionaries
-
-        Example:
-            page = store.fetch_page(10,0,'user','=','alice')
-        """
-        if key is not None and value is not None:
+        where_clause = ""
+        params = (limit, offset)
+        if key and value is not None:
             op_sql = op.upper()
-            val = value
-            if isinstance(value,str) and '*' in value:
-                op_sql='LIKE'
-                val = value.replace('*','%')
+            val = value if '%' not in str(value) else value.replace('*', '%')
+            if op_sql == 'LIKE':
+                val = val.replace('*', '%')
             if self.compression:
-                matching = []
-                cur = self.conn.execute("SELECT payload FROM data ORDER BY id ASC")
-                for row in cur:
-                    obj = self._deserialize(row['payload'])
-                    v = self._get_by_path(obj, f'$.{key}')
-                    if self._compare(v, op_sql, val):
-                        matching.append(obj)
-                return matching[offset : offset + limit]
+                matching = [self._deserialize(row['payload']) for row in self.conn.execute("SELECT payload FROM data")
+                            if self._compare(self._get_by_path(self._deserialize(row['payload']), key), op_sql, val)]
+                matching.sort(key=lambda x: x.get('id', 0))  # Simuliere Sort
+                return matching[offset:offset + limit]
             else:
-                sql = (
-                    "SELECT payload FROM data "
-                    f"WHERE json_extract(payload,'$.{key}') {op_sql} ? "
-                    "ORDER BY id ASC LIMIT ? OFFSET ?"
-                )
-                cur = self.conn.execute(sql,(val,limit,offset))
-        else:
-            cur = self.conn.execute(
-                "SELECT payload FROM data ORDER BY id ASC LIMIT ? OFFSET ?",(limit,offset)
-            )
-        return [self._deserialize(r['payload']) for r in cur]
+                where_clause = f"WHERE json_extract(payload, '$.{key}') {op_sql} ? "
+                params = (val, *params)
+        sql = f"SELECT payload FROM data {where_clause}ORDER BY {sort_by} LIMIT ? OFFSET ?"
+        cur = self.conn.execute(sql, params)
+        return [self._deserialize(row['payload']) for row in cur]
 
-    def get_version(self) -> int:
-        """
-        Get the current schema version (PRAGMA user_version).
-
-        :return: Version number
-
-        Example:
-            print(store.get_version())
-        """
+    @property
+    def version(self) -> int:  # Verbessert: Property für einfachen Access
         return self.conn.execute("PRAGMA user_version").fetchone()[0]
 
-    def set_version(self, version: int) -> None:
-        """
-        Set the schema version (PRAGMA user_version).
-
-        :param version: New version number
-
-        Example:
-            store.set_version(2)
-        """
+    @version.setter
+    def version(self, version: int) -> None:
         self.conn.execute(f"PRAGMA user_version = {version}")
 
     def migrate(self, migration_sql: str) -> None:
-        """
-        Execute migration SQL script.
-
-        :param migration_sql: SQL script with ALTER/CREATE statements
-
-        Example:
-            store.migrate("ALTER TABLE data ADD COLUMN extra TEXT;")
-        """
         self.conn.executescript(migration_sql)
+        # Neu: Auto-Regenerate Indizes nach Migration
+        for idx, unique in self.list_indices():
+            if idx.startswith('idx_json_'):
+                key = idx.replace('idx_json_', '').replace('_', '.')  # Approximativ
+                self.regenerate_index(key, unique)
 
     def backup(self, dest_path: str) -> None:
-        """
-        Create a backup of the database.
-
-        :param dest_path: Destination file path
-
-        Example:
-            store.backup('backup.db')
-        """
-        dest = sqlite3.connect(dest_path)
-        with dest:
+        with sqlite3.connect(dest_path) as dest:
             self.conn.backup(dest)
-        dest.close()
 
     def restore(self, src_path: str) -> None:
-        """
-        Restore from a backup file.
-
-        :param src_path: Path to the backup file
-
-        Example:
-            store.restore('backup.db')
-        """
         self.conn.close()
-        shutil.copy(src_path,self.filename)
+        shutil.copy(src_path, self.filename)
         self.conn = sqlite3.connect(self.filename)
 
-    def execute_raw(
-        self,
-        sql: str,
-        params: Optional[Union[Tuple[Any,...],List[Any]]] = None
-    ) -> sqlite3.Cursor:
-        """
-        Execute raw SQL and return a cursor.
-
-        :param sql: SQL string
-        :param params: Optional parameters
-        :return: sqlite3.Cursor
-
-        Example:
-            cursor = store.execute_raw("SELECT id FROM data WHERE ...")
-        """
-        return self.conn.execute(sql,params) if params else self.conn.execute(sql)
+    def execute_raw(self, sql: str, params: Optional[Tuple[Any, ...]] = None) -> sqlite3.Cursor:
+        return self.conn.execute(sql, params or ())
 
     @contextmanager
     def transaction(self) -> Iterator[None]:
-        """
-        Context manager for transactions.
-
-        Example:
-            with store.transaction():
-                store.insert({'x':1})
-                store.insert({'x':2})
-        """
+        self.conn.execute("BEGIN")
         try:
-            self.conn.execute("BEGIN")
             yield
             self.conn.execute("COMMIT")
-        except:
+        except Exception:
             self.conn.execute("ROLLBACK")
             raise
 
-    def delete_expired(
-        self,
-        created_before: Union[datetime,str]
-    ) -> int:
-        """
-        Delete entries older than the given timestamp.
-
-        :param created_before: datetime or ISO-formatted string
-        :return: Number of deleted entries
-
-        Example:
-            expired = store.delete_expired(datetime.utcnow() - timedelta(days=30))
-        """
-        ts = (created_before.strftime('%Y-%m-%dT%H:%M:%fZ')
-              if isinstance(created_before,datetime) else created_before)
-        cur = self.conn.execute(
-            "DELETE FROM data WHERE created_at < ?",(ts,)
-        )
+    def delete_expired(self, created_before: Union[datetime, str]) -> int:
+        ts = created_before if isinstance(created_before, str) else created_before.strftime('%Y-%m-%dT%H:%M:%fZ')
+        cur = self.conn.execute("DELETE FROM data WHERE created_at < ?", (ts,))
+        if 'on_delete_expired' in self.hooks:
+            self.hooks['on_delete_expired'](cur.rowcount)
         return cur.rowcount
 
-    # JSON1-specific methods
     def extract(self, record_id: int, json_path: str) -> Any:
-        """
-        Extract a value at the given JSON path.
-
-        :param record_id: Record ID
-        :param json_path: JSON path (e.g., '$.user')
-        :return: Extracted value
-
-        Example:
-            val = store.extract(rid,'$.scores[0]')
-        """
         if self.compression:
             obj = self.get(record_id)
-            if obj is None:
-                return None
-            return self._get_by_path(obj, json_path)
+            return self._get_by_path(obj, json_path) if obj else None
         else:
-            cur = self.conn.execute(
-                "SELECT json_extract(payload, ?) FROM data WHERE id = ?",(json_path,record_id)
-            )
-            return cur.fetchone()[0]
+            return self.conn.execute(
+                "SELECT json_extract(payload, ?) FROM data WHERE id = ?", (json_path, record_id)
+            ).fetchone()[0]
 
     def set_path(self, record_id: int, json_path: str, value: Any) -> None:
-        """
-        Set or update a value at the given JSON path.
-
-        :param record_id: Record ID
-        :param json_path: JSON path
-        :param value: New value to set
-
-        Example:
-            store.set_path(rid,'$.count',5)
-        """
         if self.compression:
             obj = self.get(record_id)
-            if obj is None:
-                return
-            self._set_by_path(obj, json_path, value, mode='set')
-            self.update(record_id, obj)
+            if obj:
+                self._set_by_path(obj, json_path, value, mode='set')
+                self.update(record_id, obj)
         else:
-            val = json.dumps(value,separators=(',',':'))
+            val = json.dumps(value, separators=(',', ':'))
             self.conn.execute(
                 "UPDATE data SET payload = json_set(payload, ?, json(?)) WHERE id = ?",
-                (json_path,val,record_id)
+                (json_path, val, record_id)
             )
 
     def insert_path(self, record_id: int, json_path: str, value: Any) -> None:
-        """
-        Insert a new key at the given JSON path if it does not exist.
-
-        Example:
-            store.insert_path(rid,'$.newKey','val')
-        """
         if self.compression:
             obj = self.get(record_id)
-            if obj is None:
-                return
-            self._set_by_path(obj, json_path, value, mode='insert')
-            self.update(record_id, obj)
+            if obj:
+                self._set_by_path(obj, json_path, value, mode='insert')
+                self.update(record_id, obj)
         else:
-            val = json.dumps(value,separators=(',',':'))
+            val = json.dumps(value, separators=(',', ':'))
             self.conn.execute(
                 "UPDATE data SET payload = json_insert(payload, ?, json(?)) WHERE id = ?",
-                (json_path,val,record_id)
+                (json_path, val, record_id)
             )
 
     def replace_path(self, record_id: int, json_path: str, value: Any) -> None:
-        """
-        Replace the existing value at the given JSON path.
-
-        Example:
-            store.replace_path(rid,'$.user','eve')
-        """
         if self.compression:
             obj = self.get(record_id)
-            if obj is None:
-                return
-            self._set_by_path(obj, json_path, value, mode='replace')
-            self.update(record_id, obj)
+            if obj:
+                self._set_by_path(obj, json_path, value, mode='replace')
+                self.update(record_id, obj)
         else:
-            val = json.dumps(value,separators=(',',':'))
+            val = json.dumps(value, separators=(',', ':'))
             self.conn.execute(
-                "UPDATE data SET    payload = json_replace(payload, ?, json(?)) WHERE id = ?",
-                (json_path,val,record_id)
+                "UPDATE data SET payload = json_replace(payload, ?, json(?)) WHERE id = ?",
+                (json_path, val, record_id)
             )
 
     def remove_path(self, record_id: int, *json_paths: str) -> None:
-        """
-        Remove keys or elements at the given JSON paths.
-
-        Example:
-            store.remove_path(rid,'$.oldKey')
-        """
         if self.compression:
             obj = self.get(record_id)
-            if obj is None:
-                return
-            for p in json_paths:
-                self._remove_by_path(obj, p)
-            self.update(record_id, obj)
+            if obj:
+                for p in json_paths:
+                    self._remove_by_path(obj, p)
+                self.update(record_id, obj)
         else:
-            placeholders = ",".join("?" for _ in json_paths)
-            sql = f"UPDATE data SET payload = json_remove(payload,{placeholders}) WHERE id = ?"
-            self.conn.execute(sql,(*json_paths,record_id))
+            params = (*json_paths, record_id)
+            placeholders = ', '.join('?' for _ in json_paths)
+            sql = f"UPDATE data SET payload = json_remove(payload, {placeholders}) WHERE id = ?"
+            self.conn.execute(sql, params)
 
     def array_length(self, record_id: int, json_path: str) -> int:
-        """
-        Return the length of a JSON array at the given path.
-
-        Example:
-            length = store.array_length(rid,'$.scores')
-        """
         if self.compression:
             obj = self.get(record_id)
-            if obj is None:
-                return 0
-            arr = self._get_by_path(obj, json_path)
+            arr = self._get_by_path(obj, json_path) if obj else []
             return len(arr) if isinstance(arr, list) else 0
         else:
-            cur = self.conn.execute(
-                "SELECT json_array_length(payload, ?) FROM data WHERE id = ?",(json_path,record_id)
-            )
-            return cur.fetchone()[0] or 0
+            return self.conn.execute(
+                "SELECT json_array_length(payload, ?) FROM data WHERE id = ?", (json_path, record_id)
+            ).fetchone()[0] or 0
 
     def each(self, record_id: int, json_path: str) -> List[Dict[str, Any]]:
-        """
-        Return an array or object as a table (json_each).
-
-        Example:
-            rows = store.each(rid,'$.scores')
-        """
         if self.compression:
             obj = self.get(record_id)
-            if obj is None:
-                return []
-            return self._each_python(obj, json_path)
+            return self._each_python(obj, json_path) if obj else []
         else:
             cur = self.conn.execute(
-                "SELECT key,value FROM data,json_each(data.payload, ?) WHERE id = ?",
-                (json_path,record_id)
+                "SELECT key, value FROM data, json_each(payload, ?) WHERE data.id = ?",
+                (json_path, record_id)
             )
-            return [dict(r) for r in cur.fetchall()]
+            return [dict(row) for row in cur]
 
     def tree(self, record_id: int) -> List[Dict[str, Any]]:
-        """
-        Return the tree structure of all JSON nodes (json_tree).
-
-        Example:
-            nodes = store.tree(rid)
-        """
         if self.compression:
             obj = self.get(record_id)
-            if obj is None:
-                return []
-            return self._tree_python(obj)
+            return list(self._tree_python(obj)) if obj else []
         else:
             cur = self.conn.execute(
-                "SELECT path,key,value FROM data,json_tree(data.payload) WHERE id = ?",
+                "SELECT path, key, value FROM data, json_tree(payload) WHERE data.id = ?",
                 (record_id,)
             )
-            return [dict(r) for r in cur.fetchall()]
+            return [dict(row) for row in cur]
+
+    def find_by(self, attribute: str, value: Any, op: str = '=', limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
+        """
+        Einfacher Zugriff auf Elemente basierend auf Attribut (z.B. '!sdata_class').
+        Nutzt Indizes, wenn vorhanden. Pythonic: Wie eine Query-Methode in ORMs.
+
+        :param attribute: Attribut-Key (z.B. '!sdata_class')
+        :param value: Wert zum Matchen
+        :param op: Operator ('=', '>', '<', 'LIKE' etc.)
+        :param limit: Max. Ergebnisse (None = alle)
+        :param offset: Offset für Pagination
+        :return: Liste von passenden Dicts
+
+        Example:
+            classes = store.find_by('!sdata_class', 'MyClass')  # Alle mit !sdata_class == 'MyClass'
+            names_like = store.find_by('!sdata_name', 'alice*', op='LIKE', limit=10)  # Wildcard-Suche
+            parents = store.find_by('!sdata_parent', 42, op='>')  # Numerische Vergleiche
+        """
+        if attribute not in ['!sdata_class', '!sdata_name', '!sdata_parent', '!sdata_project', '!sdata_uuid', '!sdata_sname', '!sdata_suuid']:
+            warnings.warn(f"Attribute '{attribute}' not in indexed keys; query may be slow.")
+        return self.fetch_page(limit or 999999, offset, key=attribute, op=op, value=value)  # Hoher Default-Limit für "alle"
 
     def __enter__(self) -> 'JSON1SQLiteStore':
-        """
-        Enable usage as a context manager.
-        """
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        """
-        Close the database connection.
-        """
         self.conn.close()
