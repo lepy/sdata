@@ -359,6 +359,32 @@ class JSON1SQLiteStore:
         self.conn.execute(f"DROP INDEX IF EXISTS {idx_name}")
         self.create_index(key, unique=unique)
 
+    def get_id_by_key(self, key: str, value: Any) -> Optional[int]:
+        """
+        Get the record ID by a JSON field value.
+
+        :param key: JSON path key
+        :param value: Value to match
+        :return: Record ID or None
+
+        Example:
+            rid = store.get_id_by_key('!sdata_suuid', suuid)
+        """
+        if self.compression:
+            cur = self.conn.execute("SELECT id, payload FROM data")
+            for row in cur:
+                obj = self._deserialize(row['payload'])
+                val = self._get_by_path(obj, f'$.{key}')
+                if val == value:
+                    return row['id']
+            return None
+        else:
+            cur = self.conn.execute(
+                "SELECT id FROM data WHERE json_extract(payload, ?) = ?", (f'$.{key}', value)
+            )
+            row = cur.fetchone()
+            return row['id'] if row else None
+
     def insert(self, obj: Dict[str, Any]) -> int:
         """
         Insert a JSON object.
@@ -420,21 +446,28 @@ class JSON1SQLiteStore:
         cur = self.conn.execute("SELECT payload FROM data")
         return [self._deserialize(r['payload']) for r in cur]
 
-    def update(self, record_id: int, new_obj: Dict[str, Any]) -> None:
+    def update(self, identifier: Union[int, str], new_obj: Dict[str, Any]) -> None:
         """
         Overwrite the object with a new version.
 
-        :param record_id: Record ID
+        :param identifier: Record ID (int) or '!sdata_suuid' (str)
         :param new_obj: New dictionary
 
         Example:
-            store.update(rid, {'user':'carol'})
+            store.update(rid, {'user':'carol'})  # by ID
+            store.update(suuid, {'user':'carol'})  # by suuid
         """
+        if isinstance(identifier, str):
+            rid = self.get_id_by_key('!sdata_suuid', identifier)
+            if rid is None:
+                raise ValueError(f"No record found with '!sdata_suuid': {identifier}")
+        else:
+            rid = identifier
         payload = self._serialize(new_obj)
         sql = "UPDATE data SET payload = ? WHERE id = ?" if self.compression else "UPDATE data SET payload = json(?) WHERE id = ?"
-        self.conn.execute(sql, (payload, record_id))
+        self.conn.execute(sql, (payload, rid))
         if hook := self.hooks.get('on_update'):
-            hook(record_id, new_obj)
+            hook(rid, new_obj)
 
     def update_many(self, pairs: List[Tuple[int, Dict[str, Any]]]) -> None:
         """
@@ -890,98 +923,3 @@ class JSON1SQLiteStore:
         Close the database connection.
         """
         self.conn.close()
-
-if __name__ == '__main__':
-    metadata = {
-        '!sdata_class': {'name': '!sdata_class', 'value': 'Data', 'unit': '-', 'dtype': 'str',
-                         'description': 'sdata class', 'label': '', 'required': False},
-        '!sdata_ctime': {'name': '!sdata_ctime', 'value': '2025-08-19T09:50:20.287924+00:00', 'unit': '-',
-                         'dtype': 'str', 'description': 'creation date', 'label': '', 'required': False},
-        '!sdata_mtime': {'name': '!sdata_mtime', 'value': '2025-08-19T09:50:20.287959+00:00', 'unit': '-',
-                         'dtype': 'str', 'description': 'modification date', 'label': '', 'required': False},
-        '!sdata_name': {'name': '!sdata_name', 'value': 'original_nr54_50Tw_280Ts_900cms_10D1_fillTime', 'unit': '-',
-                        'dtype': 'str', 'description': 'name of the data object', 'label': '', 'required': False},
-        '!sdata_parent': {'name': '!sdata_parent', 'value': '', 'unit': '-', 'dtype': 'str',
-                          'description': 'uuid of the parent sdata object', 'label': '', 'required': False},
-        '!sdata_project': {'name': '!sdata_project', 'value': 'digipro2green', 'unit': '-', 'dtype': 'str',
-                           'description': 'project name', 'label': '', 'required': False},
-        '!sdata_sname': {'name': '!sdata_sname',
-                         'value': 'MoldflowResult|original_nr54_50Tw_280Ts_900cms_10D1_fillTime|d74e548ea6105ade91c8797b8b600080',
-                         'unit': '-', 'dtype': 'str', 'description': 'sname of the data object', 'label': '',
-                         'required': False},
-        '!sdata_suuid': {'name': '!sdata_suuid',
-                         'value': 'ZDc0ZTU0OGVhNjEwNWFkZTkxYzg3OTdiOGI2MDAwODBNb2xkZmxvd1Jlc3VsdHxvcmlnaW5hbF9ucjU0XzUwVHdfMjgwVHNfOTAwY21zXzEwRDFfZmlsbFRpbWU=',
-                         'unit': '-', 'dtype': 'str', 'description': 'Super Universally Unique Identifier', 'label': '',
-                         'required': False},
-        '!sdata_url': {'name': '!sdata_url', 'value': '', 'unit': '-', 'dtype': 'str',
-                       'description': 'url of the data object', 'label': '', 'required': False},
-        '!sdata_uuid': {'name': '!sdata_uuid', 'value': 'd74e548ea6105ade91c8797b8b600080', 'unit': '-', 'dtype': 'str',
-                        'description': 'Universally Unique Identifier', 'label': '', 'required': False},
-        '!sdata_version': {'name': '!sdata_version', 'value': '0.25.6', 'unit': '-', 'dtype': 'str',
-                           'description': 'sdata package version', 'label': '', 'required': False},
-        'D1': {'name': 'D1', 'value': 10.0, 'unit': '-', 'dtype': 'float', 'description': 'Viskosität',
-               'label': 'Viskosität', 'required': False},
-        'Fi': {'name': 'Fi', 'value': 900.0, 'unit': 'cm³/s', 'dtype': 'float', 'description': 'Flußmenge',
-               'label': 'Flußmenge', 'required': False},
-        'Ts': {'name': 'Ts', 'value': 280.0, 'unit': 'degC', 'dtype': 'float', 'description': 'Temperatur Schmelzgut',
-               'label': 'Schmelzguttemperatur', 'required': False},
-        'Tw': {'name': 'Tw', 'value': 50.0, 'unit': 'degC', 'dtype': 'float', 'description': 'Temperatur Werkzeug',
-               'label': 'Werkzeugtemperatur', 'required': False},
-        'nr': {'name': 'nr', 'value': 54, 'unit': '-', 'dtype': 'int', 'description': 'runid', 'label': '',
-               'required': False},
-        'result_name': {'name': 'result_name', 'value': 'filltime', 'unit': '-', 'dtype': 'str',
-                        'description': 'result name', 'label': 'result_name', 'required': False}
-    }
-    entry = {'!sdata_class': 'Data',
-             '!sdata_ctime': '2025-08-21T21:05:10.241920+00:00',
-             '!sdata_mtime': '2025-08-21T21:05:10.241973+00:00',
-             '!sdata_name': 'original_nr9_76Tw_204Ts_65p60cms_3p03D1_fillTime',
-             '!sdata_parent': '',
-             '!sdata_project': 'digipro2green',
-             '!sdata_sname': 'MoldflowResult|original_nr9_76Tw_204Ts_65p60cms_3p03D1_fillTime|9081d9ba0dbc5505b3ba30ad71911444',
-             '!sdata_suuid': 'OTA4MWQ5YmEwZGJjNTUwNWIzYmEzMGFkNzE5MTE0NDRNb2xkZmxvd1Jlc3VsdHxvcmlnaW5hbF9ucjlfNzZUd18yMDRUc182NXA2MGNtc18zcDAzRDFfZmlsbFRpbWU=',
-             '!sdata_url': '',
-             '!sdata_uuid': '9081d9ba0dbc5505b3ba30ad71911444',
-             '!sdata_version': '0.25.6',
-             'metadata': metadata}
-    # Liste der normalen Indizes (nicht unique)
-    index_keys = [
-        '!sdata_class',
-        '!sdata_name',
-        '!sdata_parent',
-        '!sdata_project',
-        '!sdata_uuid'  # UUID ist unique, aber nach Anfrage nur die zwei spezifizierten als unique
-    ]
-
-    # Liste der unique Indizes
-    unique_index_keys = [
-        '!sdata_sname',
-        '!sdata_suuid'
-    ]
-
-    # Initialisierung des Stores mit Indizes (compression=False für JSON1 und Indexing)
-    store = JSON1SQLiteStore('/tmp/sdata_test.db', index_keys=index_keys, unique_index_keys=unique_index_keys,
-                             compression=False)
-
-    # Überprüfen der erstellten Indizes
-    indices = store.list_indices()
-    print("Erstellte Indizes:")
-    for name, unique in indices:
-        print(f"- {name} (unique: {unique})")
-
-    # Prüfen, ob der Eintrag bereits existiert (basierend auf unique '!sdata_suuid')
-    suuid = entry['!sdata_suuid']
-    if not store.exists_where('!sdata_suuid', suuid):
-        rid = store.insert(entry)
-        print(f"Eingefügter Record ID: {rid}")
-    else:
-        print(f"Eintrag mit '!sdata_suuid' {suuid} existiert bereits – Insert übersprungen.")
-
-    # Performante Suche nach Entries, wo '!sdata_name' "original_nr9" enthält
-    # (nutzt LIKE '%original_nr9%' und den Index für bessere Performance bei großen Datasets)
-    results = store.fetch_page(limit=10, offset=0, key='!sdata_name', op='LIKE', value='*original_nr9*')
-    print(results)  # Gibt Liste der passenden JSON-Objekte zurück
-
-    # Zählen der Treffer
-    count = store.count_where(key='!sdata_name', op='LIKE', value='*original_nr9*')
-    print(f"Anzahl Treffer: {count}")
