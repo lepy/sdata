@@ -1,219 +1,298 @@
 import pytest
 import sqlite3
-from datetime import datetime, timezone
-from sdata.iolib.json1sqlitestore import JSON1SQLiteStore  # Assuming the class is in a module named JSON1SQLiteStore.py
+import json
+from datetime import datetime, timedelta
+from typing import Dict, Any
+import os
+import tempfile
+import shutil
 
+from sdata.iolib.json1sqlitestore import JSON1SQLiteStore
 
 @pytest.fixture
-def store(tmp_path):
-    """Fixture to create a temporary in-memory store for testing."""
-    # Use in-memory DB for faster tests
-    store = JSON1SQLiteStore(':memory:')
-    yield store
-    store.conn.close()
+def store():
+    """Fixture for an in-memory store."""
+    s = JSON1SQLiteStore(':memory:', index_keys=['age'], unique_index_keys=['email'])
+    yield s
+    s.conn.close()
 
+@pytest.fixture
+def file_store():
+    """Fixture for a file-based store using temp file."""
+    temp_dir = tempfile.mkdtemp()
+    db_path = os.path.join(temp_dir, 'test.db')
+    s = JSON1SQLiteStore(db_path)
+    yield s, db_path, temp_dir
+    s.conn.close()
+    shutil.rmtree(temp_dir)
 
-def test_initialization(store):
-    """Test store initialization and table creation."""
-    cursor = store.conn.cursor()
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='data'")
-    assert cursor.fetchone() is not None, "Table 'data' should exist"
-
-    # Check base columns
-    cursor.execute("PRAGMA table_info(data)")
-    columns = [row['name'] for row in cursor.fetchall()]
-    assert 'id' in columns
-    assert 'payload' in columns
-    assert 'created_at' in columns
-
-    # Check automatic indices (with correct name)
+def test_init(store):
+    # Check table exists
+    cur = store.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='data'")
+    assert cur.fetchone() is not None
+    # Check generated columns
+    cur = store.conn.execute("PRAGMA table_info('data')")
+    columns = [row['name'] for row in cur]
+    assert 'sdata_class' in columns
+    assert 'sdata_name' in columns
+    assert 'sdata_suuid' in columns
+    assert 'sdata_sname' in columns
+    # Check auto indices
     indices = store.list_indices()
     index_names = [name for name, _ in indices]
-    assert 'idx_sdata_class' in index_names
-    assert 'idx_sdata_name' in index_names
-    assert 'idx_sdata_suuid' in index_names
-    assert 'idx_sdata_sname' in index_names
-
-
-def test_generated_columns(store):
-    """Test functionality of generated columns."""
-    doc = {
-        '!sdata_class': 'TestClass',
-        '!sdata_name': 'TestName',
-        '!sdata_suuid': 'test-suuid-123',
-        '!sdata_sname': 'test-sname-123'
-    }
-    rid = store.insert(doc)
-
-    cursor = store.conn.cursor()
-    cursor.execute("SELECT sdata_class, sdata_name, sdata_suuid, sdata_sname FROM data WHERE id = ?", (rid,))
-    row = cursor.fetchone()
-    assert row['sdata_class'] == 'TestClass'
-    assert row['sdata_name'] == 'TestName'
-    assert row['sdata_suuid'] == 'test-suuid-123'
-    assert row['sdata_sname'] == 'test-sname-123'
-
+    assert 'idx__sdata_class' in index_names
+    assert 'idx__sdata_name' in index_names
+    assert 'idx__sdata_suuid' in index_names  # unique
+    assert 'idx__sdata_sname' in index_names  # unique
+    # Custom indices from fixture
+    assert 'idx_age' in index_names
+    assert 'idx_email' in index_names
 
 def test_insert_and_get(store):
-    """Test inserting a document and retrieving it."""
-    doc = {
-        '!sdata_class': 'TestClass',
-        '!sdata_name': 'TestName',
-        '!sdata_suuid': 'test-suuid-123',
-        '!sdata_sname': 'test-sname-123',
-        'extra': 'data'
+    obj = {
+        '!sdata_class': 'user',
+        '!sdata_name': 'alice',
+        '!sdata_suuid': 'suuid1',
+        '!sdata_sname': 'sname1',
+        'age': 30,
+        'email': 'alice@example.com'
     }
-    rid = store.insert(doc)
-    assert rid > 0, "Insert should return a positive ID"
+    rid = store.insert(obj)
+    assert rid > 0
+    fetched = store.get(rid)
+    assert fetched == obj
 
-    retrieved = store.get(rid)
-    assert retrieved == doc, "Retrieved document should match inserted"
-
-
-def test_insert_many_and_fetch_all(store):
-    """Test batch insert and fetching all documents."""
-    docs = [
-        {'!sdata_class': 'Class1', '!sdata_name': 'Name1', '!sdata_suuid': 'suuid1', '!sdata_sname': 'sname1'},
-        {'!sdata_class': 'Class2', '!sdata_name': 'Name2', '!sdata_suuid': 'suuid2', '!sdata_sname': 'sname2'}
+def test_insert_many(store):
+    objs = [
+        {'!sdata_class': 'user', '!sdata_name': 'bob', '!sdata_suuid': 'suuid2', '!sdata_sname': 'sname2', 'age': 25},
+        {'!sdata_class': 'user', '!sdata_name': 'charlie', '!sdata_suuid': 'suuid3', '!sdata_sname': 'sname3', 'age': 35}
     ]
-    ids = store.insert_many(docs)
-    assert len(ids) == 2, "Should return two IDs"
+    rids = store.insert_many(objs)
+    assert len(rids) == 2
+    assert store.get(rids[0]) == objs[0]
+    assert store.get(rids[1]) == objs[1]
 
-    all_docs = list(store.fetch_all())
-    assert len(all_docs) == 2, "Should fetch two documents"
-    assert all_docs[0] == docs[0]
-    assert all_docs[1] == docs[1]
+def test_update(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'dave', '!sdata_suuid': 'suuid4', '!sdata_sname': 'sname4', 'age': 40}
+    rid = store.insert(obj)
+    new_obj = {**obj, 'age': 41}
+    store.update(rid, new_obj)
+    fetched = store.get(rid)
+    assert fetched['age'] == 41
 
+def test_update_by_suuid(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'eve', '!sdata_suuid': 'suuid5', '!sdata_sname': 'sname5', 'age': 28}
+    store.insert(obj)
+    new_obj = {**obj, 'age': 29}
+    store.update('suuid5', new_obj)
+    fetched = store.get(store.get_id_by_key('!sdata_suuid', 'suuid5'))
+    assert fetched['age'] == 29
 
-def test_update_and_delete(store):
-    """Test updating and deleting a document."""
-    doc = {'!sdata_class': 'Class', '!sdata_name': 'Name', '!sdata_suuid': 'suuid', '!sdata_sname': 'sname'}
-    rid = store.insert(doc)
+def test_update_many(store):
+    obj1 = {'!sdata_class': 'user', '!sdata_name': 'frank', '!sdata_suuid': 'suuid6', '!sdata_sname': 'sname6', 'age': 50}
+    obj2 = {'!sdata_class': 'user', '!sdata_name': 'grace', '!sdata_suuid': 'suuid7', '!sdata_sname': 'sname7', 'age': 45}
+    rid1 = store.insert(obj1)
+    rid2 = store.insert(obj2)
+    new_obj1 = {**obj1, 'age': 51}
+    new_obj2 = {**obj2, 'age': 46}
+    store.update_many([(rid1, new_obj1), (rid2, new_obj2)])
+    assert store.get(rid1)['age'] == 51
+    assert store.get(rid2)['age'] == 46
 
-    updated_doc = {'!sdata_class': 'UpdatedClass', '!sdata_name': 'UpdatedName', '!sdata_suuid': 'suuid',
-                   '!sdata_sname': 'sname'}
-    store.update(rid, updated_doc)
-    retrieved = store.get(rid)
-    assert retrieved == updated_doc, "Document should be updated"
-
+def test_delete(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'hank', '!sdata_suuid': 'suuid8', '!sdata_sname': 'sname8'}
+    rid = store.insert(obj)
     store.delete(rid)
-    assert store.get(rid) is None, "Document should be deleted"
+    assert store.get(rid) is None
 
+def test_exists(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'ivy', '!sdata_suuid': 'suuid9', '!sdata_sname': 'sname9'}
+    rid = store.insert(obj)
+    assert store.exists(rid)
+    assert not store.exists(9999)
 
-def test_find_by_optimized_fields(store):
-    """Test find_by using generated columns for !sdata_* fields."""
-    docs = [
-        {'!sdata_class': 'ClassA', '!sdata_name': 'NameA', '!sdata_suuid': 'suuidA', '!sdata_sname': 'snameA'},
-        {'!sdata_class': 'ClassB', '!sdata_name': 'NameB', '!sdata_suuid': 'suuidB', '!sdata_sname': 'snameB'},
-        {'!sdata_class': 'ClassA', '!sdata_name': 'NameC', '!sdata_suuid': 'suuidC', '!sdata_sname': 'snameC'}
-    ]
-    store.insert_many(docs)
+def test_exists_where(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'jack', '!sdata_suuid': 'suuid10', '!sdata_sname': 'sname10'}
+    store.insert(obj)
+    assert store.exists_where('!sdata_name', 'jack')
+    assert not store.exists_where('!sdata_name', 'nonexistent')
 
-    results = store.find_by('!sdata_class', 'ClassA')
-    assert len(results) == 2
-    assert results[0]['!sdata_name'] == 'NameA'
-    assert results[1]['!sdata_name'] == 'NameC'
+def test_count(store):
+    store.insert({'!sdata_class': 'user', '!sdata_name': 'kate', '!sdata_suuid': 'suuid11', '!sdata_sname': 'sname11'})
+    store.insert({'!sdata_class': 'user', '!sdata_name': 'leo', '!sdata_suuid': 'suuid12', '!sdata_sname': 'sname12'})
+    assert store.count() == 2
 
-    like_results = store.find_by('!sdata_name', 'Name*', op='LIKE')
-    assert len(like_results) == 3  # All names start with 'Name'
+def test_count_where(store):
+    store.insert({'!sdata_class': 'admin', '!sdata_name': 'mike', '!sdata_suuid': 'suuid13', '!sdata_sname': 'sname13', 'level': 1})
+    store.insert({'!sdata_class': 'admin', '!sdata_name': 'nina', '!sdata_suuid': 'suuid14', '!sdata_sname': 'sname14', 'level': 2})
+    assert store.count_where('!sdata_class', '=', 'admin') == 2
+    assert store.count_where('level', '>', 1) == 1
 
-    suuid_result = store.find_by('!sdata_suuid', 'suuidB')
-    assert len(suuid_result) == 1
-    assert suuid_result[0]['!sdata_class'] == 'ClassB'
+def test_fetch_page(store):
+    for i in range(10):
+        store.insert({'!sdata_class': 'item', '!sdata_name': f'item{i}', '!sdata_suuid': f'suuid{i+15}', '!sdata_sname': f'sname{i+15}', 'value': i})
+    page = store.fetch_page(5, 0, sort_by='id ASC')
+    assert len(page) == 5
+    assert page[0]['value'] == 0
+    page2 = store.fetch_page(5, 5)
+    assert page2[0]['value'] == 5
 
+def test_fetch_page_with_where(store):
+    store.insert({'!sdata_class': 'even', '!sdata_name': 'even1', '!sdata_suuid': 'suuid20', '!sdata_sname': 'sname20', 'num': 2})
+    store.insert({'!sdata_class': 'odd', '!sdata_name': 'odd1', '!sdata_suuid': 'suuid21', '!sdata_sname': 'sname21', 'num': 3})
+    store.insert({'!sdata_class': 'even', '!sdata_name': 'even2', '!sdata_suuid': 'suuid22', '!sdata_sname': 'sname22', 'num': 4})
+    evens = store.fetch_page(10, 0, key='!sdata_class', op='=', value='even')
+    assert len(evens) == 2
+    assert all(o['!sdata_class'] == 'even' for o in evens)
 
-def test_find_by_non_optimized_field(store):
-    """Test find_by fallback for non-!sdata fields."""
-    doc = {'!sdata_class': 'Class', '!sdata_name': 'Name', '!sdata_suuid': 'suuid', '!sdata_sname': 'sname',
-           'custom': 'value'}
-    store.insert(doc)
+def test_find_by(store):
+    store.insert({'!sdata_class': 'user', '!sdata_name': 'oliver', '!sdata_suuid': 'suuid23', '!sdata_sname': 'sname23', 'age': 20})
+    store.insert({'!sdata_class': 'user', '!sdata_name': 'paula', '!sdata_suuid': 'suuid24', '!sdata_sname': 'sname24', 'age': 25})
+    users = store.find_by('!sdata_class', 'user')
+    assert len(users) == 2
+    like = store.find_by('!sdata_name', 'p*', op='LIKE')
+    assert len(like) == 1
+    assert like[0]['!sdata_name'] == 'paula'
 
-    with pytest.warns(UserWarning, match="not optimized"):
-        results = store.find_by('custom', 'value')
-    assert len(results) == 1
-    assert results[0]['custom'] == 'value'
-
-
-def test_extract_and_path_operations(store):
-    """Test JSON path operations."""
-    doc = {'!sdata_class': 'Class', '!sdata_name': 'Name', '!sdata_suuid': 'suuid', '!sdata_sname': 'sname',
-           'array': [1, 2, 3], 'nested': {'key': 'value'}}
-    rid = store.insert(doc)
-
-    # Extract
-    assert store.extract(rid, '$.array[1]') == 2
+def test_extract(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'quinn', '!sdata_suuid': 'suuid25', '!sdata_sname': 'sname25', 'nested': {'key': 'value'}}
+    rid = store.insert(obj)
+    assert store.extract(rid, '$.!sdata_name') == 'quinn'
     assert store.extract(rid, '$.nested.key') == 'value'
 
-    # Set path
-    store.set_path(rid, '$.new_key', 'new_value')
-    updated = store.get(rid)
-    assert updated['new_key'] == 'new_value'
+def test_set_path(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'rachel', '!sdata_suuid': 'suuid26', '!sdata_sname': 'sname26', 'data': {}}
+    rid = store.insert(obj)
+    store.set_path(rid, '$.data.new', 'test')
+    fetched = store.get(rid)
+    assert fetched['data']['new'] == 'test'
 
-    # Insert path (only if not exists)
-    store.insert_path(rid, '$.new_key', 'ignored')  # Should not change
-    assert store.get(rid)['new_key'] == 'new_value'
+def test_insert_path(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'sam', '!sdata_suuid': 'suuid27', '!sdata_sname': 'sname27', 'list': [1, 2]}
+    rid = store.insert(obj)
+    store.insert_path(rid, '$.list[2]', 3)  # Inserts at index 2
+    fetched = store.get(rid)
+    assert fetched['list'] == [1, 2, 3]
 
-    # Replace path (only if exists)
-    store.replace_path(rid, '$.new_key', 'replaced')
-    assert store.get(rid)['new_key'] == 'replaced'
+def test_replace_path(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'tina', '!sdata_suuid': 'suuid28', '!sdata_sname': 'sname28', 'key': 'old'}
+    rid = store.insert(obj)
+    store.replace_path(rid, '$.key', 'new')
+    fetched = store.get(rid)
+    assert fetched['key'] == 'new'
 
-    # Remove path
-    store.remove_path(rid, '$.new_key')
-    assert 'new_key' not in store.get(rid)
+def test_remove_path(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'uma', '!sdata_suuid': 'suuid29', '!sdata_sname': 'sname29', 'remove_me': True, 'keep': True}
+    rid = store.insert(obj)
+    store.remove_path(rid, '$.remove_me')
+    fetched = store.get(rid)
+    assert 'remove_me' not in fetched
+    assert 'keep' in fetched
 
-    # Array length
-    assert store.array_length(rid, '$.array') == 3
+def test_array_length(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'victor', '!sdata_suuid': 'suuid30', '!sdata_sname': 'sname30', 'arr': [1, 2, 3]}
+    rid = store.insert(obj)
+    assert store.array_length(rid, '$.arr') == 3
 
+def test_each(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'wendy', '!sdata_suuid': 'suuid31', '!sdata_sname': 'sname31', 'dict': {'a': 1, 'b': 2}}
+    rid = store.insert(obj)
+    each = store.each(rid, '$.dict')
+    assert sorted(each, key=lambda x: x['key']) == [{'key': 'a', 'value': 1}, {'key': 'b', 'value': 2}]
+
+def test_tree(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'xavier', '!sdata_suuid': 'suuid32', '!sdata_sname': 'sname32', 'nested': {'child': 'value'}}
+    rid = store.insert(obj)
+    tree = store.tree(rid)
+    paths = [t['path'] for t in tree]
+    assert '$' in paths
+    assert '$.nested' in paths
+    assert '$.nested.child' in paths
+
+def test_create_index(store):
+    store.create_index('custom_key')
+    indices = store.list_indices()
+    assert any('idx_custom_key' in name for name, _ in indices)
+
+def test_unique_index(store):
+    store.create_index('unique_test', unique=True)
+    obj1 = {'!sdata_class': 'user', '!sdata_name': 'yara', '!sdata_suuid': 'suuid33', '!sdata_sname': 'sname33', 'unique_test': 'same'}
+    store.insert(obj1)
+    obj2 = {'!sdata_class': 'user', '!sdata_name': 'zach', '!sdata_suuid': 'suuid34', '!sdata_sname': 'sname34', 'unique_test': 'same'}
+    with pytest.raises(sqlite3.IntegrityError):
+        store.insert(obj2)
+
+def test_get_id_by_key(store):
+    obj = {'!sdata_class': 'user', '!sdata_name': 'alice', '!sdata_suuid': 'suuid35', '!sdata_sname': 'sname35'}
+    rid = store.insert(obj)
+    assert store.get_id_by_key('!sdata_name', 'alice') == rid
+    assert store.get_id_by_key('!sdata_suuid', 'suuid35') == rid
 
 def test_transaction(store):
-    """Test transaction context manager."""
     with store.transaction():
-        rid = store.insert(
-            {'!sdata_class': 'Class', '!sdata_name': 'Name', '!sdata_suuid': 'suuid', '!sdata_sname': 'sname'})
-        assert store.get(rid) is not None
-
-    # Outside transaction, should still exist
-    assert store.get(rid) is not None
+        rid = store.insert({'!sdata_class': 'user', '!sdata_name': 'trans', '!sdata_suuid': 'suuid36', '!sdata_sname': 'sname36'})
+        assert store.exists(rid)
+    assert store.exists(rid)  # Committed
 
     try:
         with store.transaction():
-            store.insert(
-                {'!sdata_class': 'Fail', '!sdata_name': 'Fail', '!sdata_suuid': 'fail', '!sdata_sname': 'fail'})
-            raise ValueError("Rollback test")
-    except ValueError:
+            rid2 = store.insert({'!sdata_class': 'user', '!sdata_name': 'fail', '!sdata_suuid': 'suuid37', '!sdata_sname': 'sname37'})
+            raise Exception("Rollback")
+    except Exception:
         pass
-
-    assert len(list(store.fetch_all())) == 1, "Failed insert should be rolled back"
-
+    assert not store.exists(rid2)  # Rolled back
 
 def test_delete_expired(store):
-    """Test deleting expired records."""
-    old_ts = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%fZ')
-    store.insert({'!sdata_class': 'Old', '!sdata_name': 'Old', '!sdata_suuid': 'old', '!sdata_sname': 'old'})
+    # Insert with old created_at by manual insert
+    old_ts = (datetime.utcnow() - timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%fZ')
+    store.conn.execute("INSERT INTO data (payload, created_at) VALUES (json(?), ?)", (json.dumps({'!sdata_class': 'expire', '!sdata_name': 'old', '!sdata_suuid': 'suuid38', '!sdata_sname': 'sname38'}), old_ts))
+    recent_rid = store.insert({'!sdata_class': 'keep', '!sdata_name': 'new', '!sdata_suuid': 'suuid39', '!sdata_sname': 'sname39'})
+    deleted = store.delete_expired(datetime.utcnow() - timedelta(days=1))
+    assert deleted == 1
+    assert store.exists(recent_rid)
 
-    # Manually set old created_at
-    store.conn.execute("UPDATE data SET created_at = '2020-01-01T00:00:00.000Z' WHERE id = 1")
+def test_hooks(store):
+    calls = []
+    def on_insert(rid, obj):
+        calls.append(('insert', rid, obj))
+    store.hooks['on_insert'] = on_insert
+    obj = {'!sdata_class': 'user', '!sdata_name': 'hook', '!sdata_suuid': 'suuid40', '!sdata_sname': 'sname40'}
+    rid = store.insert(obj)
+    assert calls == [('insert', rid, obj)]
 
-    count = store.delete_expired('2025-01-01T00:00:00.000Z')
-    assert count == 1, "Should delete one expired record"
-    assert store.count() == 0
+def test_type_parsers(store):
+    def parse_age(val):
+        return int(val) + 1  # Dummy parser
+    store.type_parsers['age'] = parse_age
+    obj = {'!sdata_class': 'user', '!sdata_name': 'parse', '!sdata_suuid': 'suuid41', '!sdata_sname': 'sname41', 'age': '30'}
+    rid = store.insert(obj)
+    fetched = store.get(rid)
+    assert fetched['age'] == 31
 
+def test_backup_and_restore(file_store):
+    s, db_path, temp_dir = file_store
+    obj = {'!sdata_class': 'user', '!sdata_name': 'backup', '!sdata_suuid': 'suuid42', '!sdata_sname': 'sname42'}
+    rid = s.insert(obj)
+    backup_path = os.path.join(temp_dir, 'backup.db')
+    s.backup(backup_path)
+    # Modify original
+    s.delete(rid)
+    assert s.get(rid) is None
+    # Restore
+    s.restore(backup_path)
+    assert s.get(rid) is not None
 
-def test_migrate_and_version(store):
-    """Test schema migration and version."""
-    assert store.version == 0
-    store.version = 1
-    assert store.version == 1
-
-    # Test migrate (add a dummy column)
-    migration_sql = "ALTER TABLE data ADD COLUMN dummy TEXT;"
+def test_migrate(store):
+    # Add a new generated column as migration
+    migration_sql = """
+    ALTER TABLE data ADD COLUMN new_gen TEXT GENERATED ALWAYS AS (json_extract(payload, '$.new_field')) VIRTUAL;
+    """
     store.migrate(migration_sql)
+    # Check if column added
+    cur = store.conn.execute("PRAGMA table_info('data')")
+    columns = [row['name'] for row in cur]
+    assert 'new_gen' in columns
 
-    # Insert to test
-    rid = store.insert(
-        {'!sdata_class': 'Class', '!sdata_name': 'Name', '!sdata_suuid': 'suuid', '!sdata_sname': 'sname'})
-    store.conn.execute("UPDATE data SET dummy = 'test' WHERE id = ?", (rid,))
-
-    cursor = store.conn.cursor()
-    cursor.execute("SELECT dummy FROM data WHERE id = ?", (rid,))
-    assert cursor.fetchone()['dummy'] == 'test', "Dummy column should be added and updatable"
+def test_execute_raw(store):
+    cur = store.execute_raw("SELECT 1 + 1")
+    assert cur.fetchone()[0] == 2
