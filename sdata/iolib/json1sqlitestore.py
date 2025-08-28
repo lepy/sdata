@@ -51,12 +51,27 @@ class JSON1SQLiteStore:
         json1_extension: Optional[str] = None,
     ):
         self.filename = filename
+        self.timeout = timeout
+        self.check_same_thread = check_same_thread
         self.type_parsers = type_parsers or {}
         self.hooks = hooks or {}
+        self.json1_extension = json1_extension
+        self._init_conn()
+        # Automatically index the !sdata_* fields if not specified
+        sdata_keys = ['!sdata_class', '!sdata_name']
+        sdata_unique_keys = ['!sdata_suuid', '!sdata_sname']
+        index_keys = list(set((index_keys or []) + sdata_keys))
+        unique_index_keys = list(set((unique_index_keys or []) + sdata_unique_keys))
+        for key in index_keys:
+            self.create_index(key, unique=False)
+        for key in unique_index_keys:
+            self.create_index(key, unique=True)
+
+    def _init_conn(self) -> None:
         self.conn = sqlite3.connect(
-            filename,
-            timeout=timeout,
-            check_same_thread=check_same_thread,
+            self.filename,
+            timeout=self.timeout,
+            check_same_thread=self.check_same_thread,
             isolation_level=None,
             detect_types=sqlite3.PARSE_DECLTYPES
         )
@@ -64,9 +79,9 @@ class JSON1SQLiteStore:
         try:
             self.conn.execute("SELECT json('{}')")
         except sqlite3.OperationalError:
-            if json1_extension:
+            if self.json1_extension:
                 self.conn.enable_load_extension(True)
-                self.conn.load_extension(json1_extension)
+                self.conn.load_extension(self.json1_extension)
                 self.conn.enable_load_extension(False)
                 try:
                     self.conn.execute("SELECT json('{}')")
@@ -80,17 +95,6 @@ class JSON1SQLiteStore:
         self.conn.execute("PRAGMA temp_store = MEMORY")
         self.conn.row_factory = sqlite3.Row
         self._ensure_table()
-        index_keys = index_keys or []
-        unique_index_keys = unique_index_keys or []
-        # Automatically index the !sdata_* fields if not specified
-        sdata_keys = ['!sdata_class', '!sdata_name']
-        sdata_unique_keys = ['!sdata_suuid', '!sdata_sname']
-        index_keys = list(set(index_keys + sdata_keys))
-        unique_index_keys = list(set(unique_index_keys + sdata_unique_keys))
-        for key in index_keys:
-            self.create_index(key, unique=False)
-        for key in unique_index_keys:
-            self.create_index(key, unique=True)
 
     def _ensure_table(self) -> None:
         self.conn.execute(
@@ -99,10 +103,10 @@ class JSON1SQLiteStore:
                 id INTEGER PRIMARY KEY,
                 payload TEXT NOT NULL,
                 created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-                sdata_class TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_class')) VIRTUAL,
-                sdata_name TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_name')) VIRTUAL,
-                sdata_suuid TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_suuid')) VIRTUAL,
-                sdata_sname TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_sname')) VIRTUAL
+                sdata_class TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_class')) STORED,
+                sdata_name TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_name')) STORED,
+                sdata_suuid TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_suuid')) STORED,
+                sdata_sname TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_sname')) STORED
             );
             """
         )
@@ -407,7 +411,7 @@ class JSON1SQLiteStore:
     def restore(self, src_path: str) -> None:
         self.conn.close()
         shutil.copy(src_path, self.filename)
-        self.conn = sqlite3.connect(self.filename)
+        self._init_conn()
 
     def execute_raw(self, sql: str, params: Optional[Tuple[Any, ...]] = None) -> sqlite3.Cursor:
         return self.conn.execute(sql, params or ())
@@ -475,7 +479,7 @@ class JSON1SQLiteStore:
 
     def tree(self, record_id: int) -> List[Dict[str, Any]]:
         cur = self.conn.execute(
-            "SELECT path, key, value FROM data, json_tree(payload) WHERE data.id = ?",
+            "SELECT fullkey AS path, key, value FROM data, json_tree(payload) WHERE data.id = ?",
             (record_id,)
         )
         return [dict(row) for row in cur]
