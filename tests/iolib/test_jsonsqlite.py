@@ -29,10 +29,10 @@ def test_initialization(store):
     # Check automatic indices (with correct name)
     indices = store.list_indices()
     index_names = [name for name, _ in indices]
-    assert 'idx__sdata_class' in index_names
-    assert 'idx__sdata_name' in index_names
-    assert 'idx__sdata_suuid' in index_names
-    assert 'idx__sdata_sname' in index_names
+    assert 'idx_sdata_class' in index_names
+    assert 'idx_sdata_name' in index_names
+    assert 'idx_sdata_suuid' in index_names
+    assert 'idx_sdata_sname' in index_names
 
 
 def test_generated_columns(store):

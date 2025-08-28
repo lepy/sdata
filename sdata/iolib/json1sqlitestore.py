@@ -1,6 +1,8 @@
 import sqlite3
 import json
 import shutil
+import zlib
+import base64
 from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
@@ -23,19 +25,15 @@ class JSON1SQLiteStore:
       - raw SQL hooks
       - TTL expiration
       - event callbacks
+      - optional compression
       - type parsing on read
 
-    Compression is not supported to prioritize speed.
-
-    Assumes all JSON dicts have !sdata_* attributes like !sdata_suuid, !sdata_sname, !sdata_name, !sdata_class.
-    Uses generated columns for these fields to optimize queries.
-
     Example:
-        store = JSON1SQLiteStore('data.db', index_keys=['user'])
+        store = JSON1SQLiteStore('data.db', index_keys=['user'], compression=True)
         # Insert an entry
-        rid = store.insert({'!sdata_class': 'test', '!sdata_name': 'alice', '!sdata_suuid': 'suuid1', '!sdata_sname': 'sname1', 'scores':[1,2,3]})
+        rid = store.insert({'user':'alice', 'scores':[1,2,3]})
         # Extract a value
-        username = store.extract(rid, '$.!sdata_name')
+        username = store.extract(rid, '$.user')
         print(username)  # 'alice'
     """
 
@@ -46,11 +44,13 @@ class JSON1SQLiteStore:
         unique_index_keys: Optional[List[str]] = None,
         timeout: float = 5.0,
         check_same_thread: bool = True,
+        compression: bool = False,
         type_parsers: Optional[Dict[str, Callable[[Any], Any]]] = None,
         hooks: Optional[Dict[str, Callable[..., None]]] = None,
         json1_extension: Optional[str] = None,
     ):
         self.filename = filename
+        self.compression = compression
         self.type_parsers = type_parsers or {}
         self.hooks = hooks or {}
         self.conn = sqlite3.connect(
@@ -60,20 +60,23 @@ class JSON1SQLiteStore:
             isolation_level=None,
             detect_types=sqlite3.PARSE_DECLTYPES
         )
-        # Check if JSON1 is available
-        try:
-            self.conn.execute("SELECT json('{}')")
-        except sqlite3.OperationalError:
-            if json1_extension:
-                self.conn.enable_load_extension(True)
-                self.conn.load_extension(json1_extension)
-                self.conn.enable_load_extension(False)
-                try:
-                    self.conn.execute("SELECT json('{}')")
-                except sqlite3.OperationalError:
-                    raise RuntimeError("Failed to load JSON1 extension.")
-            else:
-                raise RuntimeError("SQLite without JSON1 support. Compile with ENABLE_JSON1 or provide extension.")
+        if self.compression:
+            warnings.warn("Compression enabled: Native JSON1 queries and indexing are disabled. Use with caution for large datasets.")
+        else:
+            # Check if JSON1 is available
+            try:
+                self.conn.execute("SELECT json('{}')")
+            except sqlite3.OperationalError:
+                if json1_extension:
+                    self.conn.enable_load_extension(True)
+                    self.conn.load_extension(json1_extension)
+                    self.conn.enable_load_extension(False)
+                    try:
+                        self.conn.execute("SELECT json('{}')")
+                    except sqlite3.OperationalError:
+                        raise RuntimeError("Failed to load JSON1 extension.")
+                else:
+                    raise RuntimeError("SQLite without JSON1 support. Compile with ENABLE_JSON1 or provide extension.")
         # PRAGMAs for performance
         self.conn.execute("PRAGMA journal_mode = WAL")
         self.conn.execute("PRAGMA synchronous = NORMAL")
@@ -82,11 +85,6 @@ class JSON1SQLiteStore:
         self._ensure_table()
         index_keys = index_keys or []
         unique_index_keys = unique_index_keys or []
-        # Automatically index the !sdata_* fields if not specified
-        sdata_keys = ['!sdata_class', '!sdata_name']
-        sdata_unique_keys = ['!sdata_suuid', '!sdata_sname']
-        index_keys = list(set(index_keys + sdata_keys))
-        unique_index_keys = list(set(unique_index_keys + sdata_unique_keys))
         for key in index_keys:
             self.create_index(key, unique=False)
         for key in unique_index_keys:
@@ -98,20 +96,25 @@ class JSON1SQLiteStore:
             CREATE TABLE IF NOT EXISTS data (
                 id INTEGER PRIMARY KEY,
                 payload TEXT NOT NULL,
-                created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-                sdata_class TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_class')) VIRTUAL,
-                sdata_name TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_name')) VIRTUAL,
-                sdata_suuid TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_suuid')) VIRTUAL,
-                sdata_sname TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_sname')) VIRTUAL
+                created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
             );
             """
         )
 
     def _serialize(self, obj: Dict[str, Any]) -> str:
-        return json.dumps(obj, separators=(',', ':'))
+        json_str = json.dumps(obj, separators=(',', ':'))
+        if self.compression:
+            compressed = zlib.compress(json_str.encode('utf-8'))
+            return base64.b64encode(compressed).decode('ascii')
+        return json_str
 
     def _deserialize(self, payload: str) -> Dict[str, Any]:
-        obj = json.loads(payload)
+        if self.compression:
+            compressed = base64.b64decode(payload)
+            json_str = zlib.decompress(compressed).decode('utf-8')
+        else:
+            json_str = payload
+        obj = json.loads(json_str)
         for key, parser in self.type_parsers.items():
             if key in obj:
                 obj[key] = parser(obj[key])
@@ -230,41 +233,41 @@ class JSON1SQLiteStore:
             for i, v in enumerate(obj):
                 yield from self._tree_python(v, f"{path}[{i}]")
 
-    def create_index(self, key: str, unique: bool = False, column: Optional[str] = None) -> None:
-        # Neu: Unterstützung für direkte Spalten (für generated)
-        expr = column if column else f"json_extract(payload, '$.{key}')"
-        idx_name = f"idx_{key.replace('.', '_').replace('[', '_').replace(']', '_').replace('!', '_')}"
+    def create_index(self, key: str, unique: bool = False) -> None:
+        if self.compression:
+            raise RuntimeError("Indexing not supported with compression")
+        idx_name = f"idx_json_{key.replace('.', '_').replace('[', '_').replace(']', '_').replace('!', '_')}"
         unique_str = 'UNIQUE ' if unique else ''
-        sql = f"CREATE {unique_str}INDEX IF NOT EXISTS {idx_name} ON data ({expr});"
+        sql = f"CREATE {unique_str}INDEX IF NOT EXISTS {idx_name} ON data (json_extract(payload, '$.{key}'));"
         self.conn.execute(sql)
 
     def list_indices(self) -> List[Tuple[str, bool]]:
         cur = self.conn.execute("PRAGMA index_list('data')")
         return [(row['name'], bool(row['unique'])) for row in cur.fetchall()]
 
-    def regenerate_index(self, key: str, unique: bool = False, column: Optional[str] = None) -> None:
-        idx_name = f"idx_{key.replace('.', '_').replace('[', '_').replace(']', '_').replace('!', '_')}"
+    def regenerate_index(self, key: str, unique: bool = False) -> None:
+        if self.compression:
+            raise RuntimeError("Indexing not supported with compression")
+        idx_name = f"idx_json_{key.replace('.', '_').replace('[', '_').replace(']', '_').replace('!', '_')}"
         self.conn.execute(f"DROP INDEX IF EXISTS {idx_name}")
-        self.create_index(key, unique=unique, column=column)
+        self.create_index(key, unique=unique)
 
     def get_id_by_key(self, key: str, value: Any) -> Optional[int]:
-        # Optimiert für generated columns
-        generated_map = {
-            '!sdata_class': 'sdata_class',
-            '!sdata_name': 'sdata_name',
-            '!sdata_suuid': 'sdata_suuid',
-            '!sdata_sname': 'sdata_sname',
-        }
-        column = generated_map.get(key)
-        if column:
-            row = self.conn.execute(f"SELECT id FROM data WHERE {column} = ?", (value,)).fetchone()
+        if self.compression:
+            for row in self.conn.execute("SELECT id, payload FROM data"):
+                obj = self._deserialize(row['payload'])
+                if self._get_by_path(obj, key) == value:
+                    return row['id']
+            return None
         else:
-            row = self.conn.execute("SELECT id FROM data WHERE json_extract(payload, ?) = ?", (f'$.{key}', value)).fetchone()
-        return row['id'] if row else None
+            row = self.conn.execute(
+                "SELECT id FROM data WHERE json_extract(payload, ?) = ?", (f'$.{key}', value)
+            ).fetchone()
+            return row['id'] if row else None
 
     def insert(self, obj: Dict[str, Any]) -> int:
         payload = self._serialize(obj)
-        sql = "INSERT INTO data (payload) VALUES (json(?))"
+        sql = "INSERT INTO data (payload) VALUES (?)" if self.compression else "INSERT INTO data (payload) VALUES (json(?))"
         cur = self.conn.execute(sql, (payload,))
         rid = cur.lastrowid
         if 'on_insert' in self.hooks:
@@ -273,11 +276,11 @@ class JSON1SQLiteStore:
 
     def insert_many(self, objs: List[Dict[str, Any]]) -> List[int]:
         arr = [(self._serialize(o),) for o in objs]
-        sql = "INSERT INTO data (payload) VALUES (json(?))"
+        sql = "INSERT INTO data (payload) VALUES (?)" if self.compression else "INSERT INTO data (payload) VALUES (json(?))"
         self.conn.executemany(sql, arr)
         max_id = self.conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         ids = list(range(max_id - len(objs) + 1, max_id + 1))
-        if 'on_insert_many' in self.hooks:
+        if 'on_insert_many' in self.hooks:  # Neu: Batch-Hook
             self.hooks['on_insert_many'](list(zip(ids, objs)))
         return ids
 
@@ -285,7 +288,7 @@ class JSON1SQLiteStore:
         row = self.conn.execute("SELECT payload FROM data WHERE id = ?", (record_id,)).fetchone()
         return self._deserialize(row['payload']) if row else None
 
-    def fetch_all(self) -> Iterator[Dict[str, Any]]:
+    def fetch_all(self) -> Iterator[Dict[str, Any]]:  # Verbessert: Generator für Lazy-Loading
         cur = self.conn.execute("SELECT payload FROM data")
         for row in cur:
             yield self._deserialize(row['payload'])
@@ -298,14 +301,14 @@ class JSON1SQLiteStore:
         else:
             rid = identifier
         payload = self._serialize(new_obj)
-        sql = "UPDATE data SET payload = json(?) WHERE id = ?"
+        sql = "UPDATE data SET payload = ? WHERE id = ?" if self.compression else "UPDATE data SET payload = json(?) WHERE id = ?"
         self.conn.execute(sql, (payload, rid))
         if 'on_update' in self.hooks:
             self.hooks['on_update'](rid, new_obj)
 
     def update_many(self, pairs: List[Tuple[int, Dict[str, Any]]]) -> None:
         arr = [(self._serialize(obj), rid) for rid, obj in pairs]
-        sql = "UPDATE data SET payload = json(?) WHERE id = ?"
+        sql = "UPDATE data SET payload = ? WHERE id = ?" if self.compression else "UPDATE data SET payload = json(?) WHERE id = ?"
         self.conn.executemany(sql, arr)
         if 'on_update_many' in self.hooks:
             self.hooks['on_update_many'](pairs)
@@ -319,38 +322,31 @@ class JSON1SQLiteStore:
         return self.conn.execute("SELECT 1 FROM data WHERE id = ? LIMIT 1", (record_id,)).fetchone() is not None
 
     def exists_where(self, key: str, value: Any) -> bool:
-        generated_map = {
-            '!sdata_class': 'sdata_class',
-            '!sdata_name': 'sdata_name',
-            '!sdata_suuid': 'sdata_suuid',
-            '!sdata_sname': 'sdata_sname',
-        }
-        column = generated_map.get(key)
-        if column:
-            return self.conn.execute(f"SELECT 1 FROM data WHERE {column} = ? LIMIT 1", (value,)).fetchone() is not None
+        if self.compression:
+            for row in self.conn.execute("SELECT payload FROM data"):
+                obj = self._deserialize(row['payload'])
+                if self._get_by_path(obj, key) == value:
+                    return True
+            return False
         else:
-            return self.conn.execute("SELECT 1 FROM data WHERE json_extract(payload, ?) = ? LIMIT 1", (f'$.{key}', value)).fetchone() is not None
+            return self.conn.execute(
+                "SELECT 1 FROM data WHERE json_extract(payload, ?) = ? LIMIT 1", (f'$.{key}', value)
+            ).fetchone() is not None
 
     def count(self) -> int:
         return self.conn.execute("SELECT COUNT(*) FROM data").fetchone()[0]
 
     def count_where(self, key: str, op: str, value: Any) -> int:
         op_sql = op.upper()
-        val = value if '%' not in str(value) else value.replace('*', '%')
+        val = value if '%' not in str(value) else value.replace('*', '%')  # Auto-Handle Wildcards
         if op_sql == 'LIKE':
             val = val.replace('*', '%')
-        generated_map = {
-            '!sdata_class': 'sdata_class',
-            '!sdata_name': 'sdata_name',
-            '!sdata_suuid': 'sdata_suuid',
-            '!sdata_sname': 'sdata_sname',
-        }
-        column = generated_map.get(key)
-        if column:
-            sql = f"SELECT COUNT(*) FROM data WHERE {column} {op_sql} ?"
+        if self.compression:
+            return sum(1 for row in self.conn.execute("SELECT payload FROM data")
+                       if self._compare(self._get_by_path(self._deserialize(row['payload']), key), op_sql, val))
         else:
             sql = f"SELECT COUNT(*) FROM data WHERE json_extract(payload, '$.{key}') {op_sql} ?"
-        return self.conn.execute(sql, (val,)).fetchone()[0]
+            return self.conn.execute(sql, (val,)).fetchone()[0]
 
     def fetch_page(
         self,
@@ -359,7 +355,7 @@ class JSON1SQLiteStore:
         key: Optional[str] = None,
         op: str = '=',
         value: Any = None,
-        sort_by: str = 'id ASC'
+        sort_by: str = 'id ASC'  # Neu: Sortier-Option
     ) -> List[Dict[str, Any]]:
         where_clause = ""
         params = (limit, offset)
@@ -368,24 +364,20 @@ class JSON1SQLiteStore:
             val = value if '%' not in str(value) else value.replace('*', '%')
             if op_sql == 'LIKE':
                 val = val.replace('*', '%')
-            generated_map = {
-                '!sdata_class': 'sdata_class',
-                '!sdata_name': 'sdata_name',
-                '!sdata_suuid': 'sdata_suuid',
-                '!sdata_sname': 'sdata_sname',
-            }
-            column = generated_map.get(key)
-            if column:
-                where_clause = f"WHERE {column} {op_sql} ? "
+            if self.compression:
+                matching = [self._deserialize(row['payload']) for row in self.conn.execute("SELECT payload FROM data")
+                            if self._compare(self._get_by_path(self._deserialize(row['payload']), key), op_sql, val)]
+                matching.sort(key=lambda x: x.get('id', 0))  # Simuliere Sort
+                return matching[offset:offset + limit]
             else:
-                where_clause = f"WHERE json_extract(payload,'$.{key}') {op_sql} ? "
-            params = (val, *params)
+                where_clause = f"WHERE json_extract(payload, '$.{key}') {op_sql} ? "
+                params = (val, *params)
         sql = f"SELECT payload FROM data {where_clause}ORDER BY {sort_by} LIMIT ? OFFSET ?"
         cur = self.conn.execute(sql, params)
         return [self._deserialize(row['payload']) for row in cur]
 
     @property
-    def version(self) -> int:
+    def version(self) -> int:  # Verbessert: Property für einfachen Access
         return self.conn.execute("PRAGMA user_version").fetchone()[0]
 
     @version.setter
@@ -396,8 +388,8 @@ class JSON1SQLiteStore:
         self.conn.executescript(migration_sql)
         # Neu: Auto-Regenerate Indizes nach Migration
         for idx, unique in self.list_indices():
-            if idx.startswith('idx_'):
-                key = idx.replace('idx_', '').replace('_', '.')  # Approximativ
+            if idx.startswith('idx_json_'):
+                key = idx.replace('idx_json_', '').replace('_', '.')  # Approximativ
                 self.regenerate_index(key, unique)
 
     def backup(self, dest_path: str) -> None:
@@ -430,60 +422,102 @@ class JSON1SQLiteStore:
         return cur.rowcount
 
     def extract(self, record_id: int, json_path: str) -> Any:
-        return self.conn.execute(
-            "SELECT json_extract(payload, ?) FROM data WHERE id = ?", (json_path, record_id)
-        ).fetchone()[0]
+        if self.compression:
+            obj = self.get(record_id)
+            return self._get_by_path(obj, json_path) if obj else None
+        else:
+            return self.conn.execute(
+                "SELECT json_extract(payload, ?) FROM data WHERE id = ?", (json_path, record_id)
+            ).fetchone()[0]
 
     def set_path(self, record_id: int, json_path: str, value: Any) -> None:
-        val = json.dumps(value, separators=(',', ':'))
-        self.conn.execute(
-            "UPDATE data SET payload = json_set(payload, ?, json(?)) WHERE id = ?",
-            (json_path, val, record_id)
-        )
+        if self.compression:
+            obj = self.get(record_id)
+            if obj:
+                self._set_by_path(obj, json_path, value, mode='set')
+                self.update(record_id, obj)
+        else:
+            val = json.dumps(value, separators=(',', ':'))
+            self.conn.execute(
+                "UPDATE data SET payload = json_set(payload, ?, json(?)) WHERE id = ?",
+                (json_path, val, record_id)
+            )
 
     def insert_path(self, record_id: int, json_path: str, value: Any) -> None:
-        val = json.dumps(value, separators=(',', ':'))
-        self.conn.execute(
-            "UPDATE data SET payload = json_insert(payload, ?, json(?)) WHERE id = ?",
-            (json_path, val, record_id)
-        )
+        if self.compression:
+            obj = self.get(record_id)
+            if obj:
+                self._set_by_path(obj, json_path, value, mode='insert')
+                self.update(record_id, obj)
+        else:
+            val = json.dumps(value, separators=(',', ':'))
+            self.conn.execute(
+                "UPDATE data SET payload = json_insert(payload, ?, json(?)) WHERE id = ?",
+                (json_path, val, record_id)
+            )
 
     def replace_path(self, record_id: int, json_path: str, value: Any) -> None:
-        val = json.dumps(value, separators=(',', ':'))
-        self.conn.execute(
-            "UPDATE data SET payload = json_replace(payload, ?, json(?)) WHERE id = ?",
-            (json_path, val, record_id)
-        )
+        if self.compression:
+            obj = self.get(record_id)
+            if obj:
+                self._set_by_path(obj, json_path, value, mode='replace')
+                self.update(record_id, obj)
+        else:
+            val = json.dumps(value, separators=(',', ':'))
+            self.conn.execute(
+                "UPDATE data SET payload = json_replace(payload, ?, json(?)) WHERE id = ?",
+                (json_path, val, record_id)
+            )
 
     def remove_path(self, record_id: int, *json_paths: str) -> None:
-        params = (*json_paths, record_id)
-        placeholders = ', '.join('?' for _ in json_paths)
-        sql = f"UPDATE data SET payload = json_remove(payload, {placeholders}) WHERE id = ?"
-        self.conn.execute(sql, params)
+        if self.compression:
+            obj = self.get(record_id)
+            if obj:
+                for p in json_paths:
+                    self._remove_by_path(obj, p)
+                self.update(record_id, obj)
+        else:
+            params = (*json_paths, record_id)
+            placeholders = ', '.join('?' for _ in json_paths)
+            sql = f"UPDATE data SET payload = json_remove(payload, {placeholders}) WHERE id = ?"
+            self.conn.execute(sql, params)
 
     def array_length(self, record_id: int, json_path: str) -> int:
-        return self.conn.execute(
-            "SELECT json_array_length(payload, ?) FROM data WHERE id = ?", (json_path, record_id)
-        ).fetchone()[0] or 0
+        if self.compression:
+            obj = self.get(record_id)
+            arr = self._get_by_path(obj, json_path) if obj else []
+            return len(arr) if isinstance(arr, list) else 0
+        else:
+            return self.conn.execute(
+                "SELECT json_array_length(payload, ?) FROM data WHERE id = ?", (json_path, record_id)
+            ).fetchone()[0] or 0
 
     def each(self, record_id: int, json_path: str) -> List[Dict[str, Any]]:
-        cur = self.conn.execute(
-            "SELECT key, value FROM data, json_each(payload, ?) WHERE data.id = ?",
-            (json_path, record_id)
-        )
-        return [dict(row) for row in cur]
+        if self.compression:
+            obj = self.get(record_id)
+            return self._each_python(obj, json_path) if obj else []
+        else:
+            cur = self.conn.execute(
+                "SELECT key, value FROM data, json_each(payload, ?) WHERE data.id = ?",
+                (json_path, record_id)
+            )
+            return [dict(row) for row in cur]
 
     def tree(self, record_id: int) -> List[Dict[str, Any]]:
-        cur = self.conn.execute(
-            "SELECT path, key, value FROM data, json_tree(payload) WHERE data.id = ?",
-            (record_id,)
-        )
-        return [dict(row) for row in cur]
+        if self.compression:
+            obj = self.get(record_id)
+            return list(self._tree_python(obj)) if obj else []
+        else:
+            cur = self.conn.execute(
+                "SELECT path, key, value FROM data, json_tree(payload) WHERE data.id = ?",
+                (record_id,)
+            )
+            return [dict(row) for row in cur]
 
     def find_by(self, attribute: str, value: Any, op: str = '=', limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
         """
         Einfacher Zugriff auf Elemente basierend auf Attribut (z.B. '!sdata_class').
-        Nutzt Indizes und generated columns, wenn vorhanden.
+        Nutzt Indizes, wenn vorhanden. Pythonic: Wie eine Query-Methode in ORMs.
 
         :param attribute: Attribut-Key (z.B. '!sdata_class')
         :param value: Wert zum Matchen
@@ -497,32 +531,9 @@ class JSON1SQLiteStore:
             names_like = store.find_by('!sdata_name', 'alice*', op='LIKE', limit=10)  # Wildcard-Suche
             parents = store.find_by('!sdata_parent', 42, op='>')  # Numerische Vergleiche
         """
-        generated_map = {
-            '!sdata_class': 'sdata_class',
-            '!sdata_name': 'sdata_name',
-            '!sdata_suuid': 'sdata_suuid',
-            '!sdata_sname': 'sdata_sname',
-        }
-        column = generated_map.get(attribute)
-        if column:
-            return self._fetch_page_optimized(limit or 999999, offset, column, op, value)
-        else:
-            warnings.warn(f"Attribute '{attribute}' not optimized with generated column; using json_extract.")
-            return self.fetch_page(limit or 999999, offset, key=attribute, op=op, value=value)
-
-    def _fetch_page_optimized(self, limit: int, offset: int, column: str, op: str = '=', value: Any = None, sort_by: str = 'id ASC') -> List[Dict[str, Any]]:
-        where_clause = ""
-        params = (limit, offset)
-        if value is not None:
-            op_sql = op.upper()
-            val = value if '%' not in str(value) else value.replace('*', '%')
-            if op_sql == 'LIKE':
-                val = val.replace('*', '%')
-            where_clause = f"WHERE {column} {op_sql} ? "
-            params = (val, *params)
-        sql = f"SELECT payload FROM data {where_clause}ORDER BY {sort_by} LIMIT ? OFFSET ?"
-        cur = self.conn.execute(sql, params)
-        return [self._deserialize(row['payload']) for row in cur]
+        if attribute not in ['!sdata_class', '!sdata_name', '!sdata_parent', '!sdata_project', '!sdata_uuid', '!sdata_sname', '!sdata_suuid']:
+            warnings.warn(f"Attribute '{attribute}' not in indexed keys; query may be slow.")
+        return self.fetch_page(limit or 999999, offset, key=attribute, op=op, value=value)  # Hoher Default-Limit für "alle"
 
     def __enter__(self) -> 'JSON1SQLiteStore':
         return self
