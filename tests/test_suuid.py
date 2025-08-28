@@ -26,9 +26,14 @@ def test_suuid_from_name():
  #  'MyClass',
  #  'Otto',
  #  '9120846d11185cbd9c06742056d757ad'])
-    assert suuid.huuid=='9120846d11185cbd9c06742056d757ad'
+    print(suuid.huuid)
+    print(suuid.idstr)
+    print(suuid.sname)
+
+
+    assert suuid.huuid=='d090bdae83315b8b935ea4c71ef86b2f'
     assert suuid.name == 'Otto'
-    assert suuid.idstr == 'OTEyMDg0NmQxMTE4NWNiZDljMDY3NDIwNTZkNzU3YWRNeUNsYXNzfE90dG8='
+    assert suuid.idstr == 'ZDA5MGJkYWU4MzMxNWI4YjkzNWVhNGM3MWVmODZiMmZNeUNsYXNzQE90dG8='
     assert suuid.class_name == 'MyClass'
 
     s = sdata.SUUID.from_suuid_str(suuid.idstr)

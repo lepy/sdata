@@ -191,7 +191,7 @@ class Data(object):
             self.metadata.add(self.SDATA_PARENT, kwargs.get("parent"))
 
     def gen_suuid(self):
-        self.suuid = sdata.SUUID(self.__class__.__name__, self.name, huuid=self.uuid).idstr
+        self.suuid = sdata.SUUID(self.__class__.__name__, self.name, huuid=self.uuid).suuid_str
         self.sname = sdata.SUUID(self.__class__.__name__, self.name, huuid=self.uuid).sname
 
     def gen_uuid_from_state(self):

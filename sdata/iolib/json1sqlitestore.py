@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 import re
 import warnings
+import pandas as pd
 
 class JSON1SQLiteStore:
     """
@@ -68,6 +69,7 @@ class JSON1SQLiteStore:
         for key in unique_index_keys:
             column = key if key.startswith('_sdata_') else None
             self.create_index(key, unique=True, column=column)
+
 
     def _init_conn(self) -> None:
         self.conn = sqlite3.connect(
@@ -245,6 +247,10 @@ class JSON1SQLiteStore:
         unique_str = 'UNIQUE ' if unique else ''
         sql = f"CREATE {unique_str}INDEX IF NOT EXISTS {idx_name} ON data ({expr});"
         self.conn.execute(sql)
+
+    def get_indices_columns(self) -> List[Tuple[str, bool]]:
+        cur = self.conn.execute("PRAGMA index_list('data')")
+        return [row['name'].replace("idx_", "") for row in cur.fetchall()]
 
     def list_indices(self) -> List[Tuple[str, bool]]:
         cur = self.conn.execute("PRAGMA index_list('data')")
@@ -514,3 +520,25 @@ class JSON1SQLiteStore:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.conn.close()
+
+    def get_index_df(self, class_name=None, project=None, parent=None):
+        cols = ["id"]
+        cols.extend(self.get_indices_columns())
+        cols_string = ", ".join(cols)
+        # query = "SELECT * FROM data"
+        query = f"SELECT {cols_string} FROM data"
+        filter = []
+        if class_name:
+            filter.append(f"_sdata_class = '{class_name}'")
+        if project:
+            filter.append(f"_sdata_project = '{project}'")
+        if parent:
+            filter.append(f"_sdata_parent = '{parent}'")
+
+        if filter:
+            filter_str = " AND ".join(filter)
+            query += f" WHERE {filter_str}"
+
+        df = pd.read_sql_query(query, self.conn)
+        df.set_index("id", inplace=True)
+        return df

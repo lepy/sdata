@@ -1,7 +1,7 @@
 # -*-coding: utf-8-*-
 from __future__ import division
 
-__version__ = '0.25.6'
+__version__ = '0.26.0'
 __revision__ = None
 __version_info__ = tuple([int(num) for num in __version__.split('.')])
 
@@ -20,7 +20,7 @@ import pandas
 
 from sdata.metadata import Metadata, Attribute
 from sdata.data import Data
-from sdata.base import Base
+from sdata.base import Base, base_factory
 from sdata.blob import Blob
 from sdata.suuid import SUUID
 from sdata.image import Image
