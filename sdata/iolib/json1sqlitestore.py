@@ -58,7 +58,7 @@ class JSON1SQLiteStore:
         self.json1_extension = json1_extension
         self._init_conn()
         # Automatically index the _sdata_* fields if not specified
-        sdata_keys = ['_sdata_class', '_sdata_name']
+        sdata_keys = ['_sdata_class', '_sdata_name', '_sdata_parent', '_sdata_project']
         sdata_unique_keys = ['_sdata_suuid', '_sdata_sname']
         index_keys = list(set((index_keys or []) + sdata_keys))
         unique_index_keys = list(set((unique_index_keys or []) + sdata_unique_keys))
@@ -108,7 +108,9 @@ class JSON1SQLiteStore:
                 _sdata_class TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_class')) STORED,
                 _sdata_name TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_name')) STORED,
                 _sdata_suuid TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_suuid')) STORED,
-                _sdata_sname TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_sname')) STORED
+                _sdata_sname TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_sname')) STORED,
+                _sdata_parent TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_parent')) STORED,
+                _sdata_project TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_project')) STORED
             );
             """
         )
@@ -333,6 +335,8 @@ class JSON1SQLiteStore:
         val = value if '%' not in str(value) else value.replace('*', '%')
         if op_sql == 'LIKE':
             val = val.replace('*', '%')
+        else:
+            val = value
         column = key if key.startswith('_sdata_') else None
         if column:
             sql = f"SELECT COUNT(*) FROM data WHERE {column} {op_sql} ?"
@@ -356,6 +360,8 @@ class JSON1SQLiteStore:
             val = value if '%' not in str(value) else value.replace('*', '%')
             if op_sql == 'LIKE':
                 val = val.replace('*', '%')
+            else:
+                val = value
             column = key if key.startswith('_sdata_') else None
             if column:
                 where_clause = f"WHERE {column} {op_sql} ? "
@@ -495,6 +501,8 @@ class JSON1SQLiteStore:
             val = value if '%' not in str(value) else value.replace('*', '%')
             if op_sql == 'LIKE':
                 val = val.replace('*', '%')
+            else:
+                val = value
             where_clause = f"WHERE {column} {op_sql} ? "
             params = (val, *params)
         sql = f"SELECT payload FROM data {where_clause}ORDER BY {sort_by} LIMIT ? OFFSET ?"
