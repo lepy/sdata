@@ -1,6 +1,6 @@
 import pytest
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from sdata.iolib.json1sqlitestore import JSON1SQLiteStore  # Assuming the class is in a module named JSON1SQLiteStore.py
 
 
@@ -19,21 +19,39 @@ def test_initialization(store):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='data'")
     assert cursor.fetchone() is not None, "Table 'data' should exist"
 
-    # Check generated columns
+    # Check base columns
     cursor.execute("PRAGMA table_info(data)")
     columns = [row['name'] for row in cursor.fetchall()]
-    assert 'sdata_class' in columns
-    assert 'sdata_name' in columns
-    assert 'sdata_suuid' in columns
-    assert 'sdata_sname' in columns
+    assert 'id' in columns
+    assert 'payload' in columns
+    assert 'created_at' in columns
 
-    # Check automatic indices
+    # Check automatic indices (with correct name)
     indices = store.list_indices()
-    index_names = [idx[0] for idx in indices]
-    assert any('idx_sdata_class' in name for name in index_names)
-    assert any('idx_sdata_name' in name for name in index_names)
-    assert any('idx_sdata_suuid' in name for name in index_names)
-    assert any('idx_sdata_sname' in name for name in index_names)
+    index_names = [name for name, _ in indices]
+    assert 'idx__sdata_class' in index_names
+    assert 'idx__sdata_name' in index_names
+    assert 'idx__sdata_suuid' in index_names
+    assert 'idx__sdata_sname' in index_names
+
+
+def test_generated_columns(store):
+    """Test functionality of generated columns."""
+    doc = {
+        '!sdata_class': 'TestClass',
+        '!sdata_name': 'TestName',
+        '!sdata_suuid': 'test-suuid-123',
+        '!sdata_sname': 'test-sname-123'
+    }
+    rid = store.insert(doc)
+
+    cursor = store.conn.cursor()
+    cursor.execute("SELECT sdata_class, sdata_name, sdata_suuid, sdata_sname FROM data WHERE id = ?", (rid,))
+    row = cursor.fetchone()
+    assert row['sdata_class'] == 'TestClass'
+    assert row['sdata_name'] == 'TestName'
+    assert row['sdata_suuid'] == 'test-suuid-123'
+    assert row['sdata_sname'] == 'test-sname-123'
 
 
 def test_insert_and_get(store):
@@ -170,7 +188,7 @@ def test_transaction(store):
 
 def test_delete_expired(store):
     """Test deleting expired records."""
-    old_ts = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%fZ')
+    old_ts = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%fZ')
     store.insert({'!sdata_class': 'Old', '!sdata_name': 'Old', '!sdata_suuid': 'old', '!sdata_sname': 'old'})
 
     # Manually set old created_at
@@ -190,7 +208,12 @@ def test_migrate_and_version(store):
     # Test migrate (add a dummy column)
     migration_sql = "ALTER TABLE data ADD COLUMN dummy TEXT;"
     store.migrate(migration_sql)
+
+    # Insert to test
+    rid = store.insert(
+        {'!sdata_class': 'Class', '!sdata_name': 'Name', '!sdata_suuid': 'suuid', '!sdata_sname': 'sname'})
+    store.conn.execute("UPDATE data SET dummy = 'test' WHERE id = ?", (rid,))
+
     cursor = store.conn.cursor()
-    cursor.execute("PRAGMA table_info(data)")
-    columns = [row['name'] for row in cursor.fetchall()]
-    assert 'dummy' in columns
+    cursor.execute("SELECT dummy FROM data WHERE id = ?", (rid,))
+    assert cursor.fetchone()['dummy'] == 'test', "Dummy column should be added and updatable"
