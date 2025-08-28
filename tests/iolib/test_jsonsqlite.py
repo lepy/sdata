@@ -1,7 +1,7 @@
 import pytest
 import sqlite3
 import json
-from datetime import datetime, timedelta
+import datetime
 from typing import Dict, Any
 import os
 import tempfile
@@ -250,10 +250,10 @@ def test_transaction(store):
 
 def test_delete_expired(store):
     # Insert with old created_at by manual insert
-    old_ts = (datetime.utcnow() - timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%fZ')
+    old_ts = (datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=2)).strftime('%Y-%m-%dT%H:%M:%fZ')
     store.conn.execute("INSERT INTO data (payload, created_at) VALUES (json(?), ?)", (json.dumps({'!sdata_class': 'expire', '!sdata_name': 'old', '!sdata_suuid': 'suuid38', '!sdata_sname': 'sname38'}), old_ts))
     recent_rid = store.insert({'!sdata_class': 'keep', '!sdata_name': 'new', '!sdata_suuid': 'suuid39', '!sdata_sname': 'sname39'})
-    deleted = store.delete_expired(datetime.utcnow() - timedelta(days=1))
+    deleted = store.delete_expired(datetime.datetime.now(tz=datetime.timezone.utc) - datetime.timedelta(days=1))
     assert deleted == 1
     assert store.exists(recent_rid)
 
