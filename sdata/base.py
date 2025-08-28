@@ -64,11 +64,11 @@ class Base:
         suuid = SUUID.from_name(class_name=self.__class__.__name__, name=self.asciiname(name), ns_name=project_sname)
         self.default_attributes: List[Dict[str, Any]] = []
 
-        self.metadata.add(self.SDATA_VERSION, __version__, dtype="str", description="sdata package version")
-        self.metadata.add(self.SDATA_NAME, name, dtype="str", description="name of the data object")
-        self.metadata.add(self.SDATA_SNAME, suuid.sname, dtype="str", description="sname of the data object")
-        self.metadata.add(self.SDATA_SUUID, suuid.suuid_str, dtype="str", description="Super Universally Unique Identifier")
-        self.metadata.add(self.SDATA_CLASS, self.__class__.__name__, dtype="str", description="sdata class")
+        self.metadata.add(self.SDATA_VERSION, __version__, dtype="str", description="sdata package version", required=True)
+        self.metadata.add(self.SDATA_NAME, name, dtype="str", description="name of the data object", required=True)
+        self.metadata.add(self.SDATA_SNAME, suuid.sname, dtype="str", description="sname of the data object", required=True)
+        self.metadata.add(self.SDATA_SUUID, suuid.suuid_str, dtype="str", description="Super Universally Unique Identifier", required=True)
+        self.metadata.add(self.SDATA_CLASS, self.__class__.__name__, dtype="str", description="sdata class", required=True)
         self.metadata.add(self.SDATA_URL, str(kwargs.get("url", "")), dtype="str", description="url of the data object")
 
         parent = kwargs.get("parent", None)
@@ -98,8 +98,13 @@ class Base:
 
     @property
     def osname(self) -> str:
-        """:returns: os compatible name (ascii?)"""
+        """:returns: os compatible name (ascii)"""
         return self.asciiname(self.name)
+
+    @property
+    def class_name(self) -> str:
+        """:returns: class_name"""
+        return self.__class__.__name__
 
     @staticmethod
     def asciiname(name: str) -> str:
@@ -119,14 +124,13 @@ class Base:
         #name = unicodedata.normalize('NFKD', name).encode('ascii', 'replace').decode('ascii')
         return name.lower()
 
-    def _get_uuid(self) -> str:
-        uid = SUUID.from_suuid_str(self.metadata.get(self.SDATA_SUUID).value).uuid.hex
-        return uid
+    @property
+    def uuid(self) -> uuid.UUID:
+        return self.suuid.uuid
 
-    def get_uuid_object(self) -> uuid.UUID:
-        return uuid.UUID(self.uuid)
-
-    uuid = property(fget=_get_uuid, doc="uuid of the object (hex str)")
+    @property
+    def huuid(self) -> str:
+        return self.suuid.uuid.hex
 
     def _get_suuid(self) -> str:
         return self.metadata.get(self.SDATA_SUUID).value
@@ -136,10 +140,15 @@ class Base:
             raise SdataUuidException("Invalid SUUID string")
         self.metadata.set_attr(self.SDATA_SUUID, value)
 
-    def get_suuid_object(self) -> SUUID:
+    @property
+    def suuid(self) -> SUUID:
         return SUUID.from_suuid_str(self.metadata.get(self.SDATA_SUUID).value)
 
-    suuid = property(fget=_get_suuid, fset=_set_suuid, doc="suuid of the object (str)")
+    suuid_str = property(fget=_get_suuid, fset=_set_suuid, doc="suuid of the object (str)")
+
+    @property
+    def suuid_bytes(self) -> bytes:
+        return self.suuid_str.encode("utf-8")
 
     def _get_sname(self) -> str:
         return self.metadata.get(self.SDATA_SNAME).value
@@ -168,10 +177,10 @@ class Base:
 
     @property
     def project(self) -> str:
-        return self.metadata.get(self.SDATA_PROJECT_SUUID).value
+        return self.metadata.get(self.SDATA_PROJECT_SNAME).value
 
     def get_project(self) -> str:  # Assuming project is str; change to SUUID if it's a SUUID
-        return self.metadata.get(self.SDATA_PROJECT_SUUID).value
+        return self.metadata.get(self.SDATA_PROJECT_SNAME).value
 
     def __str__(self) -> str:
         return f"<{self.sname}>"

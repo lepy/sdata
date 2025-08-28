@@ -101,6 +101,11 @@ class SUUID:
         return uuid.UUID(hex=self.huuid)
 
     @property
+    def uuid(self):
+        """UUID-Objekt aus huuid."""
+        return uuid.UUID(hex=self.huuid)
+
+    @property
     def hex(self):
         """Hex-String der UUID."""
         return self.huuid
