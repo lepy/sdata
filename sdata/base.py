@@ -136,12 +136,6 @@ class Base:
     def sdf(self):
         return self.metadata.sdf
 
-    @property
-    def md(self):
-        return self.metadata
-
-
-
     def set_default_attributes(self):
         for attr_dict in self.default_attributes:
             self.metadata.add(**attr_dict)
