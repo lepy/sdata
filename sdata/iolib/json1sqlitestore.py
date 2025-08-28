@@ -27,15 +27,15 @@ class JSON1SQLiteStore:
 
     Compression is not supported to prioritize speed.
 
-    Assumes all JSON dicts have !sdata_* attributes like !sdata_suuid, !sdata_sname, !sdata_name, !sdata_class.
+    Assumes all JSON dicts have _sdata_* attributes like _sdata_suuid, _sdata_sname, _sdata_name, _sdata_class.
     Uses generated columns for these fields to optimize queries.
 
     Example:
         store = JSON1SQLiteStore('data.db', index_keys=['user'])
         # Insert an entry
-        rid = store.insert({'!sdata_class': 'test', '!sdata_name': 'alice', '!sdata_suuid': 'suuid1', '!sdata_sname': 'sname1', 'scores':[1,2,3]})
+        rid = store.insert({'_sdata_class': 'test', '_sdata_name': 'alice', '_sdata_suuid': 'suuid1', '_sdata_sname': 'sname1', 'scores':[1,2,3]})
         # Extract a value
-        username = store.extract(rid, '$.!sdata_name')
+        username = store.extract(rid, '$._sdata_name')
         print(username)  # 'alice'
     """
 
@@ -57,15 +57,17 @@ class JSON1SQLiteStore:
         self.hooks = hooks or {}
         self.json1_extension = json1_extension
         self._init_conn()
-        # Automatically index the !sdata_* fields if not specified
-        sdata_keys = ['!sdata_class', '!sdata_name']
-        sdata_unique_keys = ['!sdata_suuid', '!sdata_sname']
+        # Automatically index the _sdata_* fields if not specified
+        sdata_keys = ['_sdata_class', '_sdata_name']
+        sdata_unique_keys = ['_sdata_suuid', '_sdata_sname']
         index_keys = list(set((index_keys or []) + sdata_keys))
         unique_index_keys = list(set((unique_index_keys or []) + sdata_unique_keys))
         for key in index_keys:
-            self.create_index(key, unique=False)
+            column = key if key.startswith('_sdata_') else None
+            self.create_index(key, unique=False, column=column)
         for key in unique_index_keys:
-            self.create_index(key, unique=True)
+            column = key if key.startswith('_sdata_') else None
+            self.create_index(key, unique=True, column=column)
 
     def _init_conn(self) -> None:
         self.conn = sqlite3.connect(
@@ -103,10 +105,10 @@ class JSON1SQLiteStore:
                 id INTEGER PRIMARY KEY,
                 payload TEXT NOT NULL,
                 created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-                sdata_class TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_class')) STORED,
-                sdata_name TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_name')) STORED,
-                sdata_suuid TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_suuid')) STORED,
-                sdata_sname TEXT GENERATED ALWAYS AS (json_extract(payload, '$.!sdata_sname')) STORED
+                _sdata_class TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_class')) STORED,
+                _sdata_name TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_name')) STORED,
+                _sdata_suuid TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_suuid')) STORED,
+                _sdata_sname TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_sname')) STORED
             );
             """
         )
@@ -253,13 +255,7 @@ class JSON1SQLiteStore:
 
     def get_id_by_key(self, key: str, value: Any) -> Optional[int]:
         # Optimiert für generated columns
-        generated_map = {
-            '!sdata_class': 'sdata_class',
-            '!sdata_name': 'sdata_name',
-            '!sdata_suuid': 'sdata_suuid',
-            '!sdata_sname': 'sdata_sname',
-        }
-        column = generated_map.get(key)
+        column = key if key.startswith('_sdata_') else None
         if column:
             row = self.conn.execute(f"SELECT id FROM data WHERE {column} = ?", (value,)).fetchone()
         else:
@@ -296,9 +292,9 @@ class JSON1SQLiteStore:
 
     def update(self, identifier: Union[int, str], new_obj: Dict[str, Any]) -> None:
         if isinstance(identifier, str):
-            rid = self.get_id_by_key('!sdata_suuid', identifier)
+            rid = self.get_id_by_key('_sdata_suuid', identifier)
             if rid is None:
-                raise ValueError(f"No record with '!sdata_suuid': {identifier}")
+                raise ValueError(f"No record with '_sdata_suuid': {identifier}")
         else:
             rid = identifier
         payload = self._serialize(new_obj)
@@ -323,13 +319,7 @@ class JSON1SQLiteStore:
         return self.conn.execute("SELECT 1 FROM data WHERE id = ? LIMIT 1", (record_id,)).fetchone() is not None
 
     def exists_where(self, key: str, value: Any) -> bool:
-        generated_map = {
-            '!sdata_class': 'sdata_class',
-            '!sdata_name': 'sdata_name',
-            '!sdata_suuid': 'sdata_suuid',
-            '!sdata_sname': 'sdata_sname',
-        }
-        column = generated_map.get(key)
+        column = key if key.startswith('_sdata_') else None
         if column:
             return self.conn.execute(f"SELECT 1 FROM data WHERE {column} = ? LIMIT 1", (value,)).fetchone() is not None
         else:
@@ -343,13 +333,7 @@ class JSON1SQLiteStore:
         val = value if '%' not in str(value) else value.replace('*', '%')
         if op_sql == 'LIKE':
             val = val.replace('*', '%')
-        generated_map = {
-            '!sdata_class': 'sdata_class',
-            '!sdata_name': 'sdata_name',
-            '!sdata_suuid': 'sdata_suuid',
-            '!sdata_sname': 'sdata_sname',
-        }
-        column = generated_map.get(key)
+        column = key if key.startswith('_sdata_') else None
         if column:
             sql = f"SELECT COUNT(*) FROM data WHERE {column} {op_sql} ?"
         else:
@@ -372,13 +356,7 @@ class JSON1SQLiteStore:
             val = value if '%' not in str(value) else value.replace('*', '%')
             if op_sql == 'LIKE':
                 val = val.replace('*', '%')
-            generated_map = {
-                '!sdata_class': 'sdata_class',
-                '!sdata_name': 'sdata_name',
-                '!sdata_suuid': 'sdata_suuid',
-                '!sdata_sname': 'sdata_sname',
-            }
-            column = generated_map.get(key)
+            column = key if key.startswith('_sdata_') else None
             if column:
                 where_clause = f"WHERE {column} {op_sql} ? "
             else:
@@ -402,7 +380,8 @@ class JSON1SQLiteStore:
         for idx, unique in self.list_indices():
             if idx.startswith('idx_'):
                 key = idx.replace('idx_', '').replace('_', '.')  # Approximativ
-                self.regenerate_index(key, unique)
+                column = key if key.startswith('_sdata_') else None
+                self.regenerate_index(key, unique, column=column)
 
     def backup(self, dest_path: str) -> None:
         with sqlite3.connect(dest_path) as dest:
@@ -486,10 +465,10 @@ class JSON1SQLiteStore:
 
     def find_by(self, attribute: str, value: Any, op: str = '=', limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
         """
-        Einfacher Zugriff auf Elemente basierend auf Attribut (z.B. '!sdata_class').
+        Einfacher Zugriff auf Elemente basierend auf Attribut (z.B. '_sdata_class').
         Nutzt Indizes und generated columns, wenn vorhanden.
 
-        :param attribute: Attribut-Key (z.B. '!sdata_class')
+        :param attribute: Attribut-Key (z.B. '_sdata_class')
         :param value: Wert zum Matchen
         :param op: Operator ('=', '>', '<', 'LIKE' etc.)
         :param limit: Max. Ergebnisse (None = alle)
@@ -497,17 +476,11 @@ class JSON1SQLiteStore:
         :return: Liste von passenden Dicts
 
         Example:
-            classes = store.find_by('!sdata_class', 'MyClass')  # Alle mit !sdata_class == 'MyClass'
-            names_like = store.find_by('!sdata_name', 'alice*', op='LIKE', limit=10)  # Wildcard-Suche
-            parents = store.find_by('!sdata_parent', 42, op='>')  # Numerische Vergleiche
+            classes = store.find_by('_sdata_class', 'MyClass')  # Alle mit _sdata_class == 'MyClass'
+            names_like = store.find_by('_sdata_name', 'alice*', op='LIKE', limit=10)  # Wildcard-Suche
+            parents = store.find_by('_sdata_parent', 42, op='>')  # Numerische Vergleiche
         """
-        generated_map = {
-            '!sdata_class': 'sdata_class',
-            '!sdata_name': 'sdata_name',
-            '!sdata_suuid': 'sdata_suuid',
-            '!sdata_sname': 'sdata_sname',
-        }
-        column = generated_map.get(attribute)
+        column = attribute if attribute.startswith('_sdata_') else None
         if column:
             return self._fetch_page_optimized(limit or 999999, offset, column, op, value)
         else:
