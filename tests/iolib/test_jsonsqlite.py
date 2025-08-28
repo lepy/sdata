@@ -6,6 +6,7 @@ from typing import Dict, Any
 import os
 import tempfile
 import shutil
+import pandas as pd
 
 from sdata.iolib.json1sqlitestore import JSON1SQLiteStore
 
@@ -31,8 +32,13 @@ def test_init(store):
     cur = store.conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='data'")
     assert cur.fetchone() is not None
     # Check generated columns
-    cur = store.conn.execute("PRAGMA table_info('data')")
+    cur = store.conn.execute("PRAGMA table_xinfo('data')")
     columns = [row['name'] for row in cur]
+
+    query = "SELECT * FROM data"
+    df = pd.read_sql_query(query, store.conn)
+    print(df)
+
     assert 'sdata_class' in columns
     assert 'sdata_name' in columns
     assert 'sdata_suuid' in columns
@@ -289,8 +295,9 @@ def test_migrate(store):
     """
     store.migrate(migration_sql)
     # Check if column added
-    cur = store.conn.execute("PRAGMA table_info('data')")
+    cur = store.conn.execute("PRAGMA table_xinfo('data')")
     columns = [row['name'] for row in cur]
+    print(columns)
     assert 'new_gen' in columns
 
 def test_execute_raw(store):
