@@ -238,7 +238,13 @@ class Data(object):
 
     @property
     def m(self):
+        """get metadata"""
         return self.metadata
+
+    @property
+    def attrs(self):
+        """return user metadata as dict"""
+        return self.metadata.get_udict()
 
     def update_mtime(self):
         """update modification time
@@ -862,7 +868,10 @@ class Data(object):
         #df.reset_index(inplace=True)
         df.attrs["!sdata"] = {"metadata": self.metadata.to_dict(),
                     "description": self.description}
-        df.to_parquet(filepath, engine=engine)
+        if filepath is not None:
+            df.to_parquet(filepath, engine=engine)
+        else:
+            return df.to_parquet(engine=engine)
 
     @classmethod
     def from_parquet(cls, filepath):

@@ -124,6 +124,13 @@ class Base:
     def get_parent(self):
         return SUUID.from_suuid_sname(self.metadata.get(self.SDATA_PARENT).value)
 
+    @property
+    def project(self):
+        return self.metadata.get(self.SDATA_PROJECT).value
+
+    def get_project(self):
+        return self.metadata.set_attr(self.SDATA_PROJECT, value)
+
     def __str__(self):
         return f"<{self.__class__.__name__}:{self.name}:{self.uuid}>"
 
