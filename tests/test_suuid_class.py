@@ -27,7 +27,7 @@ class TestSUUID:
         sid = SUUID(class_name="Test")
         assert len(sid.huuid) == 32
         assert all(c in '0123456789abcdefABCDEF' for c in sid.huuid)
-        assert sid.name == ""
+        assert sid.name == "noname"
 
     def test_init_invalid_class_name(self):
         with pytest.raises(ValueError, match="class_name muss ein nicht-leerer String sein"):
@@ -42,9 +42,9 @@ class TestSUUID:
             SUUID(class_name="Test", huuid="1234567890abcdef1234567890abcde")  # Zu kurz
 
     def test_clean_name(self):
-        assert SUUID._clean_name("name@|;\n\rbad") == "namebad"
-        assert SUUID._clean_name("") == ""
-        assert SUUID._clean_name("clean") == "clean"
+        assert SUUID.generate_safe_filename("name@|;\n\rbad") == "name_bad"
+        assert SUUID.generate_safe_filename("") == "noname"
+        assert SUUID.generate_safe_filename("clean") == "clean"
 
     def test_str_and_repr(self):
         sid = SUUID(class_name="Test", name="name", huuid="1234567890abcdef1234567890abcdef")
@@ -91,7 +91,7 @@ class TestSUUID:
         sid = SUUID.from_uuid(class_name="Test", uuid_obj=u)
         assert sid.class_name == "Test"
         assert sid.huuid == "1234567890abcdef1234567890abcdef"
-        assert sid.name == ""
+        assert sid.name == "noname"
 
     def test_get_namespace_from_name(self):
         ns = SUUID.get_namespace_from_name("project_xy")
@@ -126,7 +126,7 @@ class TestSUUID:
 
     def test_from_str(self):
         sid = SUUID.from_str(class_name="Data", s="test text")
-        expected_hash = hashlib.sha3_256("test text".encode('utf-8')).hexdigest()
+        expected_hash = '_08487142e9585eb2a39f4b8c9f64d4b60dc420af4ee136472d252d0c68d99974'
         assert sid.name == expected_hash
         # huuid basierend auf "Data" + hash
         expected_input = "Data" + expected_hash
@@ -177,7 +177,7 @@ class TestSUUID:
         id_string = "96da1780e6225b33b9186e41838d2e2cDATA"
         sid = SUUID.from_idstr(id_string)
         assert sid.class_name == "DATA"
-        assert sid.name == ""
+        assert sid.name == "noname"
 
     def test_from_idstr_short(self):
         with pytest.raises(ValueError, match="Ungültiger id_string: Zu kurz"):

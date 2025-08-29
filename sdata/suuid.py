@@ -45,6 +45,7 @@ class SUUID:
         if not class_name or not isinstance(class_name, str):
             raise ValueError("class_name muss ein nicht-leerer String sein")
         self.class_name = class_name
+        name = name or ""
         self.name = self.generate_safe_filename(name)
         self.huuid = huuid or uuid.uuid4().hex
         if len(self.huuid) != 32 or not all(c in '0123456789abcdefABCDEF' for c in self.huuid):
@@ -52,7 +53,7 @@ class SUUID:
 
     @staticmethod
     def generate_safe_filename(original_name: str) -> str:
-        """
+        r"""
         Generiert einen sicheren Dateinamen, der kompatibel mit Linux, Windows, AWS S3 und als Datenbank-Spaltenname oder Index-Name ist.
 
         - Konvertiert zu Lowercase.
@@ -111,7 +112,7 @@ class SUUID:
 
         # Falls der Name leer wird, fallback zu einem Standard
         if not name:
-            name = 'default_name'
+            name = 'noname'
 
         return name
 
@@ -167,7 +168,7 @@ class SUUID:
     @classmethod
     def from_uuid(cls, class_name, uuid_obj):
         """Erstellt SUUID aus class_name und UUID-Objekt (ohne name)."""
-        return cls(class_name, huuid=uuid_obj.hex)
+        return cls(class_name, name="", huuid=uuid_obj.hex)
 
     @classmethod
     def get_namespace_from_name(cls, name):
@@ -216,7 +217,7 @@ class SUUID:
         """Erstellt SUUID aus String-Inhalt (Hash)."""
         sh = hashlib.sha3_256()
         sh.update(s.encode('utf-8', errors='strict'))  # Raise bei Encoding-Fehlern
-        content_hash = sh.hexdigest()
+        content_hash = "_" + sh.hexdigest()
         return cls.from_name(class_name=class_name, name=content_hash, ns_name=ns_name)
 
     @classmethod
