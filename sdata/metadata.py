@@ -290,12 +290,12 @@ class Metadata(object):
 
     @property
     def user_attributes(self):
-        attrs = [(a.name, a) for a in self.attributes.values() if not a.name.startswith("!sdata")]
+        attrs = [(a.name, a) for a in self.attributes.values() if not a.name.startswith("_sdata")]
         return SortedDict(attrs)
 
     @property
     def sdata_attributes(self):
-        attrs = [(a.name, a) for a in self.attributes.values() if a.name.startswith("!sdata")]
+        attrs = [(a.name, a) for a in self.attributes.values() if a.name.startswith("_sdata")]
         return SortedDict(attrs)
 
     @property
@@ -459,13 +459,13 @@ class Metadata(object):
     def dft(self):
         """create transposed dataframe for sdata attributes"""
         mt = self.df[["value"]].transpose(copy=True)
-        mt.index = [self.get("!sdata_sname").value]
+        mt.index = [self.get("_sdata_sname").value]
         return mt
 
     def get_dft(self, index_name=None):
         """create transposed dataframe for sdata attributes"""
         if index_name is None:
-            index_name = "!sdata_sname"
+            index_name = "_sdata_sname"
         mt = self.df[["value"]].transpose(copy=True)
         mt.index = [self.get(index_name).value]
         return mt
@@ -480,7 +480,7 @@ class Metadata(object):
     def sdft(self):
         """create transposed dataframe for sdata attributes"""
         mt = self.sdf[["value"]].transpose(copy=True)
-        mt.index = [self.get("!sdata_uuid").value]
+        mt.index = [self.get("_sdata_uuid").value]
         return mt
 
     @classmethod

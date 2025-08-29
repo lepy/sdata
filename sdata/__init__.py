@@ -20,7 +20,7 @@ import pandas
 
 from sdata.metadata import Metadata, Attribute
 from sdata.data import Data
-from sdata.base import Base, base_factory
+from sdata.base import Base, sdata_factory
 from sdata.blob import Blob
 from sdata.suuid import SUUID
 from sdata.image import Image

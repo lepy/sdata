@@ -3,6 +3,7 @@ import base64
 import hashlib
 import os
 import re
+import unicodedata
 
 """
 SUUID
@@ -44,51 +45,116 @@ class SUUID:
         if not class_name or not isinstance(class_name, str):
             raise ValueError("class_name muss ein nicht-leerer String sein")
         self.class_name = class_name
-        self.name = self._clean_name(name or "")
+        self.name = self.generate_safe_filename(name)
         self.huuid = huuid or uuid.uuid4().hex
         if len(self.huuid) != 32 or not all(c in '0123456789abcdefABCDEF' for c in self.huuid):
             raise ValueError("huuid muss ein 32-Zeichen langer Hex-String sein")
 
-    @staticmethod
-    def _clean_name_simple(name):
-        """Entfernt unerwünschte Zeichen aus dem Namen."""
-        forbidden = [SUUID.SEP, "|", ";", "\n", "\r"]
-        for char in forbidden:
-            name = name.replace(char, "")
-        return name
+    # @staticmethod
+    # def _clean_name_simple(name):
+    #     """Entfernt unerwünschte Zeichen aus dem Namen."""
+    #     forbidden = [SUUID.SEP, "|", ";", "\n", "\r"]
+    #     for char in forbidden:
+    #         name = name.replace(char, "")
+    #     return name
 
     @staticmethod
-    def _clean_name(name):
-        """Entfernt oder ersetzt unerwünschte Zeichen aus dem Namen für S3 und DB-Kompatibilität.
+    def generate_safe_filename(original_name: str) -> str:
+        """
+        Generiert einen sicheren Dateinamen, der kompatibel mit Linux, Windows, AWS S3 und als Datenbank-Spaltenname oder Index-Name ist.
 
         - Konvertiert zu Lowercase.
-        - Ersetzt Leerzeichen mit Underscore.
-        - Erlaubt alphanumerische Unicode-Zeichen (UTF-8), _, -, .
-        - Ersetzt andere Zeichen mit Underscore.
-        - Reduziert multiple Underscores zu einem.
-        - Entfernt leading/trailing Underscores, Bindestriche oder Punkte.
-        """
-        if not isinstance(name, str):
-            name = str(name)
+        - Ersetzt Umlaute und Sonderzeichen durch ASCII-Äquivalente oder Unterstriche.
+        - Erlaubt nur alphanumerische Zeichen (a-z, 0-9), Unterstriche (_) und Punkte (.).
+        - Entfernt verbotene Zeichen für Windows (z.B. < > : " / \ | ? *).
+        - Reduziert multiple Unterstriche zu einem.
+        - Entfernt leading/trailing Unterstriche oder Punkte.
+        - Stellt sicher, dass der Name mit einem Buchstaben oder Unterstrich beginnt (für DB-Kompatibilität).
+        - Begrenzt die Länge auf 255 Zeichen (sichere Grenze für die meisten Dateisysteme).
 
-        forbidden = [SUUID.SEP, "|", ";", "\n", "\r"]
-        for char in forbidden:
-            name = name.replace(char, "")
+        :param original_name: Der ursprüngliche Name (str).
+        :return: Der sichere Dateiname (str).
+        """
+        if not isinstance(original_name, str):
+            original_name = str(original_name)
+
+        # Ersetze verbotene Zeichen für Windows und allgemeine Sicherheit
+        forbidden = r'[<>:"/\\|?*]'
+        original_name = re.sub(forbidden, '_', original_name)
+
+        # Konvertiere Umlaute und andere diakritische Zeichen zu ASCII
+        mapper = {
+            "ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
+            "ß": "ss", " ": "_", "!": "_", "@": "_", "#": "_", "$": "_",
+            "%": "_", "^": "_", "&": "_", "*": "_", "(": "_", ")": "_",
+            ";": "_", ",": "_", "+": "_", "=": "_", "[": "_", "]": "_",
+            "{": "_", "}": "_", "`": "_", "~": "_"
+        }
+        for k, v in mapper.items():
+            original_name = original_name.replace(k, v)
+
+        # Normalisiere zu ASCII und entferne nicht-ASCII-Zeichen
+        original_name = unicodedata.normalize('NFKD', original_name).encode('ascii', 'ignore').decode('ascii')
 
         # Zu Lowercase
-        name = name.lower()
+        name = original_name.lower()
 
-        # Ersetze Spaces und ungültige Zeichen mit _
-        # \w matched Unicode letters, digits, _
-        name = re.sub(r'[^\w\.-]', '_', name, flags=re.ASCII)
+        # Ersetze ungültige Zeichen mit _
+        # Erlaube nur a-z, 0-9, _, .
+        name = re.sub(r'[^a-z0-9_.]', '_', name)
 
-        # Collapse multiple _ oder gemischte zu _
-        #name = re.sub(r'[_.-]+', '_', name)
+        # Reduziere multiple _ oder . zu _
+        name = re.sub(r'[_.-]+', '_', name)
 
-        # Strip leading/trailing _
-        name = name.strip('_')
+        # Entferne leading/trailing _ oder .
+        name = name.strip('_.')
+
+        # Stelle sicher, dass es mit einem Buchstaben oder _ beginnt (für DB)
+        if name and (name[0].isdigit() or name[0] == '.'):
+            name = '_' + name
+
+        # Begrenze auf 255 Zeichen
+        if len(name) > 255:
+            name = name[:255]
+
+        # Falls der Name leer wird, fallback zu einem Standard
+        if not name:
+            name = 'default_name'
 
         return name
+
+    # @staticmethod
+    # def _clean_name(name):
+    #     """Entfernt oder ersetzt unerwünschte Zeichen aus dem Namen für S3 und DB-Kompatibilität.
+    #
+    #     - Konvertiert zu Lowercase.
+    #     - Ersetzt Leerzeichen mit Underscore.
+    #     - Erlaubt alphanumerische Unicode-Zeichen (UTF-8), _, -, .
+    #     - Ersetzt andere Zeichen mit Underscore.
+    #     - Reduziert multiple Underscores zu einem.
+    #     - Entfernt leading/trailing Underscores, Bindestriche oder Punkte.
+    #     """
+    #     if not isinstance(name, str):
+    #         name = str(name)
+    #
+    #     forbidden = [SUUID.SEP, "|", ";", "\n", "\r"]
+    #     for char in forbidden:
+    #         name = name.replace(char, "_")
+    #
+    #     # Zu Lowercase
+    #     name = name.lower()
+    #
+    #     # Ersetze Spaces und ungültige Zeichen mit _
+    #     # \w matched Unicode letters, digits, _
+    #     name = re.sub(r'[^\w\.-]', '_', name, flags=re.ASCII)
+    #
+    #     # Collapse multiple _ oder gemischte zu _
+    #     #name = re.sub(r'[_.-]+', '_', name)
+    #
+    #     # Strip leading/trailing _
+    #     name = name.strip('_')
+    #
+    #     return name
 
     def __str__(self):
         return f"({self.class_name}{self.SEP}{self.name}{self.SEP}{self.huuid})"
@@ -158,7 +224,7 @@ class SUUID:
     @classmethod
     def from_name(cls, class_name, name, ns_name=None):
         """Erstellt SUUID deterministisch aus class_name, name und optionalem Namespace."""
-        cleaned_name = cls._clean_name(name)
+        cleaned_name = cls.generate_safe_filename(name)
         uid = cls.get_uuid_from_name(name=class_name + cleaned_name, ns_name=ns_name)
         return cls(class_name=class_name, name=cleaned_name, huuid=uid.hex)
 
@@ -183,7 +249,7 @@ class SUUID:
         content_hash = sh.hexdigest()
         basename = os.path.basename(filepath)
         suuid_obj = cls.from_name(class_name=class_name, name=content_hash, ns_name=ns_name)
-        suuid_obj.name = cls._clean_name(basename)  # Überschreibt name mit Dateinamen
+        suuid_obj.name = cls.generate_safe_filename(basename)  # Überschreibt name mit Dateinamen
         return suuid_obj
 
     @classmethod

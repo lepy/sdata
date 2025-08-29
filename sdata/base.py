@@ -31,12 +31,12 @@ class Base:
     SDATA_NAME = "_sdata_name"
     SDATA_SNAME = "_sdata_sname"
     SDATA_SUUID = "_sdata_suuid"
-    SDATA_PARENT_SUUID = "_sdata_parent_suuid"  # Changed to store suuid_str for consistency
-    SDATA_PROJECT_SUUID = "_sdata_project_suuid"  # Changed to store suuid_str for consistency
+    SDATA_PARENT_SNAME = "_sdata_parent_sname"  # Changed to store sname for consistency
+    SDATA_PROJECT_SNAME = "_sdata_project_sname"  # Changed to store sname for consistency
 
     SDATA_ATTRIBUTES: List[str] = [
         SDATA_VERSION, SDATA_NAME, SDATA_SUUID, SDATA_CLASS,
-        SDATA_PARENT_SUUID, SDATA_PROJECT_SUUID
+        SDATA_PARENT_SNAME, SDATA_PROJECT_SNAME
     ]
 
     def __init__(self, **kwargs: Any) -> None:
@@ -59,8 +59,8 @@ class Base:
         project = kwargs.get("project", None)
         if project is not None and issubclass(project.__class__, Base):
             self.metadata.add(
-                self.SDATA_PROJECT_SUUID, project.suuid_str, dtype="str",
-                description="suuid of the project"
+                self.SDATA_PROJECT_SNAME, project.sname, dtype="str",
+                description="sname of the project"
             )
         elif project is not None:
             logger.warning(
@@ -68,18 +68,18 @@ class Base:
             )
         else:
             self.metadata.add(
-                self.SDATA_PROJECT_SUUID, str(kwargs.get("project_suuid", "")),
-                dtype="str", description="suuid of the project"
+                self.SDATA_PROJECT_SNAME, str(kwargs.get("project_sname", "")),
+                dtype="str", description="sname of the project"
             )
 
         if kwargs.get("ns_name", None) is not None:
             suuid = SUUID.from_name(
                 class_name=self.__class__.__name__,
-                name=self.asciiname(name),
+                name=SUUID.generate_safe_filename(name),
                 ns_name=kwargs.get("ns_name").lower()
             )
         else:
-            suuid = SUUID(self.__class__.__name__, name=self.asciiname(name))
+            suuid = SUUID(self.__class__.__name__, name=SUUID.generate_safe_filename(name))
         self.default_attributes: List[Dict[str, Any]] = []
 
         self.metadata.add(
@@ -106,8 +106,8 @@ class Base:
         parent = kwargs.get("parent", None)
         if parent is not None and issubclass(parent.__class__, Base):
             self.metadata.add(
-                self.SDATA_PARENT_SUUID, parent.suuid_str, dtype="str",
-                description="suuid of the parent"
+                self.SDATA_PARENT_SNAME, parent.sname, dtype="str",
+                description="sname of the parent"
             )
         elif parent is not None:
             logger.warning(
@@ -115,8 +115,8 @@ class Base:
             )
         else:
             self.metadata.add(
-                self.SDATA_PARENT_SUUID, str(kwargs.get("parent_suuid", "")),
-                dtype="str", description="suuid of the parent"
+                self.SDATA_PARENT_SNAME, str(kwargs.get("parent_sname", "")),
+                dtype="str", description="sname of the parent"
             )
 
         if "default_attributes" in kwargs:
@@ -141,30 +141,30 @@ class Base:
     @property
     def osname(self) -> str:
         """Returns an OS-compatible ASCII name."""
-        return self.asciiname(self.name)
+        return SUUID.generate_safe_filename(self.name)
 
     @property
     def class_name(self) -> str:
         """Returns the class name of the object."""
         return self.__class__.__name__
 
-    @staticmethod
-    def asciiname(name: str) -> str:
-        """
-        Convert name to ASCII-compatible string for OS use.
-
-        :param name: Original name (str).
-        :return: Sanitized ASCII name (str).
-        """
-        mapper = {
-            "ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
-            "ß": "ss", " ": "_", "/": "_", "\\": "_", "!": "_", "@": "_", "#": "_",
-            "$": "_", "%": "_", "^": "_", "&": "_", "*": "_", "(": "_", ")": "_", ";": "_"
-        }
-        for k, v in mapper.items():
-            name = name.replace(k, v)
-        name = unicodedata.normalize('NFKD', name).encode('ascii', 'replace').decode('ascii')
-        return name.lower()
+    # @staticmethod
+    # def asciiname(name: str) -> str:
+    #     """
+    #     Convert name to ASCII-compatible string for OS use.
+    #
+    #     :param name: Original name (str).
+    #     :return: Sanitized ASCII name (str).
+    #     """
+    #     mapper = {
+    #         "ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
+    #         "ß": "ss", " ": "_", "/": "_", "\\": "_", "!": "_", "@": "_", "#": "_",
+    #         "$": "_", "%": "_", "^": "_", "&": "_", "*": "_", "(": "_", ")": "_", ";": "_"
+    #     }
+    #     for k, v in mapper.items():
+    #         name = name.replace(k, v)
+    #     name = unicodedata.normalize('NFKD', name).encode('ascii', 'replace').decode('ascii')
+    #     return name.lower()
 
     @property
     def uuid(self) -> uuid.UUID:
@@ -278,7 +278,11 @@ class Base:
 
     def get_parent(self) -> SUUID:
         """Returns the parent SUUID."""
-        return SUUID.from_suuid_str(self.metadata.get(self.SDATA_PARENT_SUUID).value)
+        sname = self.metadata.get(self.SDATA_PARENT_SNAME).value
+        if sname:
+            return SUUID.from_suuid_sname(sname)
+        else:
+            return None
 
     @property
     def project(self) -> SUUID:
@@ -287,7 +291,11 @@ class Base:
 
     def get_project(self) -> SUUID:
         """Returns the project SUUID."""
-        return SUUID.from_suuid_str(self.metadata.get(self.SDATA_PROJECT_SUUID).value)
+        sname = self.metadata.get(self.SDATA_PROJECT_SNAME).value
+        if sname:
+            return SUUID.from_suuid_sname(sname)
+        else:
+            return None
 
     def __str__(self) -> str:
         return f"<{self.sname}>"
@@ -333,7 +341,7 @@ class Base:
         """
         metadata = Metadata.from_dict(d.get("metadata", {}))
         class_name = metadata.get(cls.SDATA_CLASS).value or "Base"
-        b = base_factory(class_name)
+        b = sdata_factory(class_name)
         b.metadata = metadata
         b.data = d.get("data", {})
         b.description = d.get("description", "")
@@ -373,7 +381,7 @@ class Base:
 
 from typing import Dict, Any, Optional, Type
 
-def base_factory(
+def sdata_factory(
     class_name: str,
     sdata_class: Type = Base,  # Neu: Optionale Basisklasse, default ist Base
     sdata_attrs: Optional[Dict[str, Any]] = None,
@@ -408,7 +416,7 @@ if __name__ == '__main__':
 
     print(c)
     print(c.osname)
-    material = base_factory(
+    material = sdata_factory(
         "Material", name="DP800", project=None, parent=c,
         default_attributes=[{"name": "a", "value": 1.2, "dtype": float, "label": "an a"}]
     )
