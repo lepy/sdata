@@ -1,8 +1,4 @@
-import sdata
-from sdata import __version__
-from sdata.suuid import SUUID
-from sdata.metadata import Metadata, Attribute, extract_name_unit
-from sdata.timestamp import now_utc_str, now_local_str, today_str
+import os
 import uuid
 import logging
 import unicodedata
@@ -10,16 +6,24 @@ import json
 from typing import List, Dict, Any, Optional
 import pandas
 
-logger = logging.getLogger(__name__)
+from sdata import __version__
+from sdata.suuid import SUUID
+from sdata.metadata import Metadata, Attribute, extract_name_unit
+# from sdata.timestamp import now_utc_str, now_local_str, today_str
 
+
+logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger(__name__)
 
 class SdataUuidException(Exception):
     pass
 
-
 class Base:
     """
     Base class for sdata objects with metadata management.
+    Provides core functionality for handling metadata, unique identifiers,
+    serialization, and hierarchical relationships.
     """
 
     SDATA_VERSION = "_sdata_version"
@@ -27,12 +31,12 @@ class Base:
     SDATA_NAME = "_sdata_name"
     SDATA_SNAME = "_sdata_sname"
     SDATA_SUUID = "_sdata_suuid"
-    SDATA_PARENT_SNAME = "_sdata_parent_sname"
-    SDATA_PROJECT_SNAME = "_sdata_project_sname"
+    SDATA_PARENT_SUUID = "_sdata_parent_suuid"  # Changed to store suuid_str for consistency
+    SDATA_PROJECT_SUUID = "_sdata_project_suuid"  # Changed to store suuid_str for consistency
 
     SDATA_ATTRIBUTES: List[str] = [
         SDATA_VERSION, SDATA_NAME, SDATA_SUUID, SDATA_CLASS,
-        SDATA_PARENT_SNAME, SDATA_PROJECT_SNAME
+        SDATA_PARENT_SUUID, SDATA_PROJECT_SUUID
     ]
 
     def __init__(self, **kwargs: Any) -> None:
@@ -40,10 +44,10 @@ class Base:
         Initialize Base with metadata.
 
         :param name: Required name of the object (str).
-        :param parent: Optional parent SUUID (str).
-        :param project: Optional project SUUID (str).
-        :param ns_name: Optional name space for reproduceable a suuid (str).
-        :param default_attributes: List of dicts for additional metadata.
+        :param parent: Optional parent object (Base) or suuid_str (str).
+        :param project: Optional project object (Base) or suuid_str (str).
+        :param ns_name: Optional namespace for reproducible SUUID (str).
+        :param default_attributes: List of dicts for additional metadata attributes.
         :raises ValueError: If name is empty or None.
         """
 
@@ -53,43 +57,67 @@ class Base:
         self.metadata = Metadata(name=name)
 
         project = kwargs.get("project", None)
-        project_sname = None
         if project is not None and issubclass(project.__class__, Base):
-            self.metadata.add(self.SDATA_PROJECT_SNAME, project.sname, dtype="str",
-                              description="sname of the project")
-            project_sname = project.sname
+            self.metadata.add(
+                self.SDATA_PROJECT_SUUID, project.suuid_str, dtype="str",
+                description="suuid of the project"
+            )
         elif project is not None:
-            logger.warning(f"project must be of type sdata.Base {project.__class__.__bases__}")
+            logger.warning(
+                f"project must be of type Base, got {project.__class__.__bases__}"
+            )
         else:
-            self.metadata.add(self.SDATA_PROJECT_SNAME, str(kwargs.get("project_sname", "")), dtype="str",
-                              description="sname of the project")
+            self.metadata.add(
+                self.SDATA_PROJECT_SUUID, str(kwargs.get("project_suuid", "")),
+                dtype="str", description="suuid of the project"
+            )
 
         if kwargs.get("ns_name", None) is not None:
-            suuid = SUUID.from_name(class_name=self.__class__.__name__, name=self.asciiname(name),
-                                    ns_name=kwargs.get("ns_name").lower())
+            suuid = SUUID.from_name(
+                class_name=self.__class__.__name__,
+                name=self.asciiname(name),
+                ns_name=kwargs.get("ns_name").lower()
+            )
         else:
             suuid = SUUID(self.__class__.__name__, name=self.asciiname(name))
         self.default_attributes: List[Dict[str, Any]] = []
 
-        self.metadata.add(self.SDATA_VERSION, __version__, dtype="str", description="sdata package version",
-                          required=True)
-        self.metadata.add(self.SDATA_NAME, name, dtype="str", description="name of the data object", required=True)
-        self.metadata.add(self.SDATA_SNAME, suuid.sname, dtype="str", description="sname of the data object",
-                          required=True)
-        self.metadata.add(self.SDATA_SUUID, suuid.suuid_str, dtype="str",
-                          description="Super Universally Unique Identifier", required=True)
-        self.metadata.add(self.SDATA_CLASS, self.__class__.__name__, dtype="str", description="sdata class",
-                          required=True)
+        self.metadata.add(
+            self.SDATA_VERSION, __version__, dtype="str",
+            description="sdata package version", required=True
+        )
+        self.metadata.add(
+            self.SDATA_NAME, name, dtype="str",
+            description="name of the data object", required=True
+        )
+        self.metadata.add(
+            self.SDATA_SNAME, suuid.sname, dtype="str",
+            description="sname of the data object", required=True
+        )
+        self.metadata.add(
+            self.SDATA_SUUID, suuid.suuid_str, dtype="str",
+            description="Super Universally Unique Identifier", required=True
+        )
+        self.metadata.add(
+            self.SDATA_CLASS, self.__class__.__name__, dtype="str",
+            description="sdata class", required=True
+        )
 
         parent = kwargs.get("parent", None)
         if parent is not None and issubclass(parent.__class__, Base):
-            self.metadata.add(self.SDATA_PARENT_SNAME, parent.sname, dtype="str",
-                              description="sname of the parent")
+            self.metadata.add(
+                self.SDATA_PARENT_SUUID, parent.suuid_str, dtype="str",
+                description="suuid of the parent"
+            )
         elif parent is not None:
-            logger.warning(f"parent must be of type sdata.Base {parent.__class__.__bases__}")
+            logger.warning(
+                f"parent must be of type Base, got {parent.__class__.__bases__}"
+            )
         else:
-            self.metadata.add(self.SDATA_PARENT_SNAME, str(kwargs.get("parent_sname", "")), dtype="str",
-                              description="sname of the parent")
+            self.metadata.add(
+                self.SDATA_PARENT_SUUID, str(kwargs.get("parent_suuid", "")),
+                dtype="str", description="suuid of the parent"
+            )
 
         if "default_attributes" in kwargs:
             self.default_attributes.extend(kwargs.get("default_attributes"))
@@ -102,22 +130,22 @@ class Base:
 
     @property
     def md(self) -> Metadata:
-        """Shortcut for metadata."""
+        """Shortcut to access the metadata object."""
         return self.metadata
 
     @property
-    def mdf(self) -> pandas.DataFrame:  # Assuming Metadata.df returns a DataFrame
-        """Shortcut for metadata DataFrame."""
+    def mdf(self) -> pandas.DataFrame:
+        """Shortcut to access the metadata as a pandas DataFrame."""
         return self.metadata.df
 
     @property
     def osname(self) -> str:
-        """:returns: os compatible name (ascii)"""
+        """Returns an OS-compatible ASCII name."""
         return self.asciiname(self.name)
 
     @property
     def class_name(self) -> str:
-        """:returns: class_name"""
+        """Returns the class name of the object."""
         return self.__class__.__name__
 
     @staticmethod
@@ -125,8 +153,8 @@ class Base:
         """
         Convert name to ASCII-compatible string for OS use.
 
-        :param name: Original name.
-        :return: Sanitized name.
+        :param name: Original name (str).
+        :return: Sanitized ASCII name (str).
         """
         mapper = {
             "ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
@@ -140,28 +168,35 @@ class Base:
 
     @property
     def uuid(self) -> uuid.UUID:
+        """Returns the UUID component of the SUUID."""
         return self.suuid.uuid
 
     @property
     def huuid(self) -> str:
+        """Returns the hex representation of the UUID."""
         return self.suuid.uuid.hex
 
     def _get_suuid(self) -> str:
         return self.metadata.get(self.SDATA_SUUID).value
 
     def _set_suuid(self, value: str) -> None:
-        if not SUUID.is_valid_suuid_str(value):  # Assuming SUUID has a validation method; add if not
+        if not SUUID.is_valid_suuid_str(value):
             raise SdataUuidException("Invalid SUUID string")
         self.metadata.set_attr(self.SDATA_SUUID, value)
 
+    suuid_str = property(
+        fget=_get_suuid, fset=_set_suuid,
+        doc="The SUUID of the object as a string."
+    )
+
     @property
     def suuid(self) -> SUUID:
+        """Returns the SUUID object."""
         return SUUID.from_suuid_str(self.metadata.get(self.SDATA_SUUID).value)
-
-    suuid_str = property(fget=_get_suuid, fset=_set_suuid, doc="suuid of the object (str)")
 
     @property
     def suuid_bytes(self) -> bytes:
+        """Returns the SUUID string encoded as UTF-8 bytes."""
         return self.suuid_str.encode("utf-8")
 
     def _get_sname(self) -> str:
@@ -170,7 +205,10 @@ class Base:
     def _set_sname(self, value: str) -> None:
         self.metadata.set_attr(self.SDATA_SNAME, value)
 
-    sname = property(fget=_get_sname, fset=_set_sname, doc="sname of the object")
+    sname = property(
+        fget=_get_sname, fset=_set_sname,
+        doc="The sname of the object."
+    )
 
     def _get_name(self) -> str:
         return self.metadata.get(self.SDATA_NAME).value
@@ -180,17 +218,23 @@ class Base:
             raise ValueError("Name cannot be empty")
         self.metadata.set_attr(self.SDATA_NAME, value)
 
-    name = property(fget=_get_name, fset=_set_name, doc="name of the object")
+    name = property(
+        fget=_get_name, fset=_set_name,
+        doc="The name of the object."
+    )
 
-    def _get_data(self) -> dict:
+    def _get_data(self) -> Dict[str, Any]:
         return self._data
 
-    def _set_data(self, value: dict) -> None:
+    def _set_data(self, value: Dict[str, Any]) -> None:
         if not isinstance(value, dict):
             raise ValueError("data must be a dict")
         self._data = value
 
-    data = property(fget=_get_data, fset=_set_data, doc="data dictionary of the object")
+    data = property(
+        fget=_get_data, fset=_set_data,
+        doc="The data dictionary of the object."
+    )
 
     def _get_description(self) -> str:
         return self._description
@@ -198,57 +242,95 @@ class Base:
     def _set_description(self, value: str) -> None:
         if not isinstance(value, str):
             raise ValueError("description must be a string")
-        if len(value) > 10000:
-            self._description = value[1000:] + "..." + value[9000:]
+        if len(value) > 1000:
+            self._description = value[:1000] + "..."
         else:
             self._description = value
-    description = property(fget=_get_description, fset=_set_description, doc="description string of the object")
 
-    def update_data(self, data_dict: dict) -> None:
+    description = property(
+        fget=_get_description, fset=_set_description,
+        doc="The description string of the object (max 1000 characters)."
+    )
+
+    def update_data(self, data_dict: Dict[str, Any]) -> None:
+        """
+        Update the data dictionary with recursive merge for nested dicts.
+
+        :param data_dict: Dictionary to merge into self._data.
+        :raises ValueError: If data_dict is not a dict.
+        """
         if not isinstance(data_dict, dict):
             raise ValueError("data must be a dict")
-        self._data.update(data_dict)
+        self._data = self._deep_update(self._data, data_dict)
+
+    def _deep_update(self, d: Dict[str, Any], u: Dict[str, Any]) -> Dict[str, Any]:
+        for k, v in u.items():
+            if isinstance(v, dict):
+                d[k] = self._deep_update(d.get(k, {}), v)
+            else:
+                d[k] = v
+        return d
 
     @property
-    def parent(self) -> str:
-        return self.metadata.get(self.SDATA_PARENT_SUUID).value
+    def parent(self) -> SUUID:
+        """Returns the parent as a SUUID object."""
+        return self.get_parent()
 
     def get_parent(self) -> SUUID:
+        """Returns the parent SUUID."""
         return SUUID.from_suuid_str(self.metadata.get(self.SDATA_PARENT_SUUID).value)
 
     @property
-    def project(self) -> str:
-        return self.metadata.get(self.SDATA_PROJECT_SNAME).value
+    def project(self) -> SUUID:
+        """Returns the project as a SUUID object."""
+        return self.get_project()
 
-    def get_project(self) -> str:  # Assuming project is str; change to SUUID if it's a SUUID
-        return self.metadata.get(self.SDATA_PROJECT_SNAME).value
+    def get_project(self) -> SUUID:
+        """Returns the project SUUID."""
+        return SUUID.from_suuid_str(self.metadata.get(self.SDATA_PROJECT_SUUID).value)
 
     def __str__(self) -> str:
         return f"<{self.sname}>"
-        # return f"<{self.__class__.__name__}:'{self.name}':({self.sname})>"
 
     __repr__ = __str__
 
     @property
-    def udf(self) -> 'pandas.DataFrame':  # Assuming types
+    def udf(self) -> pandas.DataFrame:
+        """Returns the user-defined metadata as a DataFrame."""
         return self.metadata.udf
 
     @property
-    def sdf(self) -> 'pandas.DataFrame':
+    def sdf(self) -> pandas.DataFrame:
+        """Returns the system-defined metadata as a DataFrame."""
         return self.metadata.sdf
 
     def set_default_attributes(self) -> None:
+        """
+        Set default attributes from self.default_attributes list.
+        """
         for attr_dict in self.default_attributes:
             self.metadata.add(**attr_dict)
-        # Optional: Validate against SDATA_ATTRIBUTES if needed
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"metadata": self.metadata.to_dict(),
-                "data": self._data,
-                "description": self._description, }
+        """
+        Convert the object to a dictionary representation.
+
+        :return: Dictionary with metadata, data, and description.
+        """
+        return {
+            "metadata": self.metadata.to_dict(),
+            "data": self._data,
+            "description": self._description,
+        }
 
     @classmethod
-    def from_dict(cls, d: dict) -> 'Base':
+    def from_dict(cls, d: Dict[str, Any]) -> 'Base':
+        """
+        Create an instance from a dictionary.
+
+        :param d: Dictionary with metadata, data, and description.
+        :return: Instance of Base or subclass.
+        """
         metadata = Metadata.from_dict(d.get("metadata", {}))
         class_name = metadata.get(cls.SDATA_CLASS).value or "Base"
         b = base_factory(class_name)
@@ -257,40 +339,43 @@ class Base:
         b.description = d.get("description", "")
         return b
 
-    def to_json(self, filepath=None):
-        """export Data in json format
-
-        :param filepath: export file path (default:None)
-        :return: json str
+    def to_json(self, filepath: Optional[str] = None) -> Optional[str]:
         """
+        Export the object to JSON format, either as a string or to a file.
 
+        :param filepath: Optional file path to write JSON (default: None).
+        :return: JSON string if filepath is None, else None.
+        """
         data_dict = self.to_dict()
         if filepath:
             with open(filepath, "w") as fh:
-                json.dump(data_dict, fh)
+                json.dump(data_dict, fh, indent=4)
+            return None
         else:
-            return json.dumps(data_dict)
+            return json.dumps(data_dict, indent=4)
 
     @classmethod
-    def from_json(cls, s):
-        """create Data from json str or file
-
-        :param s: json str
-        :return: sdata.Base
+    def from_json(cls, s: str) -> 'Base':
         """
-        data = cls(name="N.N.")
+        Create an instance from a JSON string or file path.
 
-        try:
+        :param s: JSON string or path to JSON file.
+        :return: Instance of Base or subclass.
+        :raises json.JSONDecodeError: If invalid JSON.
+        :raises FileNotFoundError: If file not found.
+        """
+        if os.path.isfile(s):
+            with open(s, "r") as fh:
+                d = json.load(fh)
+        else:
             d = json.loads(s)
-            return cls.from_dict(d)
+        return cls.from_dict(d)
 
-        except json.decoder.JSONDecodeError:
-            logger.error("data.from_json: unexpected error")
-            d = None
-            raise
-
-
-def base_factory(class_name: str, custom_attrs: Optional[Dict[str, Any]] = None, **kwargs: Any) -> Any:
+def base_factory(
+    class_name: str,
+    custom_attrs: Optional[Dict[str, Any]] = None,
+    **kwargs: Any
+) -> Any:
     """
     Factory function to create an instance of a dynamically generated subclass of Base.
 
@@ -301,25 +386,24 @@ def base_factory(class_name: str, custom_attrs: Optional[Dict[str, Any]] = None,
     """
     custom_attrs = custom_attrs or {}
 
-    # Define the __init__ method to mimic the provided example
     def __init__(self, **init_kwargs: Any) -> None:
         super(self.__class__, self).__init__(**init_kwargs)  # type: ignore
 
     custom_attrs['__init__'] = __init__
-    cls = type(class_name, (sdata.base.Base,), custom_attrs)
+    cls = type(class_name, (Base,), custom_attrs)
     return cls(**kwargs)
-
 
 if __name__ == '__main__':
     class MyFancyClass(Base):
         def __init__(self, **kwargs: Any) -> None:
             super().__init__(**kwargs)
 
-
     c = MyFancyClass(name="Häl[l]o@Sp{ö}ncer;-:.")
 
     print(c)
     print(c.osname)
-    material = base_factory("Material", name="DP800", project=project, parent=b,
-                            default_attributes=[{"name": "a", "value": 1.2, "dtype": float, "label": "an a"}])
+    material = base_factory(
+        "Material", name="DP800", project=None, parent=c,
+        default_attributes=[{"name": "a", "value": 1.2, "dtype": float, "label": "an a"}]
+    )
     m2 = Base.from_json(material.to_json())
