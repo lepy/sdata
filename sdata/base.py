@@ -3,7 +3,7 @@ import uuid
 import logging
 import unicodedata
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Type
 import pandas
 
 from sdata import __version__
@@ -371,27 +371,33 @@ class Base:
             d = json.loads(s)
         return cls.from_dict(d)
 
+from typing import Dict, Any, Optional, Type
+
 def base_factory(
     class_name: str,
-    custom_attrs: Optional[Dict[str, Any]] = None,
+    sdata_class: Type = Base,  # Neu: Optionale Basisklasse, default ist Base
+    sdata_attrs: Optional[Dict[str, Any]] = None,
     **kwargs: Any
 ) -> Any:
     """
-    Factory function to create an instance of a dynamically generated subclass of Base.
+    Factory function to create an instance of a dynamically generated subclass.
 
     :param class_name: The name of the class to generate (e.g., "Material").
-    :param custom_attrs: Optional dict of custom attributes/methods to add to the class.
+    :param sdata_class: The base class to inherit from (default: Base).
+    :param sdata_attrs: Optional dict of custom attributes/methods to add to the class.
     :param kwargs: Keyword arguments to pass to the instance initialization.
     :return: An instance of the generated class.
     """
-    custom_attrs = custom_attrs or {}
+    sdata_attrs = sdata_attrs or {}
+
+    cls = type(class_name, (sdata_class,), sdata_attrs)
 
     def __init__(self, **init_kwargs: Any) -> None:
-        super(self.__class__, self).__init__(**init_kwargs)  # type: ignore
+        super(cls, self).__init__(**init_kwargs)  # type: ignore
 
-    custom_attrs['__init__'] = __init__
-    cls = type(class_name, (Base,), custom_attrs)
+    setattr(cls, '__init__', __init__)
     return cls(**kwargs)
+
 
 if __name__ == '__main__':
     class MyFancyClass(Base):
