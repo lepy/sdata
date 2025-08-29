@@ -9,6 +9,7 @@ import pandas
 from sdata import __version__
 from sdata.suuid import SUUID
 from sdata.metadata import Metadata, Attribute, extract_name_unit
+
 # from sdata.timestamp import now_utc_str, now_local_str, today_str
 
 
@@ -16,8 +17,10 @@ logging.basicConfig(level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
+
 class SdataUuidException(Exception):
     pass
+
 
 class Base:
     """
@@ -147,24 +150,6 @@ class Base:
     def class_name(self) -> str:
         """Returns the class name of the object."""
         return self.__class__.__name__
-
-    # @staticmethod
-    # def asciiname(name: str) -> str:
-    #     """
-    #     Convert name to ASCII-compatible string for OS use.
-    #
-    #     :param name: Original name (str).
-    #     :return: Sanitized ASCII name (str).
-    #     """
-    #     mapper = {
-    #         "ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
-    #         "ß": "ss", " ": "_", "/": "_", "\\": "_", "!": "_", "@": "_", "#": "_",
-    #         "$": "_", "%": "_", "^": "_", "&": "_", "*": "_", "(": "_", ")": "_", ";": "_"
-    #     }
-    #     for k, v in mapper.items():
-    #         name = name.replace(k, v)
-    #     name = unicodedata.normalize('NFKD', name).encode('ascii', 'replace').decode('ascii')
-    #     return name.lower()
 
     @property
     def uuid(self) -> uuid.UUID:
@@ -379,13 +364,15 @@ class Base:
             d = json.loads(s)
         return cls.from_dict(d)
 
+
 from typing import Dict, Any, Optional, Type
 
+
 def sdata_factory(
-    class_name: str,
-    sdata_class: Type = Base,  # Neu: Optionale Basisklasse, default ist Base
-    sdata_attrs: Optional[Dict[str, Any]] = None,
-    **kwargs: Any
+        class_name: str,
+        sdata_class: Type = Base,  # Neu: Optionale Basisklasse, default ist Base
+        sdata_attrs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
 ) -> Any:
     """
     Factory function to create an instance of a dynamically generated subclass.
@@ -411,6 +398,7 @@ if __name__ == '__main__':
     class MyFancyClass(Base):
         def __init__(self, **kwargs: Any) -> None:
             super().__init__(**kwargs)
+
 
     c = MyFancyClass(name="Häl[l]o@Sp{ö}ncer;-:.")
 

@@ -50,14 +50,6 @@ class SUUID:
         if len(self.huuid) != 32 or not all(c in '0123456789abcdefABCDEF' for c in self.huuid):
             raise ValueError("huuid muss ein 32-Zeichen langer Hex-String sein")
 
-    # @staticmethod
-    # def _clean_name_simple(name):
-    #     """Entfernt unerwünschte Zeichen aus dem Namen."""
-    #     forbidden = [SUUID.SEP, "|", ";", "\n", "\r"]
-    #     for char in forbidden:
-    #         name = name.replace(char, "")
-    #     return name
-
     @staticmethod
     def generate_safe_filename(original_name: str) -> str:
         """
@@ -122,39 +114,6 @@ class SUUID:
             name = 'default_name'
 
         return name
-
-    # @staticmethod
-    # def _clean_name(name):
-    #     """Entfernt oder ersetzt unerwünschte Zeichen aus dem Namen für S3 und DB-Kompatibilität.
-    #
-    #     - Konvertiert zu Lowercase.
-    #     - Ersetzt Leerzeichen mit Underscore.
-    #     - Erlaubt alphanumerische Unicode-Zeichen (UTF-8), _, -, .
-    #     - Ersetzt andere Zeichen mit Underscore.
-    #     - Reduziert multiple Underscores zu einem.
-    #     - Entfernt leading/trailing Underscores, Bindestriche oder Punkte.
-    #     """
-    #     if not isinstance(name, str):
-    #         name = str(name)
-    #
-    #     forbidden = [SUUID.SEP, "|", ";", "\n", "\r"]
-    #     for char in forbidden:
-    #         name = name.replace(char, "_")
-    #
-    #     # Zu Lowercase
-    #     name = name.lower()
-    #
-    #     # Ersetze Spaces und ungültige Zeichen mit _
-    #     # \w matched Unicode letters, digits, _
-    #     name = re.sub(r'[^\w\.-]', '_', name, flags=re.ASCII)
-    #
-    #     # Collapse multiple _ oder gemischte zu _
-    #     #name = re.sub(r'[_.-]+', '_', name)
-    #
-    #     # Strip leading/trailing _
-    #     name = name.strip('_')
-    #
-    #     return name
 
     def __str__(self):
         return f"({self.class_name}{self.SEP}{self.name}{self.SEP}{self.huuid})"
@@ -294,6 +253,7 @@ class SUUID:
             class_name = rest
             name = ""
         return cls(class_name=class_name, name=name, huuid=huuid)
+
 
 if __name__ == '__main__':
     sid = SUUID.from_name(class_name="DATA", name="otto")
