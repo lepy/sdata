@@ -350,7 +350,7 @@ class Metadata(object):
         if value.__class__.__name__ in ["int", "float", "bool"]:
             return value, value.__class__.__name__
         elif value in ["False", "True", "true", "false"]:
-            return value, 'bool'
+            return bool(value), 'bool'
         try:
             value = int(value)
             return value, value.__class__.__name__

@@ -213,6 +213,7 @@ def test_metadata_from_dict():
     assert m["ff"].dtype == 'float'
     assert m["fff"].dtype == 'float'
     assert m["b"].dtype == 'bool'
+    assert m["bb"].value is True
     assert m["bb"].dtype == 'bool'
     assert m["bbb"].dtype == 'bool'
     assert m["bbbb"].dtype == 'bool'
