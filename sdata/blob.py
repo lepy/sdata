@@ -71,10 +71,14 @@ class Blob(Base):
         """
         Set the 'value' in self.data['content'] based on content_type.
         For 'bytes', store as base64-encoded string; for 'uri', store as str.
-        No loading occurs here.
+        Handle value=None explicitly to avoid errors during deserialization.
         """
         content = self.data['content']
         ctype = content['type']
+
+        if value is None:
+            content['value'] = None
+            return
 
         if ctype == 'bytes':
             if not isinstance(value, bytes):
@@ -135,6 +139,8 @@ class Blob(Base):
         if ctype == 'bytes':
             loaded_bytes = base64.b64decode(val)
         elif ctype == 'uri':
+            if fsspec is None:
+                raise ImportError("fsspec is required for URI loading.")
             try:
                 with fsspec.open(val, 'rb') as f:
                     loaded_bytes = f.read()
@@ -157,10 +163,8 @@ class Blob(Base):
 
     def exists(self) -> bool:
         """
-        Test whether the blob content exists (integrated from provided class).
+        Test whether the blob content exists.
         For 'uri', checks if the path/URI is accessible via fsspec; for 'bytes', always True if value set.
-
-        :return: True if exists, False otherwise.
         """
         content = self.data.get('content')
         if content is None:
@@ -174,8 +178,12 @@ class Blob(Base):
         if ctype == 'bytes':
             return True  # In-memory, assumes exists if set
         elif ctype == 'uri':
+            if fsspec is None:
+                logger.warning('fsspec not installed')
+                return False
             try:
-                return fsspec.core.exists(val)
+                fs, _, paths = fsspec.core.get_fs_token_paths(val)
+                return fs.exists(paths[0])
             except Exception as e:
                 logger.warning(f"Failed to check existence for URI '{val}': {str(e)}")
                 return False
@@ -185,10 +193,8 @@ class Blob(Base):
     @property
     def sha1(self) -> Optional[str]:
         """
-        Calculate the SHA1 hash of the blob content lazily (integrated from provided class).
+        Calculate the SHA1 hash of the blob content lazily.
         Loads content_bytes if necessary.
-
-        :return: SHA1 hexdigest or None if loading fails.
         """
         try:
             hash_obj = hashlib.sha1()
@@ -201,10 +207,8 @@ class Blob(Base):
     @property
     def md5(self) -> Optional[str]:
         """
-        Calculate the MD5 hash of the blob content lazily (integrated from provided class).
+        Calculate the MD5 hash of the blob content lazily.
         Loads content_bytes if necessary.
-
-        :return: MD5 hexdigest or None if loading fails.
         """
         try:
             hash_obj = hashlib.md5()
@@ -216,11 +220,8 @@ class Blob(Base):
 
     def _update_hash(self, hash_obj: Any, buffer_size: int = 65536) -> None:
         """
-        Update the hash object with the blob content (integrated from provided class).
+        Update the hash object with the blob content.
         Uses content_bytes for hashing.
-
-        :param hash_obj: Hash object (e.g., hashlib.sha1() or md5()).
-        :param buffer_size: Buffer size for reading (default 65536).
         """
         content_bytes = self.content_bytes  # Lazy load
         bytes_io = io.BytesIO(content_bytes)
@@ -258,8 +259,6 @@ class Blob(Base):
             # Ensure value is base64 string; no need to decode here
             pass
         elif content['type'] == 'uri' and 'value' in content:
-            # Ensure value is str
             if not isinstance(content['value'], str):
                 raise ValueError("URI value must be a string.")
         return instance
-
