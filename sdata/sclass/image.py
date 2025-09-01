@@ -4,7 +4,8 @@ import collections
 import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
-from sdata.data import Data
+# from sdata.data import Data
+from sdata.base import Base
 from sdata.suuid import SUUID
 from sdata.metadata import Metadata, Attribute
 import sdata.contrib
@@ -21,7 +22,7 @@ except:
     logging.warning("PIL is not available -> no image import")
     PIL = None
 
-class Image(Data):
+class Image(Base):
     """Image Object
 
     .. warning::
@@ -40,7 +41,7 @@ class Image(Data):
             name = None
         if "name" not in kwargs:
             kwargs["name"] = name
-        Data.__init__(self, **kwargs)
+        Base.__init__(self, **kwargs)
         self.url = url
         self.img = None
         if load is True:
@@ -122,7 +123,7 @@ class Image(Data):
         suuid = SUUID.from_file(class_name, filepath, ns_name=project)
         kwargs["sname"] = suuid.sname
         kwargs["uuid"] = suuid.huuid
-        kwargs["suuid"] = suuid.idstr
+        kwargs["suuid"] = suuid.suuid_str
         kwargs["url"] = filepath
         name = os.path.basename(filepath)
 

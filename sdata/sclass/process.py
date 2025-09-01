@@ -60,8 +60,10 @@ class ProcessNode(Base):
 # Beispiel: Spezifische Subklassen
 class SpecificInput(ProcessData):
     def __init__(self, **kwargs):
-        kwargs['default_attributes'] = [{"name": "a", "value": None, "dtype": float, "label": "an a", "required": True},
-                                        {"name": "b", "value": None, "dtype": int, "label": "an b", "required": True},
+        kwargs['default_attributes'] = [{"name": "a", "value": None, "dtype": float, "unit": "-",
+                                         "description": "my a value", "label": "$a$", "required": True},
+                                        {"name": "b", "value": None, "dtype": int,  "unit": "MPa",
+                                         "description": "my b value", "label": "$b$", "required": True},
                                         ]
 
         super().__init__(**kwargs)

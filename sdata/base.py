@@ -3,14 +3,18 @@ import uuid
 import logging
 import unicodedata
 import json
-from typing import List, Dict, Any, Optional, Type
-import pandas
+from typing import List, Dict, Any, Optional, Type, Literal
 
+import pandas
 from sdata import __version__
+from sdata.sclass import register
 from sdata.suuid import SUUID
 from sdata.metadata import Metadata, Attribute, extract_name_unit
 
+import sdata.sclass
+
 # from sdata.timestamp import now_utc_str, now_local_str, today_str
+
 
 
 logging.basicConfig(level=logging.INFO)
@@ -41,6 +45,11 @@ class Base:
         SDATA_VERSION, SDATA_NAME, SDATA_SUUID, SDATA_CLASS,
         SDATA_PARENT_SNAME, SDATA_PROJECT_SNAME
     ]
+
+    @classmethod
+    def get_sdata_spec(cls: type) -> str:
+        """Canonischer, importierbarer String für eine Klasse."""
+        return f"{cls.__module__}:{cls.__qualname__}"
 
     def __init__(self, **kwargs: Any) -> None:
         """
@@ -102,7 +111,7 @@ class Base:
             description="Super Universally Unique Identifier", required=True
         )
         self.metadata.add(
-            self.SDATA_CLASS, self.__class__.__name__, dtype="str",
+            self.SDATA_CLASS, self.get_sdata_spec(), dtype="str",
             description="sdata class", required=True
         )
 
@@ -316,6 +325,13 @@ class Base:
             "description": self._description,
         }
 
+    @staticmethod
+    def classname_from_classspec(spec: str) -> str:
+        if ":" in spec:
+            return spec.split(":")[-1]
+        else:
+            return spec
+
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> 'Base':
         """
@@ -325,7 +341,8 @@ class Base:
         :return: Instance of Base or subclass.
         """
         metadata = Metadata.from_dict(d.get("metadata", {}))
-        class_name = metadata.get(cls.SDATA_CLASS).value or "Base"
+        class_spec = metadata.get(cls.SDATA_CLASS).value or "sdata.base:Base"
+        class_name = cls.classname_from_classspec(class_spec)
         b = sdata_factory(class_name)
         b.metadata = metadata
         b.data = d.get("data", {})
@@ -365,8 +382,48 @@ class Base:
         return cls.from_dict(d)
 
 
-from typing import Dict, Any, Optional, Type
+def sclass_factory(
+#        class_name: str,
+        sdata_spec: Optional[str] = "sdata.base:Base",
+        on_error: Literal["ignore", "strict"] = "strict",
+        sdata_attrs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+) -> Any:
+    """
+    Factory function to create an instance of a dynamically generated subclass.
 
+    :param class_name: The name of the class to generate (e.g., "Material").
+    :param sdata_class: The base class to inherit from (default: Base).
+    :param sdata_attrs: Optional dict of custom attributes/methods to add to the class.
+    :param kwargs: Keyword arguments to pass to the instance initialization.
+    :return: An instance of the generated class.
+    """
+    sdata_attrs = sdata_attrs or {}
+
+    mod_name, class_name = sdata_spec.split(":", 1)
+    try:
+        #sdata.sclass.register(class_name, sdata_spec)
+        sdata_class = sdata.sclass.spec_to_class(sdata_spec)
+    except ModuleNotFoundError as e:
+        if on_error == "ignore":
+            sdata_class = Base # sdata_factory(class_name, sdata_class=Base.__class__, sdata_attrs=sdata_attrs, **kwargs)
+        else:
+            raise ModuleNotFoundError(f"sdata.base.class_factory Error {e}")
+
+    cls = type(class_name, (sdata_class,), sdata_attrs)
+
+    def __init__(self, **init_kwargs: Any) -> None:
+        super(cls, self).__init__(**init_kwargs)  # type: ignore
+
+
+    setattr(cls, '__init__', __init__)
+
+    # print(sdata_spec, sdata_class, type(sdata_class), cls)
+    instance = cls(**kwargs)
+    if sdata_class.__name__ == "Base":
+        instance.metadata["_sdata_class"].value = sdata_spec
+    # print(sdata_class, sdata_class.__name__ == "Base")
+    return instance
 
 def sdata_factory(
         class_name: str,
