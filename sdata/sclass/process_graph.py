@@ -46,7 +46,8 @@ class ProcessGraph:
         for data in self.data_nodes:
             cls = self.class_map[data]
             # fields = [attr['name'] for attr in cls.default_attributes if 'name' in attr]
-            label = '{' + data + '}'
+            # label = '{' + data + '}'
+            label = '{' + cls.__name__ + '}'
             dot.node(data, shape='record', label=label)
 
         for proc in self.process_nodes:
@@ -59,3 +60,11 @@ class ProcessGraph:
             dot.edge(src, dst)
 
         return dot
+
+def get_process_graph(processes: List[Type[ProcessNode]]) -> ProcessGraph:
+    g = ProcessGraph()
+    for process in processes:
+        g.add_process(process)
+    dot_graph = g.to_graphviz(name="CombinedProcess", rankdir="TD", collapsed=True)
+    return dot_graph
+

@@ -142,6 +142,25 @@ def create_process_class(
     return type(process_name, (ProcessNode,), class_dict)
 
 
+def create_composite_process_class(
+        composite_name: str,
+        process_classes: List[Type[ProcessNode]]
+) -> Type[CompositeProcess]:
+    """
+    Factory function to generically create a subclass of CompositeProcess.
+
+    :param composite_name: Name of the new composite process class (e.g., 'Process_1_plus_2').
+    :param process_classes: List of Process subclasses to include in the composite.
+    :return: A new subclass of CompositeProcess with fixed processes.
+    """
+
+    class GenericComposite(CompositeProcess):
+        def __init__(self, inputs: Dict[str, ProcessData] = None, **kwargs):
+            super().__init__(name=composite_name, processes=process_classes, inputs=inputs, **kwargs)
+
+    GenericComposite.__name__ = composite_name
+    return GenericComposite
+
 # Beispiel: Spezifische Subklassen
 class SpecificInput(ProcessData):
     def __init__(self, **kwargs):

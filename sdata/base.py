@@ -386,6 +386,45 @@ class Base:
             d = json.loads(s)
         return cls.from_dict(d)
 
+def cls_from_spec(
+#        class_name: str,
+        sdata_spec: Optional[str] = "sdata.base:Base",
+        on_error: Literal["ignore", "strict"] = "strict",
+        sdata_attrs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+) -> Any:
+    """
+    Factory function to create an instance of a dynamically generated subclass.
+
+    :param class_name: The name of the class to generate (e.g., "Material").
+    :param sdata_class: The base class to inherit from (default: Base).
+    :param sdata_attrs: Optional dict of custom attributes/methods to add to the class.
+    :param kwargs: Keyword arguments to pass to the instance initialization.
+    :return: An instance of the generated class.
+    """
+    sdata_attrs = sdata_attrs or {}
+
+    if ":" in sdata_spec:
+        mod_name, class_name = sdata_spec.split(":", 1)
+    else:
+        mod_name, class_name = "", sdata_spec
+    try:
+        #sdata.sclass.register(class_name, sdata_spec)
+        sdata_class = sdata.sclass.spec_to_class(sdata_spec)
+    except ModuleNotFoundError as e:
+        if on_error == "ignore":
+            sdata_class = Base # sdata_factory(class_name, sdata_class=Base.__class__, sdata_attrs=sdata_attrs, **kwargs)
+        else:
+            raise ModuleNotFoundError(f"sdata.base.class_factory Error {e}")
+
+    cls = type(class_name, (sdata_class,), sdata_attrs)
+
+    def __init__(self, **init_kwargs: Any) -> None:
+        super(cls, self).__init__(**init_kwargs)  # type: ignore
+
+    setattr(cls, '__init__', __init__)
+    return cls
+
 
 def sclass_factory(
 #        class_name: str,
@@ -405,7 +444,10 @@ def sclass_factory(
     """
     sdata_attrs = sdata_attrs or {}
 
-    mod_name, class_name = sdata_spec.split(":", 1)
+    if ":" in sdata_spec:
+        mod_name, class_name = sdata_spec.split(":", 1)
+    else:
+        mod_name, class_name = "", sdata_spec
     try:
         #sdata.sclass.register(class_name, sdata_spec)
         sdata_class = sdata.sclass.spec_to_class(sdata_spec)
