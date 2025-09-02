@@ -1,6 +1,6 @@
 from sdata.base import sdata_factory, Base
-
-from typing import List, Dict, Any, Type
+from sdata import generate_safe_name
+from typing import List, Dict, Any, Type, Optional
 
 
 class ProcessData(Base):
@@ -91,7 +91,7 @@ class CompositeProcess(ProcessNode):
                     if out in next_proc_type.input_classes:
                         internal_connections.add(out)
 
-        external_inputs = all_inputs - internal_connections
+        self.external_inputs = external_inputs = all_inputs - internal_connections
         external_outputs = all_outputs - all_inputs
 
         for inp in external_inputs:
@@ -141,8 +141,73 @@ def create_process_class(
 
     return type(process_name, (ProcessNode,), class_dict)
 
-
 def create_composite_process_class(
+    composite_name: str,
+    process_classes: List[Type[ProcessNode]]
+) -> Type[CompositeProcess]:
+    """
+    Factory function to generically create a subclass of CompositeProcess.
+
+    :param composite_name: Name of the new composite process class (e.g., 'Process_1_plus_2').
+    :param process_classes: List of Process subclasses to include in the composite.
+    :return: A new subclass of CompositeProcess with fixed processes.
+    """
+
+    # Compute aggregated IO statically
+    all_inputs = set()
+    all_outputs = set()
+    internal_connections = set()
+
+    for proc_type in process_classes:
+        for inp in proc_type.input_classes.keys():
+            all_inputs.add(inp)
+        for out in proc_type.output_classes.keys():
+            all_outputs.add(out)
+
+    for i, proc_type in enumerate(process_classes):
+        for out in proc_type.output_classes.keys():
+            for next_proc_type in process_classes[i+1:]:
+                if out in next_proc_type.input_classes:
+                    internal_connections.add(out)
+
+    external_inputs = all_inputs - internal_connections
+    external_outputs = all_outputs - all_inputs
+
+    input_classes = {}
+    for inp in external_inputs:
+        for proc_type in process_classes:
+            if inp in proc_type.input_classes:
+                input_classes[inp] = proc_type.input_classes[inp]
+                break
+
+    output_classes = {}
+    for out in external_outputs:
+        for proc_type in process_classes:
+            if out in proc_type.output_classes:
+                output_classes[out] = proc_type.output_classes[out]
+                break
+
+    computation = " + ".join([p.computation for p in process_classes]) if all(hasattr(p, 'computation') for p in process_classes) else ""
+
+    class_dict = {
+        'input_classes': input_classes,
+        'output_classes': output_classes,
+        'required_inputs': list(input_classes.values()),
+        'required_outputs': list(output_classes.values()),
+        'computation': computation,
+    }
+
+    class GenericComposite(CompositeProcess):
+        def __init__(self, inputs: Dict[str, ProcessData] = None, **kwargs):
+            super().__init__(name=composite_name, processes=process_classes, inputs=inputs, **kwargs)
+
+    for k, v in class_dict.items():
+        setattr(GenericComposite, k, v)
+
+    GenericComposite.__name__ = composite_name
+    return GenericComposite
+
+def create_composite_process_class2(
         composite_name: str,
         process_classes: List[Type[ProcessNode]]
 ) -> Type[CompositeProcess]:
@@ -160,6 +225,38 @@ def create_composite_process_class(
 
     GenericComposite.__name__ = composite_name
     return GenericComposite
+
+
+def processdata_class_factory(
+        class_name: str,
+        sdata_class: Type = ProcessData,  # Neu: Optionale Basisklasse, default ist Base
+        sdata_attrs: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+) -> Any:
+    """
+    Factory function to create an instance of a dynamically generated subclass.
+
+    :param class_name: The name of the class to generate (e.g., "Material").
+    :param sdata_class: The base class to inherit from (default: Base).
+    :param sdata_attrs: Optional dict of custom attributes/methods to add to the class.
+    :param kwargs: Keyword arguments to pass to the instance initialization.
+    :return: generated ProcessData class.
+    """
+    class_name = generate_safe_name(class_name)
+    sdata_attrs = sdata_attrs or {}
+
+    cls = type(class_name, (sdata_class,), sdata_attrs)
+
+    def __init__(self, **init_kwargs: Any) -> None:
+        super(cls, self).__init__(**init_kwargs)  # type: ignore
+
+    setattr(cls, '__init__', __init__)
+    return cls
+
+def sclass(class_name) -> 'Base':
+    """create class from class_name"""
+    return processdata_class_factory(class_name)
+
 
 # Beispiel: Spezifische Subklassen
 class SpecificInput(ProcessData):

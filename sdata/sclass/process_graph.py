@@ -47,14 +47,14 @@ class ProcessGraph:
             cls = self.class_map[data]
             # fields = [attr['name'] for attr in cls.default_attributes if 'name' in attr]
             # label = '{' + data + '}'
-            label = '{' + cls.__name__ + '}'
-            dot.node(data, shape='record', label=label)
+            label = cls.__name__
+            dot.node(data, shape='box', label=label)
 
         for proc in self.process_nodes:
             proc_class = self.process_class_map[proc]
             # Instantiate dummy to get computation
-            label = '{' + proc + '}'
-            dot.node(proc, shape='record', label=label)
+            label = proc
+            dot.node(proc, shape='component', label=label, color="lightblue", style="filled")
 
         for src, dst in self.edges:
             dot.edge(src, dst)

@@ -396,11 +396,10 @@ def cls_from_spec(
     """
     Factory function to create an instance of a dynamically generated subclass.
 
-    :param class_name: The name of the class to generate (e.g., "Material").
-    :param sdata_class: The base class to inherit from (default: Base).
+    :param sdata_class: The base class to inherit from (default: sdata.base:Base).
     :param sdata_attrs: Optional dict of custom attributes/methods to add to the class.
     :param kwargs: Keyword arguments to pass to the instance initialization.
-    :return: An instance of the generated class.
+    :return: generated class.
     """
     sdata_attrs = sdata_attrs or {}
 
@@ -409,11 +408,10 @@ def cls_from_spec(
     else:
         mod_name, class_name = "", sdata_spec
     try:
-        #sdata.sclass.register(class_name, sdata_spec)
         sdata_class = sdata.sclass.spec_to_class(sdata_spec)
     except ModuleNotFoundError as e:
         if on_error == "ignore":
-            sdata_class = Base # sdata_factory(class_name, sdata_class=Base.__class__, sdata_attrs=sdata_attrs, **kwargs)
+            sdata_class = Base
         else:
             raise ModuleNotFoundError(f"sdata.base.class_factory Error {e}")
 
@@ -425,7 +423,6 @@ def cls_from_spec(
     setattr(cls, '__init__', __init__)
     return cls
 
-
 def sclass_factory(
 #        class_name: str,
         sdata_spec: Optional[str] = "sdata.base:Base",
@@ -436,8 +433,7 @@ def sclass_factory(
     """
     Factory function to create an instance of a dynamically generated subclass.
 
-    :param class_name: The name of the class to generate (e.g., "Material").
-    :param sdata_class: The base class to inherit from (default: Base).
+    :param sdata_class: The base class to inherit from (default: sdata.base:Base).
     :param sdata_attrs: Optional dict of custom attributes/methods to add to the class.
     :param kwargs: Keyword arguments to pass to the instance initialization.
     :return: An instance of the generated class.
@@ -449,11 +445,10 @@ def sclass_factory(
     else:
         mod_name, class_name = "", sdata_spec
     try:
-        #sdata.sclass.register(class_name, sdata_spec)
         sdata_class = sdata.sclass.spec_to_class(sdata_spec)
     except ModuleNotFoundError as e:
         if on_error == "ignore":
-            sdata_class = Base # sdata_factory(class_name, sdata_class=Base.__class__, sdata_attrs=sdata_attrs, **kwargs)
+            sdata_class = Base
         else:
             raise ModuleNotFoundError(f"sdata.base.class_factory Error {e}")
 
@@ -496,6 +491,7 @@ def sdata_factory(
 
     setattr(cls, '__init__', __init__)
     return cls(**kwargs)
+
 
 
 if __name__ == '__main__':
