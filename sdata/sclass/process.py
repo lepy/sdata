@@ -120,25 +120,18 @@ class CompositeProcess(ProcessNode):
     #     return self.outputs
 
 def create_process_class(
-        process_name: str,
-        input_classes: Dict[str, Type[ProcessData]],
-        output_classes: Dict[str, Type[ProcessData]],
+    process_name: str,
+    input_classes: Dict[str, Type[ProcessData]],
+    output_classes: Dict[str, Type[ProcessData]],
 ) -> Type[ProcessNode]:
     """
-    Factory function to generically create a subclass of Process.
+    Factory function to generically create a subclass of ProcessNode.
 
     :param process_name: Name of the new process class (e.g., 'Process_1').
     :param input_classes: Dict mapping input names to ProcessData subclasses.
     :param output_classes: Dict mapping output names to ProcessData subclasses.
-    :param computation: String representing the computation (e.g., 'var_d=(var_a+var_b)*var_c').
-    :return: A new subclass of Process.
+    :return: A new subclass of ProcessNode.
     """
-    if len(output_classes) != 1:
-        raise ValueError("Currently supports only single output class.")
-
-    output_key = list(output_classes.keys())[0]
-    output_class = output_classes[output_key]
-
     class_dict = {
         'input_classes': input_classes,
         'output_classes': output_classes,
