@@ -80,6 +80,9 @@ def make_module_alias(cls: type, alias: str | None = None) -> str:
     setattr(mod, name, cls)
     return f"{cls.__module__}:{name}"
 
+
+
+
 # def to_json(obj: Any, *, short_name: str | None = None) -> dict:
 #     cls = obj.__class__
 #     payload = getattr(obj, "to_dict", lambda: obj.__dict__)()
@@ -95,3 +98,12 @@ def make_module_alias(cls: type, alias: str | None = None) -> str:
 #     if hasattr(cls, "from_dict"):
 #         return cls.from_dict(data)
 #     return cls(**data)
+
+if __name__ == '__main__':
+    pass
+    # Process_1_Generic = create_process_class(
+    #     'Process_1',
+    #     input_classes={'DataClass_1': DataClass_1, 'DataClass_2': DataClass_2},
+    #     output_classes={'DataClass_3': DataClass_3},
+    # )
+    # print(Process_1_Generic)

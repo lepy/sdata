@@ -40,10 +40,11 @@ class Base:
     SDATA_SUUID = "_sdata_suuid"
     SDATA_PARENT_SNAME = "_sdata_parent_sname"  # Changed to store sname for consistency
     SDATA_PROJECT_SNAME = "_sdata_project_sname"  # Changed to store sname for consistency
+    SDATA_BFO_CLASS = "_sdata_bfo_class" # BFO (Basic Formal Ontology) top-level ontology class name
 
     SDATA_ATTRIBUTES: List[str] = [
         SDATA_VERSION, SDATA_NAME, SDATA_SUUID, SDATA_CLASS,
-        SDATA_PARENT_SNAME, SDATA_PROJECT_SNAME
+        SDATA_PARENT_SNAME, SDATA_PROJECT_SNAME, SDATA_BFO_CLASS
     ]
 
     @classmethod
@@ -97,6 +98,10 @@ class Base:
         self.metadata.add(
             self.SDATA_VERSION, __version__, dtype="str",
             description="sdata package version", required=True
+        )
+        self.metadata.add(
+            self.SDATA_BFO_CLASS, "sdata.sclass:IndependentContinuant", dtype="str",
+            description="sdata bfo class name", required=True
         )
         self.metadata.add(
             self.SDATA_NAME, name, dtype="str",

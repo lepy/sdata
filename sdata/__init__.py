@@ -21,9 +21,9 @@ import pandas
 from sdata.metadata import Metadata, Attribute
 from sdata.data import Data
 from sdata.base import Base, sdata_factory
-from sdata.blob import Blob
+from sdata.sclass.blob import Blob
 from sdata.suuid import SUUID
-from sdata.image import Image
+from sdata.sclass.image import Image
 
 # import sdata.timestamp as timestamp
 from sdata.timestamp import today_str, now_utc_str, now_local_str
