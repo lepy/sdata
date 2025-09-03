@@ -12,6 +12,7 @@ _registry.register_many({
     "SUUID": "sdata.suuid:SUUID",
     "Base": "sdata.base:Base",
     "Blob":"sdata.sclass.blob:Blob",
+    "DataFrame":"sdata.sclass.dataframe:DataFrame",
     "Image":"sdata.sclass.image:Image",
     "ProcessData":"sdata.sclass.process:ProcessData",
     "ProcessNode":"sdata.sclass.process:ProcessNode",
