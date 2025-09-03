@@ -37,6 +37,11 @@ class ProcessNode(Base):
     required_inputs: List[type] = []  # Erforderliche Input-Klassen (Subklassen überschreiben)
     required_outputs: List[type] = []  # Erforderliche Output-Klassen (Subklassen überschreiben)
 
+    processes: List[Type['ProcessNode']] = []  # Class var for subprocess classes
+
+    required_inputs: List[Type[ProcessData]] = []
+    required_outputs: List[Type[ProcessData]] = []
+
     PROCESS_DATATYPE = 'ProcessNode'
 
     def __init__(self, name: str = "ProcessNode", inputs: Dict[str, ProcessData] = None, **kwargs: Any):
@@ -47,6 +52,9 @@ class ProcessNode(Base):
         )
         self.inputs: Dict[str, ProcessData] = inputs or {}
         self.outputs: Dict[str, ProcessData] = {}
+        self.process_classes = self.__class__.processes  # Instance access to class var
+
+
 
     def validate_inputs(self) -> bool:
         """
@@ -141,18 +149,11 @@ def create_process_class(
 
     return type(process_name, (ProcessNode,), class_dict)
 
+# Factory for composite processes
 def create_composite_process_class(
     composite_name: str,
     process_classes: List[Type[ProcessNode]]
-) -> Type[CompositeProcess]:
-    """
-    Factory function to generically create a subclass of CompositeProcess.
-
-    :param composite_name: Name of the new composite process class (e.g., 'Process_1_plus_2').
-    :param process_classes: List of Process subclasses to include in the composite.
-    :return: A new subclass of CompositeProcess with fixed processes.
-    """
-
+) -> Type[ProcessNode]:
     # Compute aggregated IO statically
     all_inputs = set()
     all_outputs = set()
@@ -187,44 +188,100 @@ def create_composite_process_class(
                 output_classes[out] = proc_type.output_classes[out]
                 break
 
-    computation = " + ".join([p.computation for p in process_classes]) if all(hasattr(p, 'computation') for p in process_classes) else ""
-
     class_dict = {
         'input_classes': input_classes,
         'output_classes': output_classes,
         'required_inputs': list(input_classes.values()),
         'required_outputs': list(output_classes.values()),
-        'computation': computation,
+        'processes': process_classes,
     }
 
-    class GenericComposite(CompositeProcess):
-        def __init__(self, inputs: Dict[str, ProcessData] = None, **kwargs):
-            super().__init__(name=composite_name, processes=process_classes, inputs=inputs, **kwargs)
+    return type(composite_name, (ProcessNode,), class_dict)
 
-    for k, v in class_dict.items():
-        setattr(GenericComposite, k, v)
-
-    GenericComposite.__name__ = composite_name
-    return GenericComposite
-
-def create_composite_process_class2(
-        composite_name: str,
-        process_classes: List[Type[ProcessNode]]
-) -> Type[CompositeProcess]:
-    """
-    Factory function to generically create a subclass of CompositeProcess.
-
-    :param composite_name: Name of the new composite process class (e.g., 'Process_1_plus_2').
-    :param process_classes: List of Process subclasses to include in the composite.
-    :return: A new subclass of CompositeProcess with fixed processes.
-    """
-
-    class GenericComposite(CompositeProcess):
-        def __init__(self, inputs: Dict[str, ProcessData] = None, **kwargs):
-            super().__init__(name=composite_name, processes=process_classes, inputs=inputs, **kwargs)
-
-    GenericComposite.__name__ = composite_name
-    return GenericComposite
+# def create_composite_process_class2(
+#     composite_name: str,
+#     process_classes: List[Type[ProcessNode]]
+# ) -> Type[CompositeProcess]:
+#     """
+#     Factory function to generically create a subclass of CompositeProcess.
+#
+#     :param composite_name: Name of the new composite process class (e.g., 'Process_1_plus_2').
+#     :param process_classes: List of Process subclasses to include in the composite.
+#     :return: A new subclass of CompositeProcess with fixed processes.
+#     """
+#
+#     # Compute aggregated IO statically
+#     all_inputs = set()
+#     all_outputs = set()
+#     internal_connections = set()
+#
+#     for proc_type in process_classes:
+#         for inp in proc_type.input_classes.keys():
+#             all_inputs.add(inp)
+#         for out in proc_type.output_classes.keys():
+#             all_outputs.add(out)
+#
+#     for i, proc_type in enumerate(process_classes):
+#         for out in proc_type.output_classes.keys():
+#             for next_proc_type in process_classes[i+1:]:
+#                 if out in next_proc_type.input_classes:
+#                     internal_connections.add(out)
+#
+#     external_inputs = all_inputs - internal_connections
+#     external_outputs = all_outputs - all_inputs
+#
+#     input_classes = {}
+#     for inp in external_inputs:
+#         for proc_type in process_classes:
+#             if inp in proc_type.input_classes:
+#                 input_classes[inp] = proc_type.input_classes[inp]
+#                 break
+#
+#     output_classes = {}
+#     for out in external_outputs:
+#         for proc_type in process_classes:
+#             if out in proc_type.output_classes:
+#                 output_classes[out] = proc_type.output_classes[out]
+#                 break
+#
+#     computation = " + ".join([p.computation for p in process_classes]) if all(hasattr(p, 'computation') for p in process_classes) else ""
+#
+#     class_dict = {
+#         'input_classes': input_classes,
+#         'output_classes': output_classes,
+#         'required_inputs': list(input_classes.values()),
+#         'required_outputs': list(output_classes.values()),
+#         'computation': computation,
+#     }
+#
+#     class GenericComposite(CompositeProcess):
+#         def __init__(self, inputs: Dict[str, ProcessData] = None, **kwargs):
+#             super().__init__(name=composite_name, processes=process_classes, inputs=inputs, **kwargs)
+#
+#     for k, v in class_dict.items():
+#         setattr(GenericComposite, k, v)
+#
+#     GenericComposite.__name__ = composite_name
+#     return GenericComposite
+#
+# def create_composite_process_class2(
+#         composite_name: str,
+#         process_classes: List[Type[ProcessNode]]
+# ) -> Type[CompositeProcess]:
+#     """
+#     Factory function to generically create a subclass of CompositeProcess.
+#
+#     :param composite_name: Name of the new composite process class (e.g., 'Process_1_plus_2').
+#     :param process_classes: List of Process subclasses to include in the composite.
+#     :return: A new subclass of CompositeProcess with fixed processes.
+#     """
+#
+#     class GenericComposite(CompositeProcess):
+#         def __init__(self, inputs: Dict[str, ProcessData] = None, **kwargs):
+#             super().__init__(name=composite_name, processes=process_classes, inputs=inputs, **kwargs)
+#
+#     GenericComposite.__name__ = composite_name
+#     return GenericComposite
 
 
 def processdata_class_factory(
