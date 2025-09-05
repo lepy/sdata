@@ -1,6 +1,6 @@
 from sdata.base import sdata_factory, Base
 from sdata import generate_safe_name
-from typing import List, Dict, Any, Type, Optional
+from typing import List, Dict, Any, Type, Optional, Set, Tuple
 
 
 class ProcessData(Base):
@@ -34,9 +34,6 @@ class ProcessNode(Base):
     """
     Basisklasse für Prozessknoten. Definiert Inputs/Outputs und prüft Vollständigkeit.
     """
-    required_inputs: List[type] = []  # Erforderliche Input-Klassen (Subklassen überschreiben)
-    required_outputs: List[type] = []  # Erforderliche Output-Klassen (Subklassen überschreiben)
-
     processes: List[Type['ProcessNode']] = []  # Class var for subprocess classes
 
     required_inputs: List[Type[ProcessData]] = []
@@ -54,7 +51,12 @@ class ProcessNode(Base):
         self.outputs: Dict[str, ProcessData] = {}
         self.process_classes = self.__class__.processes  # Instance access to class var
 
-
+    @classmethod
+    def get_dependencies(cls) -> Set[str]:
+        s = {cls.__base__.__name__ + ":" + cls.__name__: {x.__base__.__name__ + ":" + x.__name__ for x in cls.required_inputs},}
+        for x in cls.required_outputs:
+            s[x.__base__.__name__ + ":" + x.__name__] = {cls.__base__.__name__ + ":" + cls.__name__, }
+        return s
 
     def validate_inputs(self) -> bool:
         """
@@ -129,15 +131,17 @@ class CompositeProcess(ProcessNode):
 
 def create_process_class(
     process_name: str,
-    input_classes: Dict[str, Type[ProcessData]],
-    output_classes: Dict[str, Type[ProcessData]],
+    input_classes: Dict[str, Type[ProcessData]] = {},
+    output_classes: Dict[str, Type[ProcessData]] = {},
+    processes: List[Type[ProcessNode]]= []
 ) -> Type[ProcessNode]:
     """
     Factory function to generically create a subclass of ProcessNode.
 
     :param process_name: Name of the new process class (e.g., 'Process_1').
-    :param input_classes: Dict mapping input names to ProcessData subclasses.
-    :param output_classes: Dict mapping output names to ProcessData subclasses.
+    :param input_classes: Dict mapping input names to ProcessData subclasses (default: {}).
+    :param output_classes: Dict mapping output names to ProcessData subclasses (default: {}).
+    :param processes: List of ProcessNode subclasses (default: []).
     :return: A new subclass of ProcessNode.
     """
     class_dict = {
@@ -145,6 +149,7 @@ def create_process_class(
         'output_classes': output_classes,
         'required_inputs': list(input_classes.values()),
         'required_outputs': list(output_classes.values()),
+        'processes': processes
     }
 
     return type(process_name, (ProcessNode,), class_dict)

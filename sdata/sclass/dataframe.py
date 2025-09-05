@@ -3,13 +3,13 @@ import io
 import base64
 from typing import Any, Dict, Optional
 import logging
-from sdata.blob import Blob  # Assuming Blob is in sdata.blob or adjust import
+from sdata.sclass.blob import Blob  # Assuming Blob is in sdata.blob or adjust import
 logger = logging.getLogger(__name__)
 
 class DataFrame(Blob):
     def __init__(
         self,
-        df: Optional[pd.DataFrame] = None,
+        df: Optional[pd.DataFrame] = pd.DataFrame(),
         column_metadata: Optional[Dict[str, Dict[str, str]]] = None,
         **kwargs: Any
     ) -> None:
