@@ -179,7 +179,7 @@ class Image(Base):
         data.load()
         if "sdata" in data.img.info:
             d = json.loads(data.img.info.get("sdata"))
-            data.metadata = data.metadata.from_json(d)
+            data.metadata.update_from_usermetadata(data.metadata.from_json(d))
         return data
 
     @staticmethod
@@ -219,7 +219,7 @@ class Image(Base):
         try:
             d = cls._get_jpg_metadata(filepath)
             if d is not None:
-                data.metadata = data.metadata.from_json(d)
+                data.metadata.update_from_usermetadata(data.metadata.from_json(d))
         except Exception as exp:
             logging.debug(exp)
         return data

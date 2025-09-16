@@ -11,6 +11,8 @@ import hashlib
 import re
 import copy
 from sdata.contrib.sortedcontainers.sorteddict import SortedDict
+from typing import Any
+
 
 def extract_name_unit(value):
     """extract name and unit from a combined string
@@ -303,10 +305,13 @@ class Metadata(object):
         required_attributes = [(attr.name, attr) for attr in self.attributes.values() if attr.required is True]
         return SortedDict(required_attributes)
 
-    def add_attribute(self, attr, **kwargs):
+    def add_attribute(self, attr: Attribute, **kwargs: Any) -> None:
         """set Attribute"""
-        prefix = kwargs.get("prefix", "")
+        prefix: str = kwargs.get("prefix", "")
+        if not isinstance(attr, Attribute):
+            raise TypeError(f"attr must be an instance of Attribute, got {type(attr).__name__}")
         self._attributes[prefix + attr.name] = attr
+
 
     def set_attr(self, name="N.N.", value=None, **kwargs):
         """set Attribute"""
@@ -370,6 +375,7 @@ class Metadata(object):
         :return:
         """
         for k, v in d.items():
+            k = k.replace("!sdata_", "_sdata_")
             if guess_dtype is False:
                 value = v
                 dtype = None
@@ -619,6 +625,7 @@ class Metadata(object):
             self.add(attr)
 
     def get(self, name, default=None):
+        default = default or Attribute(name=name, value=None)
         if self._attributes.get(name) is not None:
             return self._attributes.get(name)
         else:

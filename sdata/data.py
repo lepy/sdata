@@ -232,7 +232,7 @@ class Data(object):
             suuid = sdata.SUUID.from_name(self.__class__.__name__, name, ns_name=project)
         else:
             suuid = sdata.SUUID(self.__class__.__name__, name)
-        self._set_suuid(suuid.idstr)
+        self._set_suuid(suuid.suuid_str)
         self._set_uuid(suuid.huuid)
         return self
 

@@ -33,7 +33,7 @@ def test_base_init_default():
     assert isinstance(b.suuid, SUUID)
     assert b.class_name == "Base"
     assert b.metadata.get(Base.SDATA_VERSION).value == __version__  # Assume __version__ is defined
-    assert b.metadata.get(Base.SDATA_CLASS).value == "Base"
+    assert b.metadata.get(Base.SDATA_CLASS).value == "sdata.base:Base"
     assert b.metadata.get(Base.SDATA_NAME).value == "test"
     assert b.metadata.get(Base.SDATA_SUUID).value == b.suuid.suuid_str
     assert b.metadata.get(Base.SDATA_SNAME).value == b.sname

@@ -44,6 +44,13 @@ class ProcessGraph:
             dependencies.update(d)
         return dependencies
 
+    def get_subprocess_graph(self):
+        sg = self.__class__(name="subprocessgraph")
+        for p in self.processes:
+            for sp in p.processes:
+                sg.add_process(sp)
+        return sg
+
     def get_dag(self, flatten=False, sort: bool = True):
         dag = self.toposort(self.get_dependencies())
         if flatten:
@@ -60,16 +67,19 @@ class ProcessGraph:
 
     __repr__ = __str__
 
-    def add_process(self, process_class: Union[Type[ProcessNode], Type[CompositeProcess]]):
-        proc_name = process_class.__name__ if hasattr(process_class, '__name__') else process_class.name
+    def add_process(self, process_class: Union[Type[ProcessNode], ]):
+        self.proc_name = proc_name = process_class.__name__ if hasattr(process_class, '__name__') else process_class.name
         self.process_nodes.add(proc_name)
         self.process_class_map[proc_name] = process_class
 
+        self.processes.append(process_class)
+
         # Instantiate a dummy to get attributes, as composites set them in __init__
         dummy = process_class(inputs=None)  # Use inputs=None for dummy
-        input_classes = dummy.input_classes
-        output_classes = dummy.output_classes
+        self.input_classes = input_classes = dummy.input_classes
+        self.output_classes = output_classes = dummy.output_classes
         # computation = dummy.computation  # Not needed here, but for consistency
+
 
         for input_name, input_class in input_classes.items():
             self.data_nodes.add(input_name)
@@ -80,6 +90,22 @@ class ProcessGraph:
             self.data_nodes.add(output_name)
             self.class_map[output_name] = output_class
             self.edges.append((proc_name, output_name))
+
+    def update_class_map(self):
+        self.data_nodes = set()
+        self.process_nodes = set()
+        self.edges = []
+        self.class_map: Dict[str, Type[ProcessData]] = {}
+
+        for input_name, input_class in self.input_classes.items():
+            self.data_nodes.add(input_name)
+            self.class_map[input_name] = input_class
+            self.edges.append((input_name, self.proc_name))
+
+        for output_name, output_class in self.output_classes.items():
+            self.data_nodes.add(output_name)
+            self.class_map[output_name] = output_class
+            self.edges.append((self.proc_name, output_name))
 
     def to_graphviz(self, name: str = None, rankdir="TD", collapsed=True):
         if name is None:
@@ -101,6 +127,43 @@ class ProcessGraph:
             dot.edge(src, dst)
 
         return dot
+
+    def to_graphviz_cluster(self, name: str = None, rankdir="TD", collapsed=True):
+
+        g = graphviz.Digraph(name=name, graph_attr={'rankdir': rankdir})
+
+        sg = self.get_subprocess_graph()
+
+        # Cluster-Subgraph als Box erstellen
+        with g.subgraph(name='cluster_use_eol') as cluster:
+            # Attribute für die Box setzen
+            cluster.attr(label=self.name, style='filled', color='black', peripheries='1', penwidth='1.5',
+                         fillcolor='#efffff', labelloc="t", labeljust="l")
+
+            for data in sg.data_nodes:
+                if data not in self.data_nodes:
+                    data_cls = sg.class_map[data]
+                    label = data_cls.__name__
+                    cluster.node(data, shape='box', label=label)
+
+            for proc in sg.process_nodes:
+                proc_cls = sg.process_class_map[proc]
+                # Instantiate dummy to get computation
+                label = proc_cls.__name__
+                cluster.node(proc, shape='component', label=label, color="lightblue", style="filled")
+
+            for data in self.data_nodes:
+                data_cls = self.class_map[data]
+                label = data_cls.__name__
+                g.node(data, shape='box', label=label)
+
+            for src, dst in sg.edges:
+                if src not in self.input_classes and src not in self.output_classes and dst not in self.input_classes and dst not in self.output_classes:
+                    cluster.edge(src, dst)
+                else:
+                    g.edge(src, dst)
+
+        return g
 
     @staticmethod
     def toposort(graph: Dict[T, Iterable[T]]) -> Iterable[Set[T]]:
