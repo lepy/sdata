@@ -1,17 +1,20 @@
 # -*-coding: utf-8-*-
 import logging
 logger = logging.getLogger(__name__)
+from sdata import __version__
 import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
-from sdata import __version__
+import pytz
+import datetime
+from dateutil.parser import parse as parse_date
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import json
 import os
 import hashlib
 import re
 import copy
 from sdata.contrib.sortedcontainers.sorteddict import SortedDict
-from typing import Any, Dict, List, Optional, Type, Union
 
 def extract_name_unit(value):
     """extract name and unit from a combined string
@@ -53,43 +56,51 @@ def extract_name_unit(value):
         unit = ""
     return name, unit
 
+def _to_utc(dt: datetime.datetime) -> datetime.datetime:
+    """Sichere UTC-Normalisierung (aware)."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=pytz.UTC)
+    return dt.astimezone(pytz.UTC)
+
 class Attribute(object):
     """Attribute class"""
 
     DTYPES = {'float': float,
               'int': int,
               'str': str,
-              'timestamp': TimeStamp,
+              'timestamp': datetime.datetime,
               "bool": bool,
-              'list': list,
+              'list': list, # list of strings!
               }
     DTYPES_INV = {v: k for k, v in DTYPES.items()}
 
     def __init__(self, name, value, **kwargs):
-        """Attribute(name, value, dtype=str, unit="-", description="", label="", required=False)
+        """Attribute(name, value, dtype=str, unit="-", description="", label="", required=False,
+            ontology:"BFO:quality")
         :param name
         :param value
-        :param dtype ['float', 'int', 'str', 'timestamp', 'bool', 'list[str]', 'list[int]': list,´'list[float]': list,]
+        :param dtype ['float', 'int', 'str', 'timestamp', 'bool', 'list']
         :param description
         :param unit
         :param label
         :param required
+        :param ontology
         """
-        self._name = None
-        self._value = None
-        self._unit = "-"
-        self._description = ""
-        self._label = ""
-        self._dtype = None
+        self._name: str = None
+        self._value: Any = None
+        self._unit:str = "-"
+        self._description:str = ""
+        self._label:str = ""
+        self._ontology:str = ""
+        self._dtype:str = "str"
         dtype = kwargs.get("dtype", None) or self.guess_dtype(value)
         self._set_dtype(dtype)
-        print("!init!", self._dtype)
-
         self.name = name
         self._set_description(kwargs.get("description", ""))
         self._set_label(kwargs.get("label", ""))
         self._set_unit(kwargs.get("unit", "-"))
         self._set_required(kwargs.get("required", False))
+        self._set_ontology(kwargs.get("ontology", ""))
         # set dtype first!
         self._set_value(value)
 
@@ -117,8 +128,6 @@ class Attribute(object):
     def _set_value(self, value):
         try:
             dtype = self.DTYPES.get(self.dtype, self.guess_dtype(value))
-            print("!dtype", dtype)
-
             # ---- Listen-Sonderfälle ----
             if self.dtype == "list":
                 if value is None or value == "":
@@ -236,6 +245,16 @@ s
 
     required = property(fget=_get_required, fset=_set_required, doc="Attribute required")
 
+    def _get_ontology(self):
+        return self._ontology
+
+    def _set_ontology(self, value):
+        if value is None:
+            value = ""
+        self._ontology = str(value)
+
+    ontology = property(fget=_get_ontology, fset=_set_ontology, doc="Attribute ontology")
+
     def to_dict(self):
         """:returns dict of attribute items"""
         return {'name': self.name,
@@ -245,10 +264,11 @@ s
                 'description': self.description,
                 'label': self.label,
                 'required': self.required,
+                'ontology': self.ontology,
                 }
 
     def to_list(self):
-        return [self.name, self.value, self.unit, self.dtype, self.description, self.label, self.required]
+        return [self.name, self.value, self.unit, self.dtype, self.description, self.label, self.required, self.ontology]
 
     def to_csv(self, prefix="", sep=",", quote=None):
         """export Attribute to csv
@@ -283,7 +303,7 @@ class Metadata(object):
         * type (int, str, float, bool, timestamp)
         """
 
-    ATTRIBUTEKEYS = ["name", "value", "unit", "dtype", "description", "label", "required"]
+    ATTRIBUTEKEYS = ["name", "value", "unit", "dtype", "description", "label", "required", "ontology"]
 
     def __init__(self, **kwargs):
         """Metadata class
@@ -331,7 +351,6 @@ class Metadata(object):
             raise TypeError(f"attr must be an instance of Attribute, got {type(attr).__name__}")
         self._attributes[prefix + attr.name] = attr
 
-
     def set_attr(self, name="N.N.", value=None, **kwargs):
         """set Attribute"""
         prefix = kwargs.get("prefix", "")
@@ -339,11 +358,9 @@ class Metadata(object):
             attr = name # name is the Attribute!
         else:
             attr = self.get_attr(prefix + name) or Attribute(name, value, **kwargs)
-        for key in ["unit", "dtype", "description", "label", "required"]:
+        for key in ["unit", "dtype", "description", "label", "required", "ontology"]:
             if key in kwargs:
-                if key in kwargs:
-                    # print("!!!", attr, key, kwargs.get(key))
-                    setattr(attr, key, kwargs.get(key))
+                setattr(attr, key, kwargs.get(key))
         if value is not None:
             attr.value = value
         self._attributes[prefix + attr.name] = attr
@@ -369,7 +386,7 @@ class Metadata(object):
         False -> 'bool'
 
         :param value:
-        :return: dtype(value), dtype ['int', 'float', 'bool', 'str']
+        :return: dtype(value), dtype ['int', 'float', 'bool', 'str', 'list']
         """
         if value.__class__.__name__ in ["int", "float", "bool"]:
             return value, value.__class__.__name__
@@ -404,13 +421,14 @@ class Metadata(object):
                 v = {"name":k, "value":value}
                 # v = {"name":k, "value":value, "dtype":dtype, "unit":"", "description":"", "label":"", "required":False}
             elif isinstance(v, (str,)):
-                v = {"name":k, "value":v, "dtype":"str", "unit":"", "description":"", "label":"", "required":False}
+                v = {"name":k, "value":v, "dtype":"str", "unit":"", "description":"", "label":"", "required":False, "ontology":""}
             elif hasattr(v, "keys"):
                 dtype = v.get("dtype", self.guess_dtype_from_value(v.get("value"))[1])
                 value = v.get("value")
                 v = {"name":k, "value":value, "dtype":dtype,
                      "unit":v.get("unit", ""), "description":v.get("description", ""),
-                     "label":v.get("label", ""), "required":v.get("required", False)}
+                     "label":v.get("label", ""), "required":v.get("required", False),
+                     "ontology":v.get("ontology", ""),}
             else:
                 v, dtype = self.guess_dtype_from_value(v)
                 # v = {"name":k, "value":v, "dtype":dtype, "unit":"", "description":"", "label":"", "required":False}
@@ -644,7 +662,7 @@ class Metadata(object):
             self.add(attr)
 
     def get(self, name, default=None):
-        default = default or Attribute(name=name, value=None)
+        #default = default or Attribute(name=name, value=None)
         if self._attributes.get(name) is not None:
             return self._attributes.get(name)
         else:

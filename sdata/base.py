@@ -82,17 +82,26 @@ class Base:
             logger.warning(
                 f"project must be of type Base, got {project.__class__.__bases__}"
             )
+            self.metadata.add(
+                self.SDATA_PROJECT_SNAME, str(kwargs.get("project_sname", "")),
+                dtype="str", description="sname of the project"
+            )
         else:
             self.metadata.add(
                 self.SDATA_PROJECT_SNAME, str(kwargs.get("project_sname", "")),
                 dtype="str", description="sname of the project"
             )
 
-        if kwargs.get("ns_name", None) is not None:
+        ns_name = kwargs.get("ns_name", None)
+        if self.project and ns_name is None:
+            ns_name = self.project.sname
+
+        print("!ns_name", ns_name, self.project)
+        if ns_name is not None:
             suuid = SUUID.from_name(
                 class_name=self.__class__.__name__,
                 name=SUUID.generate_safe_filename(name),
-                ns_name=kwargs.get("ns_name").lower()
+                ns_name=kwargs.get("ns_name", "")
             )
         else:
             suuid = SUUID(self.__class__.__name__, name=SUUID.generate_safe_filename(name))

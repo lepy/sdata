@@ -26,13 +26,14 @@ def test_attribute():
     print(a.value, type(a.value))
     assert np.isclose(a.value, 1.2)
 
-    a = sdata.metadata.Attribute(name="a", value="1", dtype="int", description="a int value")
+    a = sdata.metadata.Attribute(name="a", value="1", dtype="int", description="a int value", ontology="bfo:IndependentContinuant")
     print(a)
     print(a.dtype, type(a.dtype))
     assert a.name == "a"
     print(a.value, type(a.value))
     assert np.isclose(a.value, 1)
     assert a.dtype=="int"
+    assert a.ontology=="bfo:IndependentContinuant"
 
 def test_prefix():
     prefix = "pre/"
