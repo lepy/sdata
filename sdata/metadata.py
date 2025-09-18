@@ -56,30 +56,36 @@ def extract_name_unit(value):
 class Attribute(object):
     """Attribute class"""
 
-    DTYPES = {'float': float, 'int': int, 'str': str, 'timestamp': TimeStamp, "bool": bool}
+    DTYPES = {'float': float,
+              'int': int,
+              'str': str,
+              'timestamp': TimeStamp,
+              "bool": bool,
+              'list': list,
+              }
     DTYPES_INV = {v: k for k, v in DTYPES.items()}
 
     def __init__(self, name, value, **kwargs):
         """Attribute(name, value, dtype=str, unit="-", description="", label="", required=False)
         :param name
         :param value
-        :param dtype ['float', 'int', 'str', 'timestamp', 'bool']
+        :param dtype ['float', 'int', 'str', 'timestamp', 'bool', 'list[str]', 'list[int]': list,´'list[float]': list,]
         :param description
         :param unit
         :param label
         :param required
         """
-#todo   :param dimension e.g. force, length, strain, count, energy
-
-
         self._name = None
         self._value = None
         self._unit = "-"
         self._description = ""
         self._label = ""
         self._dtype = None
+        dtype = kwargs.get("dtype", None) or self.guess_dtype(value)
+        self._set_dtype(dtype)
+        print("!init!", self._dtype)
+
         self.name = name
-        self._set_dtype(kwargs.get("dtype", None))
         self._set_description(kwargs.get("description", ""))
         self._set_label(kwargs.get("label", ""))
         self._set_unit(kwargs.get("unit", "-"))
@@ -111,12 +117,21 @@ class Attribute(object):
     def _set_value(self, value):
         try:
             dtype = self.DTYPES.get(self.dtype, self.guess_dtype(value))
+            print("!dtype", dtype)
 
-            if self.dtype != dtype.__name__:
-                # logger.debug("guess dtype for ``: ``".format(value, dtype.__name__))
-                self.dtype = dtype.__name__
+            # ---- Listen-Sonderfälle ----
+            if self.dtype == "list":
+                if value is None or value == "":
+                    self._value = []
+                elif isinstance(value, str):
+                    self._value = [v.strip() for v in value.split(",") if v.strip()]
+                elif isinstance(value, list):
+                    self._value = [str(v) for v in value]
+                else:
+                    raise ValueError(f"Cannot cast {value} to list[str]")
 
-            if value == "" and self.dtype in ["str"]:
+            # ---- normale Dtypen ----
+            elif self.dtype == "str" and value == "":
                 self._value = ""
             elif not value and self.dtype not in ["int", "float", "bool"]:
                 self._value = None
@@ -130,6 +145,7 @@ class Attribute(object):
                 self._value = True
             else:
                 self._value = dtype(value)
+
         except ValueError as exp:
             logger.error("error Attribute.value: {}".format(exp))
 
@@ -148,6 +164,8 @@ class Attribute(object):
             return value.__class__
         elif isinstance(value, (str)):
             return value.__class__
+        elif isinstance(value, (list, tuple)):
+            return "list[str]"
         else:
             return str
 
