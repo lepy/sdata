@@ -1,6 +1,6 @@
 # -*-coding: utf-8-*-
 import logging
-logger = logging.getLogger("sdata")
+logger = logging.getLogger(__name__)
 import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
@@ -11,8 +11,7 @@ import hashlib
 import re
 import copy
 from sdata.contrib.sortedcontainers.sorteddict import SortedDict
-from typing import Any
-
+from typing import Any, Dict, List, Optional, Type, Union
 
 def extract_name_unit(value):
     """extract name and unit from a combined string
@@ -64,13 +63,15 @@ class Attribute(object):
         """Attribute(name, value, dtype=str, unit="-", description="", label="", required=False)
         :param name
         :param value
-        :param dtype ['float', 'int', 'str', 'timestamp', 'uuid?', 'unicode?']
+        :param dtype ['float', 'int', 'str', 'timestamp', 'bool']
         :param description
-        :param dimension e.g. force, length, strain, count, energy
         :param unit
         :param label
         :param required
         """
+#todo   :param dimension e.g. force, length, strain, count, energy
+
+
         self._name = None
         self._value = None
         self._unit = "-"

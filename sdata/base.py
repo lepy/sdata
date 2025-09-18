@@ -10,7 +10,7 @@ from sdata import __version__
 from sdata.sclass import register
 from sdata.suuid import SUUID
 from sdata.metadata import Metadata, Attribute, extract_name_unit
-
+from sdata.timestamp import now_utc_str, now_local_str, today_str
 import sdata.sclass
 
 # from sdata.timestamp import now_utc_str, now_local_str, today_str
@@ -41,9 +41,10 @@ class Base:
     SDATA_PARENT_SNAME = "_sdata_parent_sname"  # Changed to store sname for consistency
     SDATA_PROJECT_SNAME = "_sdata_project_sname"  # Changed to store sname for consistency
     SDATA_TOPOLOGY_CLASS = "_sdata_topology_class" # Topology class, e.g. BFO (Basic Formal Ontology) top-level ontology class name
+    SDATA_CTIME = "_sdata_ctime"
 
     SDATA_ATTRIBUTES: List[str] = [
-        SDATA_VERSION, SDATA_NAME, SDATA_SUUID, SDATA_CLASS,
+        SDATA_VERSION, SDATA_NAME, SDATA_SUUID, SDATA_CLASS, SDATA_CTIME,
         SDATA_PARENT_SNAME, SDATA_PROJECT_SNAME, SDATA_TOPOLOGY_CLASS
     ]
 
@@ -64,10 +65,12 @@ class Base:
         :raises ValueError: If name is empty or None.
         """
 
+
         name = kwargs.get("name", "noname")
         if not name:
             raise ValueError("Name cannot be empty")
         self.metadata = Metadata(name=name)
+        self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="UTC creation date", required=False)
 
         project = kwargs.get("project", None)
         if project is not None and issubclass(project.__class__, Base):
@@ -208,6 +211,24 @@ class Base:
         fget=_get_sname, fset=_set_sname,
         doc="The sname of the object."
     )
+
+    def get_sdata_did_method(self) -> str:
+        """Returns the sdata class id."""
+        module_class_name = self.md.get("_sdata_class").value or "sdata.base:Base"
+        if ":" in module_class_name:
+            module, class_name = module_class_name.rsplit(":", 1)
+        else:
+            module = "sdata.base"
+            class_name = module_class_name
+        module = module.replace(":", "-").replace(".", "-").lower()
+        print(module_class_name, module, class_name)
+        return module
+
+    @property
+    def did(self):
+        """DID"""
+        module = self.get_sdata_did_method()
+        return f"did:sd-{module}:{self.sname}"
 
     def _get_name(self) -> str:
         return self.metadata.get(self.SDATA_NAME).value

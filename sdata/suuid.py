@@ -33,7 +33,7 @@ class SUUID:
              'suuid': 'NzhiyzJiZjczOTAwNWE3YmJjMTQwMTlmNzY3ZGJkYzFNeUNsYXNzQE15TmFtZQ=='}
     """
 
-    SEP = "@"
+    SEP = "__"
 
     def __init__(self, class_name, name=None, huuid=None):
         """Generiert ein SUUID-Objekt.
@@ -44,6 +44,7 @@ class SUUID:
         """
         if not class_name or not isinstance(class_name, str):
             raise ValueError("class_name muss ein nicht-leerer String sein")
+        class_name = re.sub(r'[_.-]+', '_', class_name)
         self.class_name = class_name
         name = name or ""
         self.name = self.generate_safe_filename(name)
@@ -78,10 +79,12 @@ class SUUID:
         # Konvertiere Umlaute und andere diakritische Zeichen zu ASCII
         mapper = {
             "ä": "ae", "ö": "oe", "ü": "ue", "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
-            "ß": "ss", " ": "_", "!": "_", "@": "_", "#": "_", "$": "_",
-            "%": "_", "^": "_", "&": "_", "*": "_", "(": "_", ")": "_",
-            ";": "_", ",": "_", "+": "_", "=": "_", "[": "_", "]": "_",
-            "{": "_", "}": "_", "`": "_", "~": "_"
+            "ß": "ss", "é": "e", "è": "e", "ê": "e", "ë": "e",
+            "á": "a", "à": "a", "â": "a", "ã": "a", "å": "a",
+            "ç": "c", "ñ": "n", "ø": "o", " ": "_", "!": "_", "@": "_at_",
+            "#": "_", "$": "_", "%": "_", "^": "_", "&": "_", "*": "_",
+            "(": "_", ")": "_", ";": "_", ",": "_", "+": "_", "=": "_",
+            "[": "_", "]": "_", "{": "_", "}": "_", "`": "_", "~": "_"
         }
         for k, v in mapper.items():
             original_name = original_name.replace(k, v)
@@ -130,6 +133,11 @@ class SUUID:
     def uuid(self):
         """UUID-Objekt aus huuid."""
         return uuid.UUID(hex=self.huuid)
+
+    @property
+    def did(self):
+        """DID"""
+        return f"did:sdata-suuid:{self.sname}"
 
     @property
     def hex(self):
