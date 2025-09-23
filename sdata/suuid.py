@@ -120,10 +120,10 @@ class SUUID:
         return name
 
     def __str__(self):
-        return f"({self.class_name}{self.SEP}{self.name}{self.SEP}{self.huuid})"
+        return f"<SUUID:{self.class_name}{self.SEP}{self.name}{self.SEP}{self.huuid}>"
 
     def __repr__(self):
-        return f"({self.class_name}{self.SEP}{self.name}{self.SEP}{self.huuid})"
+        return f"<SUUID:{self.class_name}{self.SEP}{self.name}{self.SEP}{self.huuid}>"
 
     def get_uuid(self):
         """UUID-Objekt aus huuid."""
@@ -242,7 +242,7 @@ class SUUID:
         return cls.from_idstr(id_string)
 
     @classmethod
-    def from_suuid_sname(cls, s):
+    def from_suuid_sname(cls, s, strict=False):
         """Erstellt SUUID aus sname-String (class_name@name@huuid)."""
         try:
             parts = s.split(cls.SEP)
@@ -251,7 +251,9 @@ class SUUID:
             class_name, name, huuid = parts
             return cls(class_name=class_name, name=name, huuid=huuid)
         except Exception as e:
-            logging.warning(e)
+            if strict:
+                logging.warning(e)
+                raise
             return
 
     @classmethod

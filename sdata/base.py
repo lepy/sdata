@@ -68,7 +68,10 @@ class Base:
 
         project = kwargs.get("project", None)
         project_suuid = SUUID.from_obj(project, class_name="Project")
-        if project_suuid is None:
+        if project_suuid is None and project is not None:
+            project_sname = ""
+            logger.warning(f"invalid project sname '{project}'")
+        elif project_suuid is None:
             project_sname = ""
         else:
             project_sname = project_suuid.sname
@@ -123,14 +126,13 @@ class Base:
             parent_sname = None
         else:
             parent_sname = parent_suuid.sname
-        print("parent_sname!",parent_sname)
         if parent_sname is not None:
             self.metadata.add(
                 self.SDATA_PARENT_SNAME, parent_sname, dtype="str",
                 description="sname of the parent"
             )
         elif parent_sname is None and parent is not None:
-            logger.error("invalid Parent")
+            logger.warning(f"invalid parent sname '{parent}'")
         else:
             self.metadata.add(
                 self.SDATA_PARENT_SNAME, "",
@@ -192,7 +194,7 @@ class Base:
     @property
     def suuid(self) -> SUUID:
         """Returns the SUUID object."""
-        return SUUID.from_suuid_str(self.metadata.get(self.SDATA_SUUID).value)
+        return SUUID.from_suuid_sname(self.metadata.get(self.SDATA_SNAME).value)
 
     @property
     def suuid_bytes(self) -> bytes:
