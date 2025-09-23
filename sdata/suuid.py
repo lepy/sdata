@@ -4,7 +4,7 @@ import hashlib
 import os
 import re
 import unicodedata
-
+import logging
 """
 SUUID
 """
@@ -50,7 +50,7 @@ class SUUID:
         self.name = self.generate_safe_filename(name)
         self.huuid = huuid or uuid.uuid4().hex
         if len(self.huuid) != 32 or not all(c in '0123456789abcdefABCDEF' for c in self.huuid):
-            raise ValueError("huuid muss ein 32-Zeichen langer Hex-String sein")
+            raise ValueError(f"huuid muss ein 32-Zeichen langer Hex-String sein '{self.huuid}'")
 
     @staticmethod
     def generate_safe_filename(original_name: str) -> str:
@@ -244,11 +244,15 @@ class SUUID:
     @classmethod
     def from_suuid_sname(cls, s):
         """Erstellt SUUID aus sname-String (class_name@name@huuid)."""
-        parts = s.split(cls.SEP)
-        if len(parts) != 3:
-            raise ValueError("Ungültiger sname-Format: Muss genau zwei Separatoren enthalten")
-        class_name, name, huuid = parts
-        return cls(class_name=class_name, name=name, huuid=huuid)
+        try:
+            parts = s.split(cls.SEP)
+            if len(parts) != 3:
+                raise ValueError(f"Ungültiger sname-Format: Muss genau zwei Separatoren enthalten '{parts}'")
+            class_name, name, huuid = parts
+            return cls(class_name=class_name, name=name, huuid=huuid)
+        except Exception as e:
+            logging.warning(e)
+            return
 
     @classmethod
     def from_idstr(cls, id_string):
@@ -264,6 +268,19 @@ class SUUID:
             name = ""
         return cls(class_name=class_name, name=name, huuid=huuid)
 
+    @classmethod
+    def from_obj(cls, obj, class_name=None):
+        if class_name is None:
+            class_name = cls.__name__
+        suuid = None
+        if obj is not None and hasattr(obj, "sname"):
+            suuid = SUUID.from_suuid_sname(obj.sname)
+        elif obj is not None and issubclass(obj.__class__, (str,)):
+            try:
+                suuid = SUUID.from_suuid_sname(obj)
+            except ValueError:
+                suuid = SUUID.from_name(class_name, str(obj), ns_name="")
+        return suuid
 
 if __name__ == '__main__':
     sid = SUUID.from_name(class_name="DATA", name="otto")

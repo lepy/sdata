@@ -13,12 +13,7 @@ from sdata.metadata import Metadata, Attribute, extract_name_unit
 from sdata.timestamp import now_utc_str, now_local_str, today_str
 import sdata.sclass
 
-# from sdata.timestamp import now_utc_str, now_local_str, today_str
-
-
-
 logging.basicConfig(level=logging.INFO)
-
 logger = logging.getLogger(__name__)
 
 
@@ -37,14 +32,14 @@ class Base:
     SDATA_CLASS = "_sdata_class"
     SDATA_NAME = "_sdata_name"
     SDATA_SNAME = "_sdata_sname"
-    SDATA_SUUID = "_sdata_suuid"
+    # SDATA_SUUID = "_sdata_suuid"
     SDATA_PARENT_SNAME = "_sdata_parent_sname"  # Changed to store sname for consistency
     SDATA_PROJECT_SNAME = "_sdata_project_sname"  # Changed to store sname for consistency
-    SDATA_TOPOLOGY_CLASS = "_sdata_topology_class" # Topology class, e.g. BFO (Basic Formal Ontology) top-level ontology class name
+    SDATA_TOPOLOGY_CLASS = "_sdata_topology_class"  # Topology class, e.g. BFO (Basic Formal Ontology) top-level ontology class name
     SDATA_CTIME = "_sdata_ctime"
 
     SDATA_ATTRIBUTES: List[str] = [
-        SDATA_VERSION, SDATA_NAME, SDATA_SUUID, SDATA_CLASS, SDATA_CTIME,
+        SDATA_VERSION, SDATA_NAME, SDATA_CLASS, SDATA_CTIME,
         SDATA_PARENT_SNAME, SDATA_PROJECT_SNAME, SDATA_TOPOLOGY_CLASS
     ]
 
@@ -65,7 +60,6 @@ class Base:
         :raises ValueError: If name is empty or None.
         """
 
-
         name = kwargs.get("name", "noname")
         if not name:
             raise ValueError("Name cannot be empty")
@@ -73,30 +67,20 @@ class Base:
         self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="UTC creation date", required=False)
 
         project = kwargs.get("project", None)
-        if project is not None and issubclass(project.__class__, Base):
-            self.metadata.add(
-                self.SDATA_PROJECT_SNAME, project.sname, dtype="str",
-                description="sname of the project"
-            )
-        elif project is not None:
-            logger.warning(
-                f"project must be of type Base, got {project.__class__.__bases__}"
-            )
-            self.metadata.add(
-                self.SDATA_PROJECT_SNAME, str(kwargs.get("project_sname", "")),
-                dtype="str", description="sname of the project"
-            )
+        project_suuid = SUUID.from_obj(project, class_name="Project")
+        if project_suuid is None:
+            project_sname = ""
         else:
-            self.metadata.add(
-                self.SDATA_PROJECT_SNAME, str(kwargs.get("project_sname", "")),
-                dtype="str", description="sname of the project"
-            )
-
-        ns_name = kwargs.get("ns_name", None)
-        if self.project and ns_name is None:
+            project_sname = project_suuid.sname
+        self.metadata.add(
+            self.SDATA_PROJECT_SNAME, project_sname, dtype="str",
+            description="sname of the project"
+        )
+        if self.project:
             ns_name = self.project.sname
+        else:
+            ns_name = None
 
-        print("!ns_name", ns_name, self.project)
         if ns_name is not None:
             suuid = SUUID.from_name(
                 class_name=self.__class__.__name__,
@@ -105,6 +89,7 @@ class Base:
             )
         else:
             suuid = SUUID(self.__class__.__name__, name=SUUID.generate_safe_filename(name))
+
         self.default_attributes: List[Dict[str, Any]] = []
 
         self.metadata.add(
@@ -113,7 +98,7 @@ class Base:
         )
         self.metadata.add(
             self.SDATA_TOPOLOGY_CLASS, "sdata.sclass:IndependentContinuant", dtype="str",
-            description="sdata topology class name", required=True
+            description="sdata topology class name", required=False
         )
         self.metadata.add(
             self.SDATA_NAME, name, dtype="str",
@@ -123,28 +108,32 @@ class Base:
             self.SDATA_SNAME, suuid.sname, dtype="str",
             description="sname of the data object", required=True
         )
-        self.metadata.add(
-            self.SDATA_SUUID, suuid.suuid_str, dtype="str",
-            description="Super Universally Unique Identifier", required=True
-        )
+        # self.metadata.add(
+        #     self.SDATA_SUUID, suuid.suuid_str, dtype="str",
+        #     description="Super Universally Unique Identifier", required=True
+        # )
         self.metadata.add(
             self.SDATA_CLASS, self.get_sdata_spec(), dtype="str",
             description="sdata class", required=True
         )
 
         parent = kwargs.get("parent", None)
-        if parent is not None and issubclass(parent.__class__, Base):
+        parent_suuid = SUUID.from_obj(parent)
+        if parent_suuid is None:
+            parent_sname = None
+        else:
+            parent_sname = parent_suuid.sname
+        print("parent_sname!",parent_sname)
+        if parent_sname is not None:
             self.metadata.add(
-                self.SDATA_PARENT_SNAME, parent.sname, dtype="str",
+                self.SDATA_PARENT_SNAME, parent_sname, dtype="str",
                 description="sname of the parent"
             )
-        elif parent is not None:
-            logger.warning(
-                f"parent must be of type Base, got {parent.__class__.__bases__}"
-            )
+        elif parent_sname is None and parent is not None:
+            logger.error("invalid Parent")
         else:
             self.metadata.add(
-                self.SDATA_PARENT_SNAME, str(kwargs.get("parent_sname", "")),
+                self.SDATA_PARENT_SNAME, "",
                 dtype="str", description="sname of the parent"
             )
 
@@ -236,8 +225,8 @@ class Base:
     @property
     def did(self):
         """DID"""
-        module = self.get_sdata_did_method()
-        return f"did:sd-{module}:{self.sname}"
+        module = "sdata" # self.get_sdata_did_method()
+        return f"did:suuid:{self.sname}:{module}"
 
     def _get_name(self) -> str:
         return self.metadata.get(self.SDATA_NAME).value
@@ -416,8 +405,9 @@ class Base:
             d = json.loads(s)
         return cls.from_dict(d)
 
+
 def cls_from_spec(
-#        class_name: str,
+        #        class_name: str,
         sdata_spec: Optional[str] = "sdata.base:Base",
         on_error: Literal["ignore", "strict"] = "strict",
         sdata_attrs: Optional[Dict[str, Any]] = None,
@@ -453,8 +443,9 @@ def cls_from_spec(
     setattr(cls, '__init__', __init__)
     return cls
 
+
 def sclass_factory(
-#        class_name: str,
+        #        class_name: str,
         sdata_spec: Optional[str] = "sdata.base:Base",
         on_error: Literal["ignore", "strict"] = "strict",
         sdata_attrs: Optional[Dict[str, Any]] = None,
@@ -487,7 +478,6 @@ def sclass_factory(
     def __init__(self, **init_kwargs: Any) -> None:
         super(cls, self).__init__(**init_kwargs)  # type: ignore
 
-
     setattr(cls, '__init__', __init__)
 
     # print(sdata_spec, sdata_class, type(sdata_class), cls)
@@ -496,6 +486,7 @@ def sclass_factory(
         instance.metadata["_sdata_class"].value = sdata_spec
     # print(sdata_class, sdata_class.__name__ == "Base")
     return instance
+
 
 def sdata_factory(
         class_name: str,
@@ -521,7 +512,6 @@ def sdata_factory(
 
     setattr(cls, '__init__', __init__)
     return cls(**kwargs)
-
 
 
 if __name__ == '__main__':

@@ -15,7 +15,7 @@ class ProcessData(Base):
         attributes = kwargs.get('attributes', [])
         self.set_attributes(attributes)
         self.metadata.add(
-            self.SDATA_BFO_CLASS, "sdata.sclass:GenericallyDependentContinuant", dtype="str",
+            self.SDATA_TOPOLOGY_CLASS, "sdata.sclass:GenericallyDependentContinuant", dtype="str",
             description="sdata bfo class name", required=True
         )
 
@@ -291,7 +291,7 @@ def create_composite_process_class(
 
 def processdata_class_factory(
         class_name: str,
-        sdata_class: Type = ProcessData,  # Neu: Optionale Basisklasse, default ist Base
+        sdata_class: Type = ProcessData,
         sdata_attrs: Optional[Dict[str, Any]] = None,
         **kwargs: Any
 ) -> Any:
@@ -316,6 +316,10 @@ def processdata_class_factory(
     return cls
 
 def sclass(class_name) -> 'Base':
+    """create class from class_name"""
+    return processdata_class_factory(class_name)
+
+def pdata(class_name) -> 'Base':
     """create class from class_name"""
     return processdata_class_factory(class_name)
 
