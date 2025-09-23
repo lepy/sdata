@@ -146,7 +146,7 @@ class SUUID:
 
     def to_list(self):
         """Gibt eine Liste mit [suuid_str, class_name, name, huuid] zurück."""
-        return [self.suuid_str, self.class_name, self.name, self.huuid]
+        return [self.sname, self.suuid_str, self.class_name, self.name, self.huuid]
 
     def to_dict(self):
         """Gibt ein Dict mit class_name, name, huuid und suuid_str zurück."""
@@ -154,7 +154,8 @@ class SUUID:
             "class_name": self.class_name,
             "name": self.name,
             "huuid": self.huuid,
-            "suuid": self.suuid_str
+            "suuid": self.suuid_str,
+            "sname": self.sname,
         }
 
     @property
