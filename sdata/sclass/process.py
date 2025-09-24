@@ -16,7 +16,7 @@ class ProcessData(Base):
         self.set_attributes(attributes)
         self.metadata.add(
             self.SDATA_TOPOLOGY_CLASS, "sdata.sclass:GenericallyDependentContinuant", dtype="str",
-            description="sdata bfo class name", required=True
+            description="sdata topology class name", required=True
         )
 
     def set_attributes(self, attributes: List[Any]):
@@ -44,8 +44,8 @@ class ProcessNode(Base):
     def __init__(self, name: str = "ProcessNode", inputs: Dict[str, ProcessData] = None, **kwargs: Any):
         super().__init__(name=name, **kwargs)
         self.metadata.add(
-            self.SDATA_BFO_CLASS, "sdata.sclass:Prozess", dtype="str",
-            description="sdata bfo class name", required=True
+            self.SDATA_TOPOLOGY_CLASS, "sdata.sclass:Prozess", dtype="str",
+            description="sdata topology class name", required=True
         )
         self.inputs: Dict[str, ProcessData] = inputs or {}
         self.outputs: Dict[str, ProcessData] = {}

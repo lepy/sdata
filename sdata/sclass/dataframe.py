@@ -1,17 +1,25 @@
 import pandas as pd
 import io
+import os
 import base64
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 import logging
-from sdata.sclass.blob import Blob  # Assuming Blob is in sdata.blob or adjust import
+
+from sdata.metadata import Metadata, Attribute
+# from sdata.sclass.blob import Blob  # Assuming Blob is in sdata.blob or adjust import
+from sdata.base import Base
+
 logger = logging.getLogger(__name__)
 
-class DataFrame(Blob):
+
+class DataFrame(Base):
     def __init__(
-        self,
-        df: Optional[pd.DataFrame] = pd.DataFrame(),
-        column_metadata: Optional[Dict[str, Dict[str, str]]] = None,
-        **kwargs: Any
+            self,
+            df: Optional[pd.DataFrame] = pd.DataFrame(),
+            column_metadata: Optional[
+                Union[Dict[str, Dict[str, str]], Metadata]
+            ] = None,
+            **kwargs: Any
     ) -> None:
         """
         Initialize DataFrame with an optional Pandas DataFrame and optional column metadata.
@@ -24,76 +32,54 @@ class DataFrame(Blob):
         :param kwargs: Keyword arguments passed to Blob.__init__ (e.g., name, description).
         :raises ValueError: If column_metadata doesn't match df columns.
         """
-        if df is not None:
-            # Serialize df to Parquet bytes
-            bytes_io = io.BytesIO()
-            df.to_parquet(bytes_io, engine='pyarrow')
-            parquet_bytes = bytes_io.getvalue()
+        super().__init__(**kwargs)
+        self._df = None
+        self._column_metadata = Metadata()
 
-            super().__init__(
-                content_type='bytes',
-                value=parquet_bytes,
-                filetype='parquet',
-                **kwargs
-            )
-
-            if column_metadata is not None:
-                if set(column_metadata.keys()) != set(df.columns):
-                    raise ValueError("column_metadata keys must match the DataFrame's columns exactly.")
-                for meta in column_metadata.values():
-                    if not all(k in meta for k in ['label', 'unit']):
-                        raise ValueError("Each column_metadata entry must have 'label' and 'unit' keys.")
-            else:
-                column_metadata = {col: {'label': '', 'unit': ''} for col in df.columns}
-
-            self.data['column_metadata'] = column_metadata
-            logger.debug(f"Created DataFrame '{self.sname}' with {len(df.columns)} columns")
+        if column_metadata is not None and isinstance(column_metadata, dict):
+            self._column_metadata = MetaData.from_dict(column_metadata)
+        elif column_metadata is not None and isinstance(column_metadata, Metadata):
+            self._column_metadata = column_metadata.copy()
+        elif column_metadata is not None:
+            logger.warning("column_metadata not supported")
+            self._column_metadata = Metadata(name="column_metadata")
         else:
-            super().__init__(**kwargs)
-            self.data['column_metadata'] = column_metadata or {}
+            self._column_metadata = Metadata(name="column_metadata")
+
+        self._df = pd.DataFrame()
+        if df is not None:
+            self.df = df
 
     @property
-    def df(self) -> pd.DataFrame:
-        """
-        Lazily load and retrieve the DataFrame from Blob content (Parquet bytes).
-        Caches the loaded df.
-        """
-        if 'df_cached' in self.data:
-            return self.data['df_cached']
-
-        content_bytes = self.content_bytes  # Lazy load from Blob
-        bytes_io = io.BytesIO(content_bytes)
-        loaded_df = pd.read_parquet(bytes_io, engine='pyarrow')
-        self.data['df_cached'] = loaded_df
-        return loaded_df
+    def cmd(self):
+        return self._column_metadata
 
     @property
-    def column_metadata(self) -> Dict[str, Dict[str, str]]:
+    def cmdf(self):
+        return self._column_metadata.to_dataframe()
+
+    def _get_df(self):
+        return self._df
+
+    def _set_df(self, df):
+        if isinstance(df, pd.DataFrame):
+            self._df = df
+            if self._df.index.name is None:
+                self._df.index.name = "index"
+            for col in df.columns:
+                dtype = df[col].dtype
+                self._column_metadata.add(name=col, value=dtype.name)
+
+    df = property(fget=_get_df, fset=_set_df, doc="df object(pandas.DataFrame)")
+
+    @property
+    def column_metadata(self) -> Metadata:
         """
         Retrieve the column metadata.
 
         :return: Dict of column metadata {colname: {'label': str, 'unit': str}}.
         """
-        return self.data.get('column_metadata', {})
-
-    def update_column_metadata(self, colname: str, label: Optional[str] = None, unit: Optional[str] = None) -> None:
-        """
-        Update metadata for a specific column.
-
-        :param colname: The column name to update.
-        :param label: Optional new label.
-        :param unit: Optional new unit.
-        :raises KeyError: If colname not in DataFrame columns.
-        """
-        self.df  # Ensure df is loaded
-        if colname not in self.df.columns:
-            raise KeyError(f"Column '{colname}' not found in DataFrame.")
-        meta = self.column_metadata[colname]
-        if label is not None:
-            meta['label'] = label
-        if unit is not None:
-            meta['unit'] = unit
-        logger.debug(f"Updated metadata for column '{colname}' in {self.sname}")
+        return self._column_metadata
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -101,8 +87,11 @@ class DataFrame(Blob):
         The content (Parquet bytes) is handled by Blob.
         """
         result = super().to_dict()
-        if 'column_metadata' in self.data:
-            result['data']['column_metadata'] = self.data['column_metadata']
+        bytes_io = io.BytesIO()
+        self.df.to_parquet(bytes_io, engine='pyarrow')
+        parquet_bytes = bytes_io.getvalue()
+        result['data']['parquet_bytes'] = base64.b64encode(parquet_bytes).decode("ascii")
+        result['data']['column_metadata'] = self.column_metadata.to_dict()
         return result
 
     @classmethod
@@ -111,10 +100,153 @@ class DataFrame(Blob):
         Create a DataFrame instance from a dictionary.
         Uses Blob.from_dict and restores column_metadata; df is loaded lazily.
         """
-        instance = super().from_dict(d)
-        if 'column_metadata' not in instance.data:
-            instance.data['column_metadata'] = {}
+        # instance = super().from_dict(d)
+        metadata = Metadata.from_dict(d.get("metadata", {}))
+        column_metadata_dict = d['data'].get('column_metadata', {})
+        column_metadata = Metadata.from_dict(column_metadata_dict)
+
+        instance = cls()
+        instance.metadata = metadata
+        instance._column_metadata = column_metadata
+
+        parquet_str = d['data'].get('parquet_bytes', '')
+        parquet_bytes = base64.b64decode(parquet_str.encode("ascii"))
+        instance.df = pd.read_parquet(io.BytesIO(parquet_bytes), engine='pyarrow')
         return instance
+
+    def to_dataframe(self):
+        """Export the DataFrame with additional metadata and description.
+
+        Returns:
+            pandas.DataFrame: A copy of the DataFrame with added attributes.
+        """
+        df = self.df.copy()
+        df.attrs["!sdata"] = {
+            "metadata": self.metadata.to_dict(),
+            "description": self.description
+        }
+        return df
+
+    def to_parquet(self, path=None, filename=None, **kwargs):
+        """
+        Serialize this sdata.DataFrame to Parquet format, embedding metadata.
+
+        This method will copy the internal pandas DataFrame, attach SData metadata
+        (dataset‐level metadata, per‐column metadata, and description) to `df.attrs`,
+        and then write the result as a Parquet file. If no output path is given,
+        it will return the Parquet bytes buffer.
+
+        Args:
+            path (str, optional): Directory where the Parquet file will be saved.
+                If provided (and `filename` is None), a file named
+                `<sname>.spq` is created under this directory.
+            filename (str, optional): Exact filename (without full path)
+                for the output Parquet file. Defaults is `<sname>.spq`.
+            **kwargs: Additional keyword arguments passed to `pandas.DataFrame.to_parquet`,
+                e.g.:
+                - engine (str): Parquet engine, defaults to "pyarrow".
+                - compression (str): Compression codec, defaults to "zstd".
+
+        Returns:
+            str or bytes:
+                - If `path` (or `filename`) is provided, returns the full file path (str)
+                  where the Parquet file was written.
+                - Otherwise, returns the in‐memory Parquet representation as bytes.
+
+        Example:
+            # Save to disk under /data/output/<sname>.spq with default naming:
+            out_fp = sdf.to_parquet(path="/data/output")
+            print("Saved to:", out_fp)
+
+            # Get in‐memory Parquet bytes (no file on disk):
+            parquet_bytes = sdf.to_parquet()
+        """
+        engine = kwargs.get("engine", "pyarrow")
+        compression = kwargs.get("compression", "zstd")
+
+        df = self.df.copy()
+        df.attrs["_sdata"] = {"metadata": self.metadata.to_dict(),
+                              "column_metadata": self.column_metadata.to_dict(),
+                              "description": self.description}
+
+        if filename is None and path is not None:
+            filename = self.sname + ".spq"
+            filepath = os.path.join(path, filename)
+            df.to_parquet(filepath, engine=engine, compression=compression)
+            logger.info(f"DataFrame Parquet saved to {filepath}")
+            return filepath
+        else:
+            return df.to_parquet(engine=engine, compression=compression)
+
+    @classmethod
+    def from_parquet_bytes(cls, parquet_bytes, **kwargs):
+        """load data from parquet file
+
+        :param filepath:
+        :return: Data object
+        """
+        engine = kwargs.get("engine", "pyarrow")
+        buffer = io.BytesIO(parquet_bytes)
+        df = pd.read_parquet(buffer, engine=engine)
+        tt = cls()
+        tt.df = df
+
+        attrs = df.attrs.get("_sdata")
+        try:
+            tt.metadata = tt.metadata.from_dict(attrs["metadata"])
+        except:
+            logger.warning(f"ignore metadata")
+
+        try:
+            tt._column_metadata = tt.metadata.from_dict(attrs["column_metadata"])
+        except:
+            logger.warning(f"ignore column_metadata")
+
+        try:
+            tt.description = attrs.get("description")
+        except:
+            logger.warning(f"ignore description")
+
+        return tt
+
+    @classmethod
+    def from_parquet(cls, filepath):
+        """load data from parquet file
+
+        :param filepath:
+        :return: Data object
+        """
+        try:
+            if os.path.exists(filepath):
+                df = pd.read_parquet(filepath)
+                tt = cls(name=filepath)
+                tt.df = df
+                logger.info(f"{tt}")
+                attrs = df.attrs.get("_sdata")
+                try:
+                    tt.metadata = tt.metadata.from_dict(attrs["metadata"])
+                except:
+                    logger.warning(f"ignore metadata {filepath}")
+
+                try:
+                    tt._column_metadata = tt.metadata.from_dict(attrs["column_metadata"])
+                except:
+                    logger.warning(f"ignore column_metadata")
+
+                try:
+                    tt.description = attrs.get("description")
+                except:
+                    logger.warning(f"ignore description {filepath}")
+                if attrs is not None:
+                    tt.df.attrs.pop("_sdata")
+
+                return tt
+            else:
+                raise Exception(f"no DataFrame parquet file {filepath}")
+
+        except Exception as exp:
+            raise
+
 
 if __name__ == '__main__':
     # Erstelle einen Pandas DataFrame

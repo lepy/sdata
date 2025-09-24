@@ -146,7 +146,7 @@ class Base:
         self._description = kwargs.get("description", "")
         self._data: Dict[str, Any] = kwargs.get("data", {})
 
-        logger.debug(f"Created {self.__class__.__name__} '{suuid.sname}'")
+        # logger.debug(f"Created {self.__class__.__name__} '{suuid.sname}'")
 
     @property
     def md(self) -> Metadata:
