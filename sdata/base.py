@@ -27,6 +27,7 @@ class Base:
     Provides core functionality for handling metadata, unique identifiers,
     serialization, and hierarchical relationships.
     """
+    SDATA_CLS = "sdata.base.Base"
 
     SDATA_VERSION = "_sdata_version"
     SDATA_CLASS = "_sdata_class"
@@ -46,7 +47,7 @@ class Base:
     @classmethod
     def get_sdata_spec(cls: type) -> str:
         """Canonischer, importierbarer String für eine Klasse."""
-        return f"{cls.__module__}:{cls.__qualname__}"
+        return f"{cls.SDATA_CLS}:{cls.__qualname__}"
 
     def __init__(self, **kwargs: Any) -> None:
         """

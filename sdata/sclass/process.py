@@ -306,13 +306,13 @@ def processdata_class_factory(
     """
     class_name = generate_safe_name(class_name)
     sdata_attrs = sdata_attrs or {}
-
     cls = type(class_name, (sdata_class,), sdata_attrs)
 
     def __init__(self, **init_kwargs: Any) -> None:
         super(cls, self).__init__(**init_kwargs)  # type: ignore
 
     setattr(cls, '__init__', __init__)
+    cls.SDATA_CLS = f"{sdata_class.__module__}.{sdata_class.__name__}"
     return cls
 
 def sclass(class_name) -> 'Base':

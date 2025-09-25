@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class DataFrame(Base):
+    SDATA_CLS = "sdata.sclass.dataframe.DataFrame"
+
+
     def __init__(
             self,
             df: Optional[pd.DataFrame] = pd.DataFrame(),
@@ -37,7 +40,7 @@ class DataFrame(Base):
         self._column_metadata = Metadata()
 
         if column_metadata is not None and isinstance(column_metadata, dict):
-            self._column_metadata = MetaData.from_dict(column_metadata)
+            self._column_metadata = Metadata.from_dict(column_metadata)
         elif column_metadata is not None and isinstance(column_metadata, Metadata):
             self._column_metadata = column_metadata.copy()
         elif column_metadata is not None:
