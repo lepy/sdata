@@ -1,9 +1,10 @@
 import os
+import io
 import uuid
 import logging
 import unicodedata
 import json
-from typing import List, Dict, Any, Optional, Type, Literal
+from typing import List, Dict, Any, Optional, Type, Literal, Union, Tuple, BinaryIO
 
 import pandas
 from sdata import __version__
@@ -12,6 +13,9 @@ from sdata.suuid import SUUID
 from sdata.metadata import Metadata, Attribute, extract_name_unit
 from sdata.timestamp import now_utc_str, now_local_str, today_str
 import sdata.sclass
+import gzip
+import zipfile
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -85,7 +89,10 @@ class Base:
         else:
             ns_name = None
 
-        if ns_name is not None:
+        _suuid = kwargs.get("suuid", None)
+        if _suuid and isinstance(_suuid, SUUID):
+            suuid = _suuid
+        elif ns_name is not None: # namespace = self.project.sname
             suuid = SUUID.from_name(
                 class_name=self.__class__.__name__,
                 name=SUUID.generate_safe_filename(name),
@@ -408,6 +415,102 @@ class Base:
             d = json.loads(s)
         return cls.from_dict(d)
 
+    def to_bytes_gzip(self):
+        json_str = self.to_json()
+        compressed = gzip.compress(json_str.encode("utf-8"))
+        return compressed
+
+    @classmethod
+    def from_bytes_gzip(cls, compressed: bytes):
+        decompressed = gzip.decompress(compressed).decode("utf-8")
+        instance = cls.from_json(decompressed)
+        return instance
+
+    def to_zip(
+        self,
+        filepath: Optional[Union[str, Path]] = None,
+        *,
+        arcname: str = "data.json",
+        compresslevel: int = 6,
+        deterministic: bool = False,
+    ) -> io.BytesIO:
+        """
+        Serialisiert das Objekt via to_json() und packt es als data.json in ein ZIP.
+        - Wenn 'filepath' gesetzt ist, wird die ZIP-Datei geschrieben.
+        - Rückgabe ist immer ein BytesIO, beginnend bei Position 0.
+        """
+        json_str = self.to_json()
+
+        buf = io.BytesIO()
+        compression = zipfile.ZIP_DEFLATED
+
+        # Optional: deterministische ZIPs (feste Timestamp -> reproduzierbar)
+        if deterministic:
+            info = zipfile.ZipInfo(arcname, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = compression
+            with zipfile.ZipFile(buf, mode="w", compression=compression, compresslevel=compresslevel) as zf:
+                zf.writestr(info, json_str)
+        else:
+            with zipfile.ZipFile(buf, mode="w", compression=compression, compresslevel=compresslevel) as zf:
+                zf.writestr(arcname, json_str)
+
+        buf.seek(0)
+
+        if filepath is not None:
+            p = Path(filepath)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(buf.getvalue())
+            buf.seek(0)
+
+        return buf
+
+    @classmethod
+    def from_zip(
+        cls,
+        src: Union[str, Path, bytes, io.BytesIO, BinaryIO],
+        *,
+        member: Optional[str] = None,
+        encoding: str = "utf-8",
+    ):
+        """
+        Erzeugt eine Instanz aus einem ZIP, das eine JSON-Datei enthält.
+        'src' kann ein Dateipfad, Bytes, BytesIO oder beliebiger file-like Stream sein.
+        - 'member': Name des JSON-Eintrags im ZIP. Wenn None:
+            * nimm die einzige .json-Datei
+            * oder, wenn nur ein Eintrag existiert, nimm diesen
+            * sonst Fehler (Mehrdeutigkeit).
+        """
+        def _open_zipfile(source):
+            # Gibt einen Kontextmanager zurück, der ein ZipFile liefert
+            if isinstance(source, (str, Path)):
+                return zipfile.ZipFile(source, mode="r")
+            if isinstance(source, bytes):
+                return zipfile.ZipFile(io.BytesIO(source), mode="r")
+            if isinstance(source, io.BytesIO):
+                source.seek(0)
+                return zipfile.ZipFile(source, mode="r")
+            # generischer file-like Stream
+            try:
+                source.seek(0)
+            except Exception:
+                pass
+            return zipfile.ZipFile(source, mode="r")
+
+        with _open_zipfile(src) as zf:
+            names = zf.namelist()
+            chosen = member
+            if chosen is None:
+                json_members = [n for n in names if n.lower().endswith(".json")]
+                if len(json_members) == 1:
+                    chosen = json_members[0]
+                elif len(json_members) == 0 and len(names) == 1:
+                    chosen = names[0]
+                else:
+                    raise ValueError(
+                        f"ZIP enthält {len(names)} Einträge ({names}). Bitte 'member' angeben."
+                    )
+            data = zf.read(chosen).decode(encoding)
+            return cls.from_json(data)
 
 def cls_from_spec(
         #        class_name: str,

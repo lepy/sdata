@@ -23,7 +23,8 @@ import pandas
 from sdata.metadata import Metadata, Attribute
 from sdata.data import Data
 from sdata.base import Base, sdata_factory
-from sdata.sclass.blob import Blob
+#from sdata.sclass.blob import Blob
+from sdata.sclass.dataframe import DataFrame
 from sdata.suuid import SUUID
 from sdata.sclass.image import Image
 
@@ -117,11 +118,14 @@ def generate_safe_name(original_name: str) -> str:
 
 SDATACLS = {"Data": Data,
             "Image": Image,
-            "Blob": Blob,
+            # "Blob": Blob,
             "SUUID": SUUID,
+            "DataFrame": DataFrame,
             }
 
-__all__ = ["Data", "Image", "Blob", "SUUID"]
+__all__ = ["Data", "Image",
+           # "Blob",
+           "SUUID", "DataFrame"]
 
 
 def print_classes():

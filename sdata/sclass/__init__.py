@@ -13,6 +13,7 @@ _registry.register_many({
     "Base": "sdata.base:Base",
     "Blob":"sdata.sclass.blob:Blob",
     "DataFrame":"sdata.sclass.dataframe:DataFrame",
+    "FileReference":"sdata.sclass.filereference:FileReference",
     "Image":"sdata.sclass.image:Image",
     "ProcessData":"sdata.sclass.process:ProcessData",
     "ProcessNode":"sdata.sclass.process:ProcessNode",
@@ -71,7 +72,7 @@ def is_importable_by_spec(cls: type) -> bool:
     except Exception:
         return False
 
-def make_module_alias(cls: type, alias: str | None = None) -> str:
+def make_module_alias(cls: type, alias: Optional[str] = None) -> str:
     """
     Falls importierbarkeits-Check scheitert, Klassenalias im Modul erzeugen:
     mod:Alias  → importierbar, auch wenn Klasse ursprünglich lokal/nested war.
