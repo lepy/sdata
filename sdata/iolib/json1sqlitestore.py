@@ -59,8 +59,8 @@ class JSON1SQLiteStore:
         self.json1_extension = json1_extension
         self._init_conn()
         # Automatically index the _sdata_* fields if not specified
-        sdata_keys = ['_sdata_class', '_sdata_name', '_sdata_parent', '_sdata_project']
-        sdata_unique_keys = ['_sdata_suuid', '_sdata_sname']
+        sdata_keys = ['_sdata_class', '_sdata_name', '_sdata_parent_sname', '_sdata_project_sname']
+        sdata_unique_keys = ['_sdata_sname']
         index_keys = list(set((index_keys or []) + sdata_keys))
         unique_index_keys = list(set((unique_index_keys or []) + sdata_unique_keys))
         for key in index_keys:
@@ -109,10 +109,9 @@ class JSON1SQLiteStore:
                 created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
                 _sdata_class TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_class')) STORED,
                 _sdata_name TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_name')) STORED,
-                _sdata_suuid TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_suuid')) STORED,
                 _sdata_sname TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_sname')) STORED,
-                _sdata_parent TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_parent')) STORED,
-                _sdata_project TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_project')) STORED
+                _sdata_parent TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_parent_sname')) STORED,
+                _sdata_project TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_project_sname')) STORED
             );
             """
         )
@@ -531,9 +530,9 @@ class JSON1SQLiteStore:
         if class_name:
             filter.append(f"_sdata_class = '{class_name}'")
         if project:
-            filter.append(f"_sdata_project = '{project}'")
+            filter.append(f"_sdata_project_sname = '{project}'")
         if parent:
-            filter.append(f"_sdata_parent = '{parent}'")
+            filter.append(f"_sdata_parent_sname = '{parent}'")
 
         if filter:
             filter_str = " AND ".join(filter)

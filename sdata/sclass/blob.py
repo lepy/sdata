@@ -36,6 +36,89 @@ class Blob(Base):
 
     ContentType = Literal['bytes', 'uri']
 
+    DEFAULT_METADATA = {
+    # "uuid": {
+    #     "name": "uuid",
+    #     "value": "123e4567-e89b-12d3-a456-426614174000",
+    #     "unit": None,
+    #     "dtype": "str",
+    #     "description": "A universally unique identification number (Universally Unique Identifier) that makes the asset globally unique. It is used to avoid duplicates and enable references.",
+    #     "label": "UUID",
+    #     "required": True,
+    #     "ontology": "saf:uuid"
+    # },
+    "checksum": {
+        "name": "checksum",
+        "value": None, #"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "unit": None,
+        "dtype": "str",
+        "description": "A hash value (based on the SHA-256 algorithm) that verifies the integrity of the asset. It ensures that the resource has not been modified (e.g., during downloads or storage).",
+        "label": "Checksum (SHA-256)",
+        "required": True,
+        "ontology": "saf:checksum"
+    },
+    "mime_type": {
+        "name": "mime_type",
+        "value": None, #"application/pdf",
+        "unit": None,
+        "dtype": "str",
+        "description": "The MIME type of the resource (e.g., 'application/pdf' for PDFs or 'text/html' for web pages), which indicates how the asset should be interpreted and processed.",
+        "label": "MIME Type",
+        "required": True,
+        "ontology": "saf:mimeType"
+    },
+    "source_uri": {
+        "name": "source_uri",
+        "value": None, #"https://example.com/original/file.pdf",
+        "unit": None,
+        "dtype": "str",
+        "description": "The original URI (Uniform Resource Identifier) from which the asset originates (e.g., a URL to a website or file).",
+        "label": "Source URI",
+        "required": False,
+        "ontology": "saf:sourceURI"
+    },
+    "creation_date": {
+        "name": "creation_date",
+        "value": None, #"2025-10-16T12:00:00Z",
+        "unit": None,
+        "dtype": "datetime",
+        "description": "The creation date of the asset, to track the history.",
+        "label": "Creation Date",
+        "required": True,
+        "ontology": "saf:creationDate"
+    },
+    "modified_date": {
+        "name": "modified_date",
+        "value": None, #"2025-10-16T14:30:00Z",
+        "unit": None,
+        "dtype": "datetime",
+        "description": "The date of the last modification, important for version control.",
+        "label": "Modified Date",
+        "required": False,
+        "ontology": "saf:modifiedDate"
+    },
+    "publisher": {
+        "name": "publisher",
+        "value": None, #"ISO",
+        "unit": None,
+        "dtype": "str",
+        "description": "The publisher or owner of the resource (e.g., an organization like ISO or a company).",
+        "label": "Publisher",
+        "required": False,
+        "ontology": "saf:publisher"
+    },
+    "license": {
+        "name": "license",
+        "value": None, #"Creative Commons BY-SA 4.0",
+        "unit": None,
+        "dtype": "str",
+        "description": "Information about the license (e.g., Creative Commons, proprietary), which regulates the usage rights.",
+        "label": "License",
+        "required": False,
+        "ontology": "saf:license"
+    }
+}
+
     def __init__(
             self,
             content_type: Optional[ContentType] = 'bytes',
@@ -54,16 +137,17 @@ class Blob(Base):
         :raises ValueError: If invalid content_type or mismatched value type.
         """
         super().__init__(**kwargs)
+        self.metadata.update_from_dict(self.DEFAULT_METADATA)
 
         if content_type not in typing.get_args(self.ContentType):
             raise ValueError(f"Invalid content_type: {content_type}")
 
-        self.data['content'] = {
-            'type': content_type,
-            'filetype': filetype
-        }
+        # self.data['content'] = {
+        #     'type': content_type,
+        #     'filetype': filetype
+        # }
 
-        self._set_value(value)
+        # self._set_value(value)
 
         logger.debug(f"Created Blob '{self.sname}' with content_type '{content_type}' and filetype '{filetype}'")
 

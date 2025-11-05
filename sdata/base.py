@@ -430,9 +430,8 @@ class Base:
         self,
         filepath: Optional[Union[str, Path]] = None,
         *,
-        arcname: str = "data.json",
         compresslevel: int = 6,
-        deterministic: bool = False,
+        deterministic: bool = True,
     ) -> io.BytesIO:
         """
         Serialisiert das Objekt via to_json() und packt es als data.json in ein ZIP.
@@ -445,6 +444,8 @@ class Base:
         compression = zipfile.ZIP_DEFLATED
 
         # Optional: deterministische ZIPs (feste Timestamp -> reproduzierbar)
+        arcname = f"{self.sname}.sjson"
+
         if deterministic:
             info = zipfile.ZipInfo(arcname, date_time=(1980, 1, 1, 0, 0, 0))
             info.compress_type = compression
@@ -500,7 +501,7 @@ class Base:
             names = zf.namelist()
             chosen = member
             if chosen is None:
-                json_members = [n for n in names if n.lower().endswith(".json")]
+                json_members = [n for n in names if n.lower().endswith(".sjson")]
                 if len(json_members) == 1:
                     chosen = json_members[0]
                 elif len(json_members) == 0 and len(names) == 1:
@@ -635,3 +636,5 @@ if __name__ == '__main__':
         default_attributes=[{"name": "a", "value": 1.2, "dtype": float, "label": "an a"}]
     )
     m2 = Base.from_json(material.to_json())
+    print(m2)
+    print(material.mdf)
