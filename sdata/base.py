@@ -69,7 +69,7 @@ class Base:
         if not name:
             raise ValueError("Name cannot be empty")
         self.metadata = Metadata(name=name)
-        self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="UTC creation date", required=False)
+        self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="UTC creation date", required=True)
 
         project = kwargs.get("project", None)
         project_suuid = SUUID.from_obj(project, class_name="Project")
