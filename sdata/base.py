@@ -37,7 +37,7 @@ class Base:
     SDATA_CLASS = "_sdata_class"
     SDATA_NAME = "_sdata_name"
     SDATA_SNAME = "_sdata_sname"
-    # SDATA_SUUID = "_sdata_suuid"
+    SDATA_SUUID = "_sdata_suuid"
     SDATA_PARENT_SNAME = "_sdata_parent_sname"  # Changed to store sname for consistency
     SDATA_PROJECT_SNAME = "_sdata_project_sname"  # Changed to store sname for consistency
     SDATA_TOPOLOGY_CLASS = "_sdata_topology_class"  # Topology class, e.g. BFO (Basic Formal Ontology) top-level ontology class name
@@ -50,8 +50,8 @@ class Base:
 
     @classmethod
     def get_sdata_spec(cls: type) -> str:
-        """Canonischer, importierbarer String für eine Klasse."""
-        return f"{cls.SDATA_CLS}:{cls.__qualname__}"
+        """Kanonischer, importierbarer String für eine Klasse: ``modul:Klasse``."""
+        return f"{cls.__module__}:{cls.__qualname__}"
 
     def __init__(self, **kwargs: Any) -> None:
         """
@@ -71,23 +71,13 @@ class Base:
         self.metadata = Metadata(name=name)
         self.metadata.add(self.SDATA_CTIME, now_utc_str(), dtype="str", description="UTC creation date", required=True)
 
-        project = kwargs.get("project", None)
-        project_suuid = SUUID.from_obj(project, class_name="Project")
-        if project_suuid is None and project is not None:
-            project_sname = ""
-            logger.warning(f"invalid project sname '{project}'")
-        elif project_suuid is None:
-            project_sname = ""
-        else:
-            project_sname = project_suuid.sname
+        project_sname = self._resolve_relation_sname(
+            kwargs.get("project", None), kwargs.get("project_sname", None), "project")
         self.metadata.add(
             self.SDATA_PROJECT_SNAME, project_sname, dtype="str",
             description="sname of the project"
         )
-        if self.project:
-            ns_name = self.project.sname
-        else:
-            ns_name = None
+        ns_name = project_sname or None
 
         _suuid = kwargs.get("suuid", None)
         if _suuid and isinstance(_suuid, SUUID):
@@ -119,33 +109,21 @@ class Base:
             self.SDATA_SNAME, suuid.sname, dtype="str",
             description="sname of the data object", required=True
         )
-        # self.metadata.add(
-        #     self.SDATA_SUUID, suuid.suuid_str, dtype="str",
-        #     description="Super Universally Unique Identifier", required=True
-        # )
+        self.metadata.add(
+            self.SDATA_SUUID, suuid.suuid_str, dtype="str",
+            description="Super Universally Unique Identifier", required=True
+        )
         self.metadata.add(
             self.SDATA_CLASS, self.get_sdata_spec(), dtype="str",
             description="sdata class", required=True
         )
 
-        parent = kwargs.get("parent", None)
-        parent_suuid = SUUID.from_obj(parent)
-        if parent_suuid is None:
-            parent_sname = None
-        else:
-            parent_sname = parent_suuid.sname
-        if parent_sname is not None:
-            self.metadata.add(
-                self.SDATA_PARENT_SNAME, parent_sname, dtype="str",
-                description="sname of the parent"
-            )
-        elif parent_sname is None and parent is not None:
-            logger.warning(f"invalid parent sname '{parent}'")
-        else:
-            self.metadata.add(
-                self.SDATA_PARENT_SNAME, "",
-                dtype="str", description="sname of the parent"
-            )
+        parent_sname = self._resolve_relation_sname(
+            kwargs.get("parent", None), kwargs.get("parent_sname", None), "parent")
+        self.metadata.add(
+            self.SDATA_PARENT_SNAME, parent_sname, dtype="str",
+            description="sname of the parent"
+        )
 
         if "default_attributes" in kwargs:
             self.default_attributes.extend(kwargs.get("default_attributes"))
@@ -155,6 +133,22 @@ class Base:
         self._data: Dict[str, Any] = kwargs.get("data", {})
 
         # logger.debug(f"Created {self.__class__.__name__} '{suuid.sname}'")
+
+    def _resolve_relation_sname(self, obj: Any, sname: Optional[str], label: str) -> str:
+        """Ermittle den sname-Wert für eine Relation (``project``/``parent``).
+
+        Ein direkt übergebener sname-String (``project_sname``/``parent_sname``) hat
+        Vorrang. Andernfalls muss ``obj`` ein :class:`Base` sein; ein Fremdtyp
+        erzeugt eine Warnung und einen leeren Wert.
+        """
+        if sname is not None:
+            return sname
+        if obj is None:
+            return ""
+        if isinstance(obj, Base):
+            return obj.sname
+        logger.warning(f"{label} must be of type Base")
+        return ""
 
     @property
     def md(self) -> Metadata:
@@ -229,7 +223,7 @@ class Base:
             module = "sdata.base"
             class_name = module_class_name
         module = module.replace(":", "-").replace(".", "-").lower()
-        print(module_class_name, module, class_name)
+        logger.debug("%s %s %s", module_class_name, module, class_name)
         return module
 
     @property
