@@ -13,6 +13,12 @@ with open('README.md', 'rb') as f:
 
 REQUIRES = ['numpy', 'pandas', 'tabulate', 'xlrd', 'openpyxl', 'xlsxwriter', 'pytz', 'requests', 'Pillow']
 
+# Optionale Abhängigkeiten für das DID-/VC-Subpackage (sdata.did):
+#   pip install "sdata[did]"
+EXTRAS = {
+    'did': ['ecdsa>=0.18', 'base58>=2.1'],
+}
+
 setup(
     name='sdata',
     version=version,
@@ -36,19 +42,20 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
     ],
+    python_requires='>=3.7',
 
     install_requires=REQUIRES,
-    tests_require=['coverage', 'pytest'],
+    extras_require=EXTRAS,
+    tests_require=['coverage', 'pytest', 'ecdsa', 'base58'],
     test_suite = 'tests',
     packages=find_packages(),
 )
