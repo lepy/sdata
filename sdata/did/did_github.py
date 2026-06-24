@@ -1,26 +1,54 @@
+# -*- coding: utf-8 -*-
+"""``did:github``: DID-Dokumente aus GitHub-Repositories auflösen.
+
+Eine ``did:github``-DID verweist auf ein ``did.json`` in einem GitHub-Repo und
+wird über ``raw.githubusercontent.com`` geladen. Formen::
+
+    did:github:<user>:<repo>
+    did:github:<user>:<repo>:<ref>
+    did:github:<user>:<repo>:<ref>:<subpath>
+
+Im ``subpath`` darf ``__`` als ``/``-Ersatz verwendet werden (CLI-freundlich).
+Gesucht werden ``<subpath>/.well-known/did.json``, ``<subpath>/did.json`` sowie
+die Repo-Wurzel – in dieser Reihenfolge, für die Refs ``<ref>``, ``main``, ``master``.
+
+Ein optionales ``GITHUB_TOKEN`` (Umgebungsvariable) erhöht das Rate-Limit und
+erlaubt Zugriff auf private Repos.
+
+.. note::
+   ``did:github`` ist **keine** registrierte W3C-DID-Methode, sondern eine
+   pragmatische, projektspezifische Auflösung über GitHub-Rohinhalte.
+"""
 from __future__ import annotations
 
 import os
 import re
 import json
+import logging
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 import requests
 
+from .errors import EncodingError, ResolutionError
+
+logger = logging.getLogger(__name__)
+
+__all__ = ["DidGithub", "parse_did_github", "resolve_did_github"]
 
 DID_GITHUB_METHOD = "did:github"
 RAW_BASE = "https://raw.githubusercontent.com"
+HTTP_TIMEOUT = 10
 
 
 @dataclass(frozen=True)
 class DidGithub:
-    """Interne Repräsentation von did:github Identifiers."""
+    """Geparste ``did:github``-Identität."""
     user: str
     repo: str
-    ref: Optional[str] = None           # z.B. "main", "master", Tag oder Commit
-    subpath: Optional[str] = None       # optionaler Unterordner innerhalb des Repos
+    ref: Optional[str] = None       # z. B. "main", "master", Tag oder Commit
+    subpath: Optional[str] = None   # optionaler Unterordner im Repo
 
     @property
     def did(self) -> str:
@@ -32,140 +60,94 @@ class DidGithub:
         return ":".join(parts)
 
 
-def parse_did_github(did: str) -> DidGithub:
-    """
-    Erwartete Formen:
-      - did:github:<user>:<repo>
-      - did:github:<user>:<repo>:<ref>
-      - did:github:<user>:<repo>:<ref>:<subpath-with-slashes-replaced-by-__>
-      - oder mit beliebigen weiteren :... Segmenten → subpath kann Doppelpunkte enthalten,
-        wir mappen diese später auf '/'. Praktischer ist unten make_subpath().
-    """
-    if not did.startswith(DID_GITHUB_METHOD + ":"):
-        raise ValueError("Kein did:github Identifier")
-
-    parts = did.split(":")
-    if len(parts) < 4:
-        raise ValueError("Form: did:github:<user>:<repo>[:<ref>[:<subpath>]]")
-
-    _, _, user, repo, *rest = parts
-    ref = rest[0] if rest else None
-    subpath = ":".join(rest[1:]) if len(rest) > 1 else None
-
-    # Optionales Mapping: Erlaube __ als Slash-Ersatz im subpath (CLI-freundlich)
-    subpath = make_subpath(subpath)
-    return DidGithub(user=user, repo=repo, ref=ref, subpath=subpath)
-
-
 def make_subpath(raw: Optional[str]) -> Optional[str]:
+    """Mappe ``__`` auf ``/`` (echte Slashes bleiben erhalten)."""
     if not raw:
         return None
-    # Erlaube zwei Schreibweisen:
-    # 1) raw enthält echte Slashes → übernehmen
-    # 2) raw verwendet "__" als Platzhalter für '/' → zurückmappen
     return raw.replace("__", "/")
 
 
-def candidate_paths(dg: DidGithub) -> List[Tuple[str, str]]:
-    """
-    Liefert eine geordnete Liste (ref, path) von Kandidaten
-    für die Auflösung. path ist der Pfad *im Repo*.
-    """
-    well_known = ".well-known/did.json"
-    root = "did.json"
+def parse_did_github(did: str) -> DidGithub:
+    """Parse eine ``did:github``-DID.
 
-    # Wenn Subpath angegeben: dort zuerst suchen
+    Raises:
+        EncodingError: wenn ``did`` keine gültige ``did:github``-DID ist.
+    """
+    if not did.startswith(DID_GITHUB_METHOD + ":"):
+        raise EncodingError("kein did:github-Identifier")
+    parts = did.split(":")
+    if len(parts) < 4:
+        raise EncodingError("Form: did:github:<user>:<repo>[:<ref>[:<subpath>]]")
+    _, _, user, repo, *rest = parts
+    ref = rest[0] if rest else None
+    subpath = make_subpath(":".join(rest[1:]) if len(rest) > 1 else None)
+    return DidGithub(user=user, repo=repo, ref=ref, subpath=subpath)
+
+
+def candidate_paths(dg: DidGithub) -> List[Tuple[str, str]]:
+    """Geordnete ``(ref, path)``-Kandidaten für die Auflösung."""
+    well_known, root = ".well-known/did.json", "did.json"
     sub_candidates = []
     if dg.subpath:
-        sub_candidates = [f"{dg.subpath.rstrip('/')}/{well_known}",
-                          f"{dg.subpath.rstrip('/')}/{root}"]
-
-    base_candidates = [well_known, root]
-
-    paths = sub_candidates + base_candidates
-
-    # Branch-/Ref-Reihenfolge
+        base = dg.subpath.rstrip("/")
+        sub_candidates = ["{}/{}".format(base, well_known), "{}/{}".format(base, root)]
+    paths = sub_candidates + [well_known, root]
     refs = [r for r in [dg.ref, "main", "master"] if r]
-
     return [(r, p) for r in refs for p in paths]
 
 
 def _raw_url(user: str, repo: str, ref: str, path: str) -> str:
-    return f"{RAW_BASE}/{user}/{repo}/{ref}/{path}"
+    return "{}/{}/{}/{}/{}".format(RAW_BASE, user, repo, ref, path)
 
 
 def _headers() -> dict:
-    h = {"Accept": "application/json"}
+    headers = {"Accept": "application/json"}
     token = os.getenv("GITHUB_TOKEN")
     if token:
-        # Höhere Ratenlimits und private Repos (falls Token Zugriff hat)
-        h["Authorization"] = f"Bearer {token}"
-    return h
-
-
-@lru_cache(maxsize=256)
-def fetch_json(url: str) -> Optional[dict]:
-    resp = requests.get(url, headers=_headers(), timeout=10)
-    if resp.status_code == 200:
-        try:
-            return json.loads(resp.text)
-        except json.JSONDecodeError:
-            # Manchmal ist die Datei als JSON-LD mit Kommentaren gespeichert → optional säubern
-            cleaned = _strip_json_comments(resp.text)
-            return json.loads(cleaned)
-    return None
+        headers["Authorization"] = "Bearer {}".format(token)
+    return headers
 
 
 def _strip_json_comments(text: str) -> str:
-    # rudimentär: entferne // ... und /* ... */ (nur für einfache Fälle)
+    """Entferne ``/* … */`` und ``// …`` (rudimentär, für einfache Fälle)."""
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     text = re.sub(r"//.*?$", "", text, flags=re.M)
     return text
 
 
+@lru_cache(maxsize=256)
+def fetch_json(url: str) -> Optional[dict]:
+    """Lade JSON von ``url`` (mit kleinem Cache); ``None`` bei Status != 200."""
+    resp = requests.get(url, headers=_headers(), timeout=HTTP_TIMEOUT)
+    if resp.status_code != 200:
+        return None
+    try:
+        return json.loads(resp.text)
+    except json.JSONDecodeError:
+        return json.loads(_strip_json_comments(resp.text))
+
+
 def resolve_did_github(did: str) -> dict:
-    """
-    Gibt das DID-Dokument (dict) zurück oder wirft ValueError.
-    Validiert minimale DID-Core-Felder.
+    """Löse eine ``did:github``-DID zum DID-Dokument auf.
+
+    Raises:
+        EncodingError: bei ungültiger DID.
+        ResolutionError: wenn kein gültiges ``did.json`` gefunden wird.
+        EncodingError: wenn ein gefundenes Dokument ``@context``/``id`` vermisst.
     """
     dg = parse_did_github(did)
     tried = []
-
     for ref, path in candidate_paths(dg):
         url = _raw_url(dg.user, dg.repo, ref, path)
         tried.append(url)
         doc = fetch_json(url)
         if doc is None:
             continue
-
-        # Minimale Validierung
         if "@context" not in doc:
-            raise ValueError(f"DID-Dokument gefunden, aber @context fehlt ({url})")
+            raise EncodingError("DID-Dokument ohne @context ({})".format(url))
         if "id" not in doc:
-            raise ValueError(f"DID-Dokument gefunden, aber id fehlt ({url})")
-
-        # Optional: Konsistenzprüfung der id
-        # Wir tolerieren Abweichungen, warnen aber per Exception-Message, wenn strenger Modus gewünscht ist
-        # Hier permissiv:
+            raise EncodingError("DID-Dokument ohne id ({})".format(url))
+        logger.debug("did:github aufgelöst via %s", url)
         return doc
-
-    raise ValueError(
-        "did:github konnte nicht aufgelöst werden.\n"
-        f"Versuchte URLs:\n- " + "\n- ".join(tried)
-    )
-
-
-# ---------- Beispielnutzung ----------
-if __name__ == "__main__":
-    # Beispiele:
-    did = "did:github:lepy:cudi2"
-    did = "did:github:lepy:cudi2:main"
-    # did = "did:github:lepy:cudi2:main:did"          # sucht did/.well-known/did.json etc.
-    # did = "did:github:orgname:repo123:v1.2.3"
-    #did = os.environ.get("DID_EXAMPLE", "did:github:someone:some-repo")
-
-    try:
-        doc = resolve_did_github(did)
-        print(json.dumps(doc, indent=2, ensure_ascii=False))
-    except Exception as e:
-        print(f"Fehler: {e}")
+    raise ResolutionError(
+        "did:github konnte nicht aufgelöst werden. Versucht:\n- " + "\n- ".join(tried))

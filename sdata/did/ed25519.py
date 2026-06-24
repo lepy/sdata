@@ -1,6 +1,21 @@
 # ed25519_typed.py
 """
-Lern-/Test-Implementierung von Ed25519 (pure), nicht constant-time.
+Lern-/Test-Implementierung von Ed25519 (pure Python).
+
+================================ SICHERHEITSHINWEIS ================================
+NICHT FÜR DEN PRODUKTIVEINSATZ GEEIGNET.
+
+Dieser Code dient ausschließlich Lehr- und Testzwecken (z. B. zum Nachvollziehen
+des RFC-8032-Testvektors). Er ist:
+  - NICHT constant-time → anfällig für Timing-/Seitenkanalangriffe, die den
+    privaten Schlüssel preisgeben können,
+  - nicht gehärtet gegen Fault-Injection und andere Angriffe,
+  - nicht unabhängig auditiert.
+
+Für echte Signaturen/Verifikation eine geprüfte Bibliothek verwenden, z. B.
+PyNaCl (libsodium), `cryptography` oder python-ecdsa (wie im übrigen did-Modul).
+===================================================================================
+
 Verwendet:
 - Point: typing.NamedTuple (x, y)
 - KeyPair: @dataclass (sk, pk)
@@ -179,12 +194,16 @@ def keypair_from_seed(seed32: bytes) -> KeyPair:
 # --- Demo & Testvektor ---
 if __name__ == "__main__":
     import os
+    import logging
+
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    logger = logging.getLogger(__name__)
 
     # Demo
     kp = keypair_from_seed(os.urandom(32))
     msg = b"Hallo, DIDComm!"
     sig = sign(msg, kp.sk, kp.pk)
-    print("Sig OK?:", verify(sig, msg, kp.pk))
+    logger.info("Sig OK?: %s", verify(sig, msg, kp.pk))
 
     # RFC 8032 Testvektor (leere Nachricht)
     sk_tv = bytes.fromhex(
@@ -202,5 +221,5 @@ if __name__ == "__main__":
         "d25bf5f0595bbe24655141438e7a100b"
     )
     kp_tv = keypair_from_seed(sk_tv)
-    print("RFC PK OK:", kp_tv.pk == pk_tv)
-    print("RFC SIG OK:", verify(sig_tv, b"", kp_tv.pk))
+    logger.info("RFC PK OK: %s", kp_tv.pk == pk_tv)
+    logger.info("RFC SIG OK: %s", verify(sig_tv, b"", kp_tv.pk))
