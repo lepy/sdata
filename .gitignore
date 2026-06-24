@@ -2,6 +2,8 @@
 *.pyc
 .cache/
 .coverage
+.venv-ci/
+.pytest_cache/
 .idea/
 .vscode/
 .tox/
@@ -13,3 +15,17 @@ build/
 dist/
 docs/build/
 wheelhouse/
+
+# Secrets / DID key material (never commit private keys or signed artifacts)
+*.pem
+*.key
+*_key.json
+*_priv.json
+*_private.json
+issuer_key*.json
+holder_key*.json
+*.jwk.json
+did.json
+*.jws
+*.vc
+*.vp
