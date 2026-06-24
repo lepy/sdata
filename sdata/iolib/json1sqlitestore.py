@@ -40,6 +40,17 @@ class JSON1SQLiteStore:
         print(username)  # 'alice'
     """
 
+    # Kanonische, als generierte Spalten materialisierte _sdata_*-Felder.
+    # Konvention: Spaltenname == JSON-Key == Index-Key (Single Source of Truth).
+    GENERATED_COLUMNS = (
+        "_sdata_class",
+        "_sdata_name",
+        "_sdata_sname",
+        "_sdata_suuid",
+        "_sdata_parent_sname",
+        "_sdata_project_sname",
+    )
+
     def __init__(
         self,
         filename: str,
@@ -60,14 +71,14 @@ class JSON1SQLiteStore:
         self._init_conn()
         # Automatically index the _sdata_* fields if not specified
         sdata_keys = ['_sdata_class', '_sdata_name', '_sdata_parent_sname', '_sdata_project_sname']
-        sdata_unique_keys = ['_sdata_sname']
+        sdata_unique_keys = ['_sdata_sname', '_sdata_suuid']
         index_keys = list(set((index_keys or []) + sdata_keys))
         unique_index_keys = list(set((unique_index_keys or []) + sdata_unique_keys))
         for key in index_keys:
-            column = key if key.startswith('_sdata_') else None
+            column = key if key in self.GENERATED_COLUMNS else None
             self.create_index(key, unique=False, column=column)
         for key in unique_index_keys:
-            column = key if key.startswith('_sdata_') else None
+            column = key if key in self.GENERATED_COLUMNS else None
             self.create_index(key, unique=True, column=column)
 
 
@@ -101,19 +112,19 @@ class JSON1SQLiteStore:
         self._ensure_table()
 
     def _ensure_table(self) -> None:
+        generated = ",\n                ".join(
+            "{col} TEXT GENERATED ALWAYS AS (json_extract(payload, '$.{col}')) STORED".format(col=col)
+            for col in self.GENERATED_COLUMNS
+        )
         self.conn.execute(
             """
             CREATE TABLE IF NOT EXISTS data (
                 id INTEGER PRIMARY KEY,
                 payload TEXT NOT NULL,
                 created_at TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-                _sdata_class TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_class')) STORED,
-                _sdata_name TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_name')) STORED,
-                _sdata_sname TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_sname')) STORED,
-                _sdata_parent TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_parent_sname')) STORED,
-                _sdata_project TEXT GENERATED ALWAYS AS (json_extract(payload, '$._sdata_project_sname')) STORED
+                {generated}
             );
-            """
+            """.format(generated=generated)
         )
 
     def _serialize(self, obj: Dict[str, Any]) -> str:
@@ -262,7 +273,7 @@ class JSON1SQLiteStore:
 
     def get_id_by_key(self, key: str, value: Any) -> Optional[int]:
         # Optimiert für generated columns
-        column = key if key.startswith('_sdata_') else None
+        column = key if key in self.GENERATED_COLUMNS else None
         if column:
             row = self.conn.execute(f"SELECT id FROM data WHERE {column} = ?", (value,)).fetchone()
         else:
@@ -326,7 +337,7 @@ class JSON1SQLiteStore:
         return self.conn.execute("SELECT 1 FROM data WHERE id = ? LIMIT 1", (record_id,)).fetchone() is not None
 
     def exists_where(self, key: str, value: Any) -> bool:
-        column = key if key.startswith('_sdata_') else None
+        column = key if key in self.GENERATED_COLUMNS else None
         if column:
             return self.conn.execute(f"SELECT 1 FROM data WHERE {column} = ? LIMIT 1", (value,)).fetchone() is not None
         else:
@@ -342,7 +353,7 @@ class JSON1SQLiteStore:
             val = val.replace('*', '%')
         else:
             val = value
-        column = key if key.startswith('_sdata_') else None
+        column = key if key in self.GENERATED_COLUMNS else None
         if column:
             sql = f"SELECT COUNT(*) FROM data WHERE {column} {op_sql} ?"
         else:
@@ -367,7 +378,7 @@ class JSON1SQLiteStore:
                 val = val.replace('*', '%')
             else:
                 val = value
-            column = key if key.startswith('_sdata_') else None
+            column = key if key in self.GENERATED_COLUMNS else None
             if column:
                 where_clause = f"WHERE {column} {op_sql} ? "
             else:
@@ -391,7 +402,7 @@ class JSON1SQLiteStore:
         for idx, unique in self.list_indices():
             if idx.startswith('idx_'):
                 key = idx.replace('idx_', '').replace('_', '.')  # Approximativ
-                column = key if key.startswith('_sdata_') else None
+                column = key if key in self.GENERATED_COLUMNS else None
                 self.regenerate_index(key, unique, column=column)
 
     def backup(self, dest_path: str) -> None:
@@ -491,7 +502,7 @@ class JSON1SQLiteStore:
             names_like = store.find_by('_sdata_name', 'alice*', op='LIKE', limit=10)  # Wildcard-Suche
             parents = store.find_by('_sdata_parent', 42, op='>')  # Numerische Vergleiche
         """
-        column = attribute if attribute.startswith('_sdata_') else None
+        column = attribute if attribute in self.GENERATED_COLUMNS else None
         if column:
             return self._fetch_page_optimized(limit or 999999, offset, column, op, value)
         else:
