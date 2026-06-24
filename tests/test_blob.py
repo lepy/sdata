@@ -7,7 +7,6 @@ import numpy as np
 def test_blob():
 
     b = Blob(name="blob")
-    print(b)
     assert b.name == "blob"
 
 
