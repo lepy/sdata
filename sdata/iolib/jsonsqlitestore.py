@@ -180,6 +180,14 @@ class JSONSQLiteStore:
                 obj[key] = parser(obj[key])
         return obj
 
+    def _payload_expr(self) -> str:
+        """SQL-Ausdruck für das Payload-Bind.
+
+        Ohne Compression validiert ``json(?)`` das Payload als JSON; mit
+        Compression ist das Payload ein base64-String (kein JSON), daher roh ``?``.
+        """
+        return "?" if self.compression else "json(?)"
+
     def insert(self, obj: Dict[str, Any]) -> int:
         """
         Inserts a new record into the database.
@@ -192,7 +200,7 @@ class JSONSQLiteStore:
         """
         payload = self._serialize(obj)
         cur = self.conn.execute(
-            "INSERT INTO data (payload) VALUES (json(?))", (payload,)
+            f"INSERT INTO data (payload) VALUES ({self._payload_expr()})", (payload,)
         )
         rid = cur.lastrowid
         if hook := self.hooks.get('on_insert'):
@@ -211,7 +219,7 @@ class JSONSQLiteStore:
         """
         arr = [(self._serialize(o),) for o in objs]
         cur = self.conn.executemany(
-            "INSERT INTO data (payload) VALUES (json(?))", arr
+            f"INSERT INTO data (payload) VALUES ({self._payload_expr()})", arr
         )
         if hook := self.hooks.get('on_insert_many'):
             hook(objs)
@@ -308,7 +316,7 @@ class JSONSQLiteStore:
         """
         payload = self._serialize(new_obj)
         self.conn.execute(
-            "UPDATE data SET payload = json(?) WHERE id = ?", (payload, record_id)
+            f"UPDATE data SET payload = {self._payload_expr()} WHERE id = ?", (payload, record_id)
         )
         if hook := self.hooks.get('on_update'):
             hook(record_id, new_obj)
@@ -326,7 +334,7 @@ class JSONSQLiteStore:
         """
         arr = [(self._serialize(obj), rid) for rid, obj in pairs]
         self.conn.executemany(
-            "UPDATE data SET payload = json(?) WHERE id = ?", arr
+            f"UPDATE data SET payload = {self._payload_expr()} WHERE id = ?", arr
         )
         if hook := self.hooks.get('on_update_many'):
             hook(pairs)
