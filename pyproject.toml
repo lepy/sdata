@@ -1,3 +1,24 @@
 [build-system]
 requires = ["setuptools>=64.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.coverage.run]
+source = ["sdata"]
+omit = [
+    # Vendored Third-Party-Libs (nicht Teil der eigenen Coverage)
+    "sdata/contrib/*",
+    # Test-/Hilfsdateien
+    "*/tests/*",
+    "sdata/test/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod",
+    "\\.\\.\\.",
+]
