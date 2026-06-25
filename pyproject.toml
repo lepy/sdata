@@ -2,6 +2,11 @@
 requires = ["setuptools>=64.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.pytest.ini_options]
+# Nur die eigene Testsuite kollektieren; vendored contrib-Tests (z. B.
+# sdata/contrib/ecdsa/test_*.py) bewusst ausschliessen.
+testpaths = ["tests"]
+
 [tool.coverage.run]
 source = ["sdata"]
 omit = [
@@ -19,6 +24,7 @@ omit = [
     "sdata/iolib/minio.py",
     "sdata/iolib/db.py",       # WIP TinyDB-Wrapper (undeklariert, ungenutzt)
     "sdata/iolib/hdf.py",      # optionales PyTables-Backend (sdata[hdf])
+    "sdata/iolib/vault.py",    # HDF5-/PyTables-Vault (sdata[hdf]) + deprecated Data; im CI nicht installiert
     "sdata/iolib/isomme.py",
     "sdata/iolib/rsa.py",
     "sdata/iolib/tinydb_json1sqlite.py",

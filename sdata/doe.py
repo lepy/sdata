@@ -2,6 +2,7 @@
 
 
 import collections
+import sdata
 from sdata.contrib.ranger import Range
 import sdata.contrib.sobol_seq
 from sdata.contrib.sobol_seq import Sobol

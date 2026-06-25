@@ -1,5 +1,9 @@
 from bisect import bisect_left
-from collections import deque, Hashable
+from collections import deque
+try:  # Python 3.10+ moved ABCs to collections.abc
+    from collections.abc import Hashable
+except ImportError:  # pragma: no cover - Python < 3.10
+    from collections import Hashable
 from sdata.contrib.ranger.collections.rangemap import RangeMap
 from sdata.contrib.ranger.range.range import Range
 from sdata.contrib.ranger.range.cut import Cut

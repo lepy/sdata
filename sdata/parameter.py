@@ -1,6 +1,9 @@
 import json
+import logging
 from typing import Dict, Tuple, List, Union, Optional
 import random
+
+logger = logging.getLogger(__name__)
 
 
 class Distribution:
@@ -402,7 +405,7 @@ class ParameterSet:
 
     def print(self):
         for pname in sorted(self._parameter.keys()):
-            print(self._parameter[pname])
+            logger.info("%s", self._parameter[pname])
 
     def __repr__(self):
         return f"ParameterSet({self.name}|{list(self._parameter.keys())})"
