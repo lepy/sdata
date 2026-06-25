@@ -1,6 +1,10 @@
 import sys
 import os
 import pandas as pd
+import pytest
+
+# HDF5-I/O benötigt das optionale Backend PyTables (pip install "sdata[hdf]").
+pytest.importorskip("tables")
 
 modulepath = os.path.dirname(__file__)
 

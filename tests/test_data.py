@@ -1,6 +1,7 @@
 import sys
 import os
 import pandas as pd
+import pytest
 
 modulepath = os.path.dirname(__file__)
 
@@ -164,6 +165,7 @@ def test_asciiname():
     assert sdata.Data(name="ö-ü-ä-Ö-Ü-Ä-?- -\\-/").asciiname == 'oe-ue-ae-Oe-Ue-Ae-?-_-_-_'
 
 def test_to_sqlite():
+    pytest.importorskip("sqlalchemy")  # to_sqlite nutzt pandas.to_sql -> SQLAlchemy (sdata[sql])
     df = pd.DataFrame({'a': ['x', 'y', '', 'z'], 'b': [1, 2, 2, 3.2]})
     data = sdata.Data(name="data", uuid="48b26864e7794f5182d38459bab8584d", table=df, description="abc")
     sq = data.to_sqlite("/tmp/sq.sqlite")

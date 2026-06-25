@@ -5,6 +5,7 @@ logger = logging.getLogger("sdata")
 import sys
 import os
 import pandas as pd
+import pytest
 
 modulepath = os.path.dirname(__file__)
 
@@ -27,6 +28,7 @@ def test_data_to_html():
     # assert data.sha3_256 == data2.sha3_256
 
 def test_hdf5():
+    pytest.importorskip("tables")  # HDF5 benötigt PyTables (sdata[hdf])
     df = pd.DataFrame({"a": [1.1, 2.1, 3.5],
                        "b": [2.4, 1.2, 2.2]})
     d = sdata.Data(name="basic example", uuid="38b26864e7794f5182d38459bab85842", table=df, description="hallo")

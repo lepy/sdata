@@ -13,10 +13,14 @@ with open('README.md', 'rb') as f:
 
 REQUIRES = ['numpy', 'pandas', 'tabulate', 'xlrd', 'openpyxl', 'xlsxwriter', 'pytz', 'requests', 'Pillow', 'suuid>=0.2.0']
 
-# Optionale Abhängigkeiten für das DID-/VC-Subpackage (sdata.did):
-#   pip install "sdata[did]"
+# Optionale Abhängigkeiten:
+#   pip install "sdata[did]"   DID-/VC-Subpackage (sdata.did)
+#   pip install "sdata[hdf]"   HDF5-I/O (PyTables-Backend)
+#   pip install "sdata[sql]"   to_sqlite / pandas.to_sql (SQLAlchemy)
 EXTRAS = {
     'did': ['ecdsa>=0.18', 'base58>=2.1'],
+    'hdf': ['tables'],
+    'sql': ['sqlalchemy'],
 }
 
 setup(
