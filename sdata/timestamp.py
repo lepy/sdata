@@ -43,7 +43,7 @@ __all__ = ["parse_date", "ParseError", "UTC",
 
 if sys.version_info >= (3, 0, 0):
     _basestring = str
-else:
+else:  # pragma: no cover - Python-2-Altpfad
     _basestring = basestring
 
 # Adapted from http://delete.me.uk/2005/03/iso8601.html
@@ -105,7 +105,7 @@ if sys.version_info >= (3, 2, 0):
             datetime.timedelta(
                 hours=offset_hours, minutes=offset_minutes),
             name)
-else:
+else:  # pragma: no cover - Python <3.2 Altpfad (eigene tzinfo-Klassen)
     # Yoinked from python docs
     ZERO = datetime.timedelta(0)
 
