@@ -485,7 +485,7 @@ class Base:
             # generischer file-like Stream
             try:
                 source.seek(0)
-            except Exception:
+            except Exception:  # pragma: no cover - defensiv; ZipFile braucht danach seek
                 pass
             return zipfile.ZipFile(source, mode="r")
 
