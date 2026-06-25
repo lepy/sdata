@@ -6,6 +6,7 @@ import numpy as np
 import sdata
 import shutil
 import os
+import pytest
 
 
 def test_sqlitevault():
@@ -42,6 +43,7 @@ def test_sqlitevault():
     assert len(all_m) == 0
 
 def test_filesystemvault():
+    pytest.importorskip("tables")  # Blob-Storage nutzt HDF5 (sdata[hdf])
     rootpath = "/tmp/test_filesystemvault/"
 
     shutil.rmtree(rootpath, ignore_errors=True)
@@ -92,6 +94,7 @@ def test_filesystemvault():
     # assert isinstance(o, list)
 
 def test_hdf5vault():
+    pytest.importorskip("tables")  # HDF5-Vault benötigt PyTables (sdata[hdf])
 
     rootpath = "/tmp/test_hdf5vault.h5"
 
