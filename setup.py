@@ -21,6 +21,7 @@ EXTRAS = {
     'did': ['ecdsa>=0.18', 'base58>=2.1'],
     'hdf': ['tables'],
     'sql': ['sqlalchemy'],
+    'parquet': ['pyarrow'],   # sdata.sclass.DataFrame (Parquet-Serialisierung)
 }
 
 setup(
