@@ -119,7 +119,7 @@ class VaultSqliteIndex:
         logger.debug(f"add '{uid}' to vault index")
         self.db.upsert_node(identifier=uid, data=d)
         puid = d.get("!sdata_parent")
-        if len(puid) > 0:
+        if puid:  # None (kein Parent) oder leerer String -> kein Parent-Knoten
             if len(self.db.find_node(puid)) == 0:
                 self.db.upsert_node(identifier=puid, data={"!sdata_uuid": puid, '!sdata_name': "?"})
             self.db.connect_nodes(puid, uid, {"con_type": "parent"})

@@ -411,7 +411,6 @@ class Metadata(object):
         :return:
         """
         for k, v in d.items():
-            k = k.replace("!sdata_", "_sdata_")
             if guess_dtype is False:
                 value = v
                 dtype = None
@@ -571,7 +570,10 @@ class Metadata(object):
         """create metadata from dataframe"""
         df = pd.read_csv(filepath, header=None)
         df.columns = cls.ATTRIBUTEKEYS
-        df.set_index(df.name.values, inplace=True)
+        # Index nach Spalte "name" (Spalte behalten). Kein df.name.values, da das
+        # in neueren pandas-Versionen ein StringArray ist, den set_index als
+        # unhashbaren Key behandelt (TypeError).
+        df.set_index("name", drop=False, inplace=True)
         metadata = cls.from_dataframe(df)
         return metadata
 
