@@ -70,7 +70,7 @@ class VaultIndex:
         return sorted(list(self.df[[Data.SDATA_NAME]].drop_duplicates().iloc[:, 0]))
 
     def update_from_sdft(self, sdft):
-        self.df = self.df.append(sdft)
+        self.df = pd.concat([self.df, sdft])
 
 
 class VaultSqliteIndex:
@@ -310,7 +310,7 @@ class Hdf5Vault(Vault):
         for key in hdf5_keys:
             kp = key.split("/")
             if len(kp) == 5:
-                print(kp, len(kp))
+                logger.debug("%s %s", kp, len(kp))
                 keys.add(kp[4])
         return list(keys)
 
@@ -340,7 +340,7 @@ class FileSystemVault(Vault):
             raise exp
         logging.info("create/open vault '{}'".format(rootpath))
 
-        print(os.path.exists(self.rootpath))
+        logger.debug("vault root exists: %s", os.path.exists(self.rootpath))
 
         indexpath = os.path.join(rootpath, 'vaultindex.sqlite')
         logging.info(f"create/open vaultindex '{indexpath}'")
@@ -359,7 +359,7 @@ class FileSystemVault(Vault):
         objectpath = os.path.join(self.rootpath, self.OBJECTPATH)
         for root, dirs, files in os.walk(objectpath, topdown=False):
             for name in files:
-                print(os.path.join(root, name))
+                logger.debug("%s", os.path.join(root, name))
 
     @property
     def index(self):
@@ -467,7 +467,7 @@ class FileSystemVault(Vault):
         :return:
         """
         df_selected = self.index.df[(self.index.df[Data.SDATA_NAME] == name)]
-        print("df_selected", len(df_selected))
+        logger.debug("df_selected %s", len(df_selected))
 
         datas = []
         for uid, row in self.index.df[(self.index.df[Data.SDATA_NAME] == name)].iterrows():

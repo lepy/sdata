@@ -34,7 +34,7 @@ import inspect
 
 try:
     import openpyxl
-except:
+except Exception:  # pragma: no cover - optionale Abhängigkeit
     logging.warning("openpyxl is not available -> no xlsx import")
     openpyxl = None
 
