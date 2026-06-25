@@ -21,7 +21,7 @@ import unicodedata
 import pandas
 
 from sdata.metadata import Metadata, Attribute
-from sdata.data import Data
+from sdata.deprecated.data import Data  # deprecated: ersetzt durch sdata.sclass.dataframe.DataFrame
 from sdata.base import Base, sdata_factory
 from sdata.sclass.blob import Blob
 from sdata.sclass.dataframe import DataFrame

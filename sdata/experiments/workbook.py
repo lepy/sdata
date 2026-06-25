@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
 import sdata
-from sdata.data import Data
+from sdata.deprecated.data import Data
 from sdata.metadata import Metadata, Attribute
 import json
 import os
