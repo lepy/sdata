@@ -93,7 +93,7 @@ class JSON1SQLiteStore:
         # Check if JSON1 is available
         try:
             self.conn.execute("SELECT json('{}')")
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError:  # pragma: no cover - JSON1 ist in modernem SQLite eingebaut
             if self.json1_extension:
                 self.conn.enable_load_extension(True)
                 self.conn.load_extension(self.json1_extension)
@@ -401,7 +401,7 @@ class JSON1SQLiteStore:
         # Neu: Auto-Regenerate Indizes nach Migration
         for idx, unique in self.list_indices():
             if idx.startswith('idx_'):
-                key = idx.replace('idx_', '').replace('_', '.')  # Approximativ
+                key = idx[len('idx_'):]  # nur das 'idx_'-Präfix entfernen
                 column = key if key in self.GENERATED_COLUMNS else None
                 self.regenerate_index(key, unique, column=column)
 
