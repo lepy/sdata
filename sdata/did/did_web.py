@@ -28,8 +28,7 @@ from urllib.parse import quote
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-import requests
-
+from ._http import http_get, HttpError
 from .base58btc import b58encode
 from .errors import EncodingError, ResolutionError
 from .utils_didkey import pub_jwk_from_did_key, b64url_decode
@@ -166,11 +165,13 @@ def resolve_public_jwk_for_kid(kid: str) -> Dict[str, str]:
     did = kid.split("#")[0]
     url = did_web_to_url(did)
     try:
-        resp = requests.get(url, timeout=HTTP_TIMEOUT)
-        resp.raise_for_status()
-        doc = resp.json()
-    except requests.RequestException as exc:
+        status, body = http_get(url, timeout=HTTP_TIMEOUT)
+    except HttpError as exc:
         raise ResolutionError("did:web-Auflösung fehlgeschlagen ({}): {}".format(url, exc))
+    if not (200 <= status < 300):
+        raise ResolutionError(
+            "did:web-Auflösung fehlgeschlagen ({}): HTTP {}".format(url, status))
+    doc = json.loads(body)
 
     by_id = {vm.get("id"): vm for vm in doc.get("verificationMethod", [])}
     vm = by_id.get(kid)
