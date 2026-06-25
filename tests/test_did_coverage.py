@@ -44,11 +44,7 @@ def test_did_web_cli_resolve(monkeypatch, capsys):
     doc = {"verificationMethod": [{"id": "did:web:example.com#key-1",
                                    "type": "JsonWebKey2020", "publicKeyJwk": PUB_JWK}]}
 
-    class FakeResp:
-        def raise_for_status(self): pass
-        def json(self): return doc
-
-    monkeypatch.setattr(did_web.requests, "get", lambda *a, **k: FakeResp())
+    monkeypatch.setattr(did_web, "http_get", lambda url, **k: (200, json.dumps(doc)))
     did_web.main(["resolve", "--kid", "did:web:example.com#key-1"])
 
 
@@ -134,14 +130,15 @@ def test_did_web_resolve_branches(monkeypatch):
                                    "type": "Ed25519VerificationKey2020",
                                    "publicKeyMultibase": mb}]}
 
-    class R:
-        def raise_for_status(self): pass
-        def json(self): return doc
-    monkeypatch.setattr(did_web.requests, "get", lambda *a, **k: R())
+    monkeypatch.setattr(did_web, "http_get", lambda url, **k: (200, json.dumps(doc)))
     assert did_web.resolve_public_jwk_for_kid("did:web:e.com#key-1") == PUB_JWK
     # kid nicht gefunden
     with pytest.raises(ResolutionError):
         did_web.resolve_public_jwk_for_kid("did:web:e.com#missing")
+    # HTTP-Fehlerstatus -> ResolutionError
+    monkeypatch.setattr(did_web, "http_get", lambda url, **k: (404, ""))
+    with pytest.raises(ResolutionError):
+        did_web.resolve_public_jwk_for_kid("did:web:e.com#key-1")
 
 
 # --- utils_didkey Edge -------------------------------------------------
@@ -282,10 +279,7 @@ def test_did_peer4_invalid_multibase():
 def test_did_web_resolve_no_key(monkeypatch):
     doc = {"verificationMethod": [{"id": "did:web:e.com#key-1", "type": "X"}]}
 
-    class R:
-        def raise_for_status(self): pass
-        def json(self): return doc
-    monkeypatch.setattr(did_web.requests, "get", lambda *a, **k: R())
+    monkeypatch.setattr(did_web, "http_get", lambda url, **k: (200, json.dumps(doc)))
     with pytest.raises(ResolutionError):
         did_web.resolve_public_jwk_for_kid("did:web:e.com#key-1")
 
@@ -294,34 +288,24 @@ def test_did_github_fetch_json(monkeypatch):
     did_github.fetch_json.cache_clear()
     monkeypatch.setenv("GITHUB_TOKEN", "tok")               # _headers Token-Zweig
 
-    class Resp:
-        def __init__(self, code, text):
-            self.status_code = code
-            self.text = text
-
     def fake_get(url, **kw):
         if url.endswith(".well-known/did.json"):
-            return Resp(404, "")
-        return Resp(200, '{"@context":["x"],"id":"did:github:u:r"}')
-    monkeypatch.setattr(did_github.requests, "get", fake_get)
+            return (404, "")
+        return (200, '{"@context":["x"],"id":"did:github:u:r"}')
+    monkeypatch.setattr(did_github, "http_get", fake_get)
     assert did_github.resolve_did_github("did:github:u:r")["id"] == "did:github:u:r"
 
 
 def test_did_github_comments_and_not_found(monkeypatch):
     did_github.fetch_json.cache_clear()
 
-    class WithComments:
-        status_code = 200
-        text = '// c\n{"@context":["x"],"id":"did:github:a:b"} /* x */'
-    monkeypatch.setattr(did_github.requests, "get", lambda url, **k: WithComments())
+    comments = '// c\n{"@context":["x"],"id":"did:github:a:b"} /* x */'
+    monkeypatch.setattr(did_github, "http_get", lambda url, **k: (200, comments))
     assert did_github.resolve_did_github("did:github:a:b")["id"] == "did:github:a:b"
 
     did_github.fetch_json.cache_clear()
 
-    class NotFound:
-        status_code = 404
-        text = ""
-    monkeypatch.setattr(did_github.requests, "get", lambda url, **k: NotFound())
+    monkeypatch.setattr(did_github, "http_get", lambda url, **k: (404, ""))
     with pytest.raises(ResolutionError):
         did_github.resolve_did_github("did:github:none:none")
 

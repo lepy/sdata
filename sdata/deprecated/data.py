@@ -23,7 +23,6 @@ import inspect
 import json
 import hashlib
 import base64
-import requests
 import re
 from tabulate import tabulate
 from sdata.contrib.sqlitedict import SqliteDict
@@ -1122,7 +1121,14 @@ class Data(object):
             raise NotADirectoryError("stype '{}' is not supported".format(stype))
             return
 
-        raw = requests.get(url).text
+        # 'requests' ist optional; Fallback auf die Standardbibliothek (urllib).
+        try:
+            import requests
+            raw = requests.get(url).text
+        except ImportError:
+            import urllib.request
+            with urllib.request.urlopen(url) as _resp:
+                raw = _resp.read().decode("utf-8", "replace")
         if  stype=="json":
             data = cls.from_json(raw)
             return data

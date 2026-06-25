@@ -29,8 +29,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from typing import List, Optional, Tuple
 
-import requests
-
+from ._http import http_get
 from .errors import EncodingError, ResolutionError
 
 logger = logging.getLogger(__name__)
@@ -118,13 +117,13 @@ def _strip_json_comments(text: str) -> str:
 @lru_cache(maxsize=256)
 def fetch_json(url: str) -> Optional[dict]:
     """Lade JSON von ``url`` (mit kleinem Cache); ``None`` bei Status != 200."""
-    resp = requests.get(url, headers=_headers(), timeout=HTTP_TIMEOUT)
-    if resp.status_code != 200:
+    status, text = http_get(url, headers=_headers(), timeout=HTTP_TIMEOUT)
+    if status != 200:
         return None
     try:
-        return json.loads(resp.text)
+        return json.loads(text)
     except json.JSONDecodeError:
-        return json.loads(_strip_json_comments(resp.text))
+        return json.loads(_strip_json_comments(text))
 
 
 def resolve_did_github(did: str) -> dict:

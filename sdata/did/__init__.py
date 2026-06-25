@@ -26,10 +26,12 @@ Installation
 ------------
 Krypto (Ed25519) und base58btc sind **abhängigkeitsfrei** (reine
 Standardbibliothek) – siehe :mod:`~sdata.did.eddsa` und
-:mod:`~sdata.did.base58btc`. Lediglich die HTTP-Auflösung von ``did:web`` /
-``did:github`` benötigt ``requests``::
+:mod:`~sdata.did.base58btc`. Auch die HTTP-Auflösung von ``did:web`` /
+``did:github`` läuft ohne externe Abhängigkeit: :mod:`~sdata.did._http` nutzt
+``requests`` falls installiert, sonst ``urllib`` (Standardbibliothek)::
 
-    pip install "sdata[did]"
+    pip install "sdata"          # voll funktionsfähig (urllib-HTTP-Backend)
+    pip install "sdata[http]"    # optional: 'requests' als HTTP-Backend
 
 .. warning::
    **Sicherheit / SOTA-Hinweis.** Der produktive Krypto-Pfad nutzt die
@@ -61,8 +63,8 @@ import importlib
 # Lazy-Loading (PEP 562): Submodule werden erst beim Zugriff importiert. Vorteile:
 #   * ``python -m sdata.did.<modul>`` löst keine runpy-Doppelimport-Warnung aus,
 #   * ``import sdata.did`` ist leichtgewichtig – schwerere Submodule (z. B.
-#     ``did_web`` mit ``requests``) werden erst geladen, wenn eine sie nutzende
-#     Funktion tatsächlich angefasst wird.
+#     ``did_web`` mit dem HTTP-Backend) werden erst geladen, wenn eine sie
+#     nutzende Funktion tatsächlich angefasst wird.
 # Mapping: exportierter Name -> "submodul"  oder  ("submodul", "originalname").
 _EXPORTS = {
     # Fehler

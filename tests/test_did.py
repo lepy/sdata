@@ -228,20 +228,15 @@ class TestDidWeb:
             "id": "did:web:example.com#key-1", "type": "JsonWebKey2020",
             "publicKeyJwk": PUB_JWK}]}
 
-        class FakeResp:
-            def raise_for_status(self):
-                pass
-
-            def json(self):
-                return doc
-
-        monkeypatch.setattr(dw.requests, "get", lambda *a, **k: FakeResp())
+        monkeypatch.setattr(dw, "http_get", lambda url, **k: (200, json.dumps(doc)))
         assert dw.resolve_public_jwk_for_kid("did:web:example.com#key-1") == PUB_JWK
 
     def test_resolve_network_error_raises_resolution_error(self, monkeypatch):
+        from sdata.did._http import HttpError
+
         def boom(*a, **k):
-            raise dw.requests.RequestException("boom")
-        monkeypatch.setattr(dw.requests, "get", boom)
+            raise HttpError("boom")
+        monkeypatch.setattr(dw, "http_get", boom)
         with pytest.raises(ResolutionError):
             dw.resolve_public_jwk_for_kid("did:web:example.com#key-1")
 

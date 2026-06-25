@@ -26,6 +26,9 @@ if [[ ! -x "$PYBIN" ]]; then
   "$PYTHON" -m venv "$VENV"
 fi
 
+# Bewusst OHNE [http]: 'requests' ist optional. Das CI validiert den
+# urllib-Fallback (Standardbibliothek); das requests-Backend ist über ein
+# injiziertes Fake-Modul in tests/test_http_backend.py abgedeckt.
 echo "[ci] installiere/aktualisiere Abhängigkeiten (sdata[did] + Test-Tools)"
 "$PYBIN" -m pip install --quiet --upgrade pip
 "$PYBIN" -m pip install --quiet -e ".[did,parquet,blob]" pytest coverage
