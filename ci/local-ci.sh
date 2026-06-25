@@ -28,7 +28,7 @@ fi
 
 echo "[ci] installiere/aktualisiere Abhängigkeiten (sdata[did] + Test-Tools)"
 "$PYBIN" -m pip install --quiet --upgrade pip
-"$PYBIN" -m pip install --quiet -e ".[did,parquet]" pytest coverage
+"$PYBIN" -m pip install --quiet -e ".[did,parquet,blob]" pytest coverage
 
 # Testziel: durchgereichte Argumente oder – wenn keine – die komplette Suite.
 TARGETS=("$@")

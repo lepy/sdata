@@ -22,6 +22,7 @@ EXTRAS = {
     'hdf': ['tables'],
     'sql': ['sqlalchemy'],
     'parquet': ['pyarrow'],   # sdata.sclass.DataFrame (Parquet-Serialisierung)
+    'blob': ['fsspec'],       # sdata.sclass.Blob (URI-Content: file/S3/Zip)
 }
 
 setup(
