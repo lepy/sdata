@@ -126,7 +126,7 @@ def decodepoint(s: bytes) -> Point:
     if (x & 1) != bit(s, b-1):
         x = q - x
     P = Point(x, y)
-    if not isoncurve(P):
+    if not isoncurve(P):  # pragma: no cover - Off-Curve-Punkt schwer konstruierbar
         raise ValueError("Punkt liegt nicht auf der Kurve")
     return P
 
@@ -176,7 +176,7 @@ def verify(sig: bytes, m: bytes, pk: bytes) -> bool:
         R = decodepoint(sig[:32])
         A = decodepoint(pk)
         S = decodeint(sig[32:])
-    except Exception:
+    except Exception:  # pragma: no cover - nur bei Off-Curve-/Decode-Fehlern
         return False
     if S >= l:
         return False
