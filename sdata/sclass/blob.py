@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 # Note: fsspec must be installed (pip install fsspec) and for S3, also install s3fs (pip install s3fs)
 try:
     import fsspec
-except ImportError:
-    logger.warn('fsspec not installed')
+except ImportError:  # pragma: no cover - optionales Backend (sdata[blob])
+    logger.warning('fsspec not installed')
     fsspec = None
 
 class Blob(Base):
@@ -142,12 +142,11 @@ class Blob(Base):
         if content_type not in typing.get_args(self.ContentType):
             raise ValueError(f"Invalid content_type: {content_type}")
 
-        # self.data['content'] = {
-        #     'type': content_type,
-        #     'filetype': filetype
-        # }
-
-        # self._set_value(value)
+        self.data['content'] = {
+            'type': content_type,
+            'filetype': filetype,
+        }
+        self._set_value(value)
 
         logger.debug(f"Created Blob '{self.sname}' with content_type '{content_type}' and filetype '{filetype}'")
 
