@@ -42,7 +42,7 @@ echo "[ci] führe Tests aus: ${TARGETS[*]}"
 "$PYBIN" -m coverage run -m pytest --continue-on-collection-errors "${TARGETS[@]}"
 
 echo
-echo "[ci] Coverage (sdata/did):"
-"$PYBIN" -m coverage report -m --include="sdata/did/*" || true
+echo "[ci] Coverage (Produktcode, ohne vendored contrib — siehe pyproject.toml):"
+"$PYBIN" -m coverage report || true
 
 echo "[ci] OK"
