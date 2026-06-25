@@ -53,18 +53,20 @@ def test_base_init_with_project(base_instance):
 def test_base_init_with_ns_name():
     b = Base(name="test", ns_name="namespace")
     # Since SUUID.from_name is called, assume it's reproducible
-    assert b.suuid.sname.startswith("Base@")  # Based on stub
+    assert b.suuid.sname.startswith("Base__")  # suuid '__'-Format
 
 def test_osname(base_instance):
     base_instance.name = "Häl[l]o.csv"
     assert base_instance.osname == 'hael_l_o_csv'
 
 def test_suuid_properties(base_instance):
+    from sdata import SUUID
     assert isinstance(base_instance.uuid, uuid.UUID)
     assert isinstance(base_instance.huuid, str)
     assert len(base_instance.huuid) == 32
-    assert base_instance.suuid_str == "MmY1YzY5MjQ0OWU5NWY5MGE3MTU4NjFmMjgzM2QzNWFCYXNlQHRlc3RfbmFtZQ=="
-    assert base_instance.suuid_bytes == b"MmY1YzY5MjQ0OWU5NWY5MGE3MTU4NjFmMjgzM2QzNWFCYXNlQHRlc3RfbmFtZQ=="
+    # suuid_str ist der kompakte Token und round-trippt zum selben sname
+    assert SUUID.from_suuid_str(base_instance.suuid_str).sname == base_instance.sname
+    assert base_instance.suuid_bytes == base_instance.suuid_str.encode()
 
 # def test_set_suuid_invalid(base_instance):
 #     with pytest.raises(SdataUuidException, match="Invalid SUUID string"):

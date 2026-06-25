@@ -2,43 +2,23 @@
 import logging
 logger = logging.getLogger("sdata")
 
-import sys
-import os
-import pandas as pd
-
-modulepath = os.path.dirname(__file__)
-
-sys.path.insert(0, os.path.join(modulepath, "..", "..", "src"))
-
 import sdata
-import uuid
+
 
 def test_suuid():
-    suuid = sdata.SUUID("Data", "Otto")
-    suuid, suuid.to_list()
-    assert suuid.name == "otto"
+    sid = sdata.SUUID.from_name("Data", "Otto")
+    assert sid.class_name == "Data"
+    assert sid.name == "otto"                       # S3-sicher normalisiert
+    assert sid.sname == f"Data__otto__{sid.huuid}"
+
 
 def test_suuid_from_name():
-    suuid = sdata.SUUID.from_name(class_name="MyClass", name="Otto")
-    suuid, suuid.to_list()
-    #((MyClass|Otto|9120846d11185cbd9c06742056d757ad),
- # ['OTEyMDg0NmQxMTE4NWNiZDljMDY3NDIwNTZkNzU3YWRNeUNsYXNzfE90dG8=',
- #  'MyClass',
- #  'Otto',
- #  '9120846d11185cbd9c06742056d757ad'])
-    print(suuid.huuid)
-    print(suuid.suuid_str)
-    print(suuid.sname)
+    sid = sdata.SUUID.from_name(class_name="MyClass", name="Otto")
+    assert sid.huuid == "d090bdae83315b8b935ea4c71ef86b2f"   # golden (unverändert)
+    assert sid.name == "otto"
+    assert sid.class_name == "MyClass"
 
-
-    assert suuid.huuid=='d090bdae83315b8b935ea4c71ef86b2f'
-    assert suuid.name == 'otto'
-    assert suuid.suuid_str == 'ZDA5MGJkYWU4MzMxNWI4YjkzNWVhNGM3MWVmODZiMmZNeUNsYXNzQG90dG8='
-    assert suuid.class_name == 'MyClass'
-
-    s = sdata.SUUID.from_suuid_str(suuid.suuid_str)
-    assert s.huuid=='d090bdae83315b8b935ea4c71ef86b2f'
-    assert s.name == 'otto'
-    assert s.suuid_str == 'ZDA5MGJkYWU4MzMxNWI4YjkzNWVhNGM3MWVmODZiMmZNeUNsYXNzQG90dG8='
-    assert s.class_name == 'MyClass'
-
+    # Roundtrip über den kompakten Token (suuid_str)
+    restored = sdata.SUUID.from_suuid_str(sid.suuid_str)
+    assert restored == sid
+    assert restored.huuid == sid.huuid

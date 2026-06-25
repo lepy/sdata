@@ -77,19 +77,17 @@ class Base:
             self.SDATA_PROJECT_SNAME, project_sname, dtype="str",
             description="sname of the project"
         )
-        ns_name = project_sname or None
+        # Namespace: expliziter ns_name-Kwarg hat Vorrang, sonst die Projekt-sname
+        # (hierarchisches Scoping), sonst der Default-Namespace.
+        ns_name = kwargs.get("ns_name") or project_sname or None
 
         _suuid = kwargs.get("suuid", None)
         if _suuid and isinstance(_suuid, SUUID):
             suuid = _suuid
-        elif ns_name is not None: # namespace = self.project.sname
-            suuid = SUUID.from_name(
-                class_name=self.__class__.__name__,
-                name=SUUID.generate_safe_filename(name),
-                ns_name=kwargs.get("ns_name", "")
-            )
         else:
-            suuid = SUUID(self.__class__.__name__, name=SUUID.generate_safe_filename(name))
+            # Deterministisch und (falls vorhanden) ns-gescopt; suuid.from_name
+            # normalisiert den Namen S3-sicher.
+            suuid = SUUID.from_name(self.__class__.__name__, name, ns_name=ns_name)
 
         self.default_attributes: List[Dict[str, Any]] = []
 

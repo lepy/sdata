@@ -11,7 +11,7 @@ with open('sdata/__init__.py', 'r') as f:
 with open('README.md', 'rb') as f:
     readme = f.read().decode('utf-8')
 
-REQUIRES = ['numpy', 'pandas', 'tabulate', 'xlrd', 'openpyxl', 'xlsxwriter', 'pytz', 'requests', 'Pillow']
+REQUIRES = ['numpy', 'pandas', 'tabulate', 'xlrd', 'openpyxl', 'xlsxwriter', 'pytz', 'requests', 'Pillow', 'suuid>=0.2.0']
 
 # Optionale Abhängigkeiten für das DID-/VC-Subpackage (sdata.did):
 #   pip install "sdata[did]"

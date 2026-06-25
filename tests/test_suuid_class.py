@@ -1,184 +1,121 @@
-import pytest
+# -*- coding: utf-8 -*-
+"""Tests für den sdata.suuid-Adapter über das eigenständige ``suuid``-Package.
+
+Der Adapter erbt Format, Determinismus und die 100% S3-sichere Normalisierung von
+``suuid``; getestet wird hier die sdata-Kompat-Fläche (Alias-Namen, Signaturen).
+Die huuid-Goldenwerte bleiben gegenüber der alten Implementierung gültig (gleicher
+uuid5-Algorithmus); ``sname``/``suuid_str`` tragen jetzt das ``__``-Format.
+"""
+import re
 import uuid
-import base64
-import hashlib
-import os
-import tempfile
 
-from sdata.suuid import SUUID  # Angenommen, der Code ist in suuid.py gespeichert
+import pytest
 
-@pytest.fixture
-def temp_file():
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        tmp.write(b"test content")
-        tmp_path = tmp.name
-    yield tmp_path
-    os.unlink(tmp_path)
+from sdata.suuid import SUUID
+
+HEX = "1234567890abcdef1234567890abcdef"
+S3_SAFE = re.compile(r"[A-Za-z0-9_]+")
+
 
 class TestSUUID:
 
-    def test_init_valid(self):
-        sid = SUUID(class_name="Test", name="name", huuid="1234567890abcdef1234567890abcdef")
-        assert sid.class_name == "Test"
-        assert sid.name == "name"
-        assert sid.huuid == "1234567890abcdef1234567890abcdef"
+    # --- Konstruktion / Komponenten -------------------------------------
+    def test_direct_construction(self):
+        sid = SUUID(class_name="Test", name="name", huuid=HEX)
+        assert (sid.class_name, sid.name, sid.huuid) == ("Test", "name", HEX)
 
-    def test_init_default_huuid(self):
-        sid = SUUID(class_name="Test")
-        assert len(sid.huuid) == 32
-        assert all(c in '0123456789abcdefABCDEF' for c in sid.huuid)
-        assert sid.name == "noname"
+    def test_huuid_required_and_validated(self):
+        with pytest.raises(ValueError):
+            SUUID(class_name="Test", name="x", huuid="invalid")
+        with pytest.raises(ValueError):
+            SUUID(class_name="", name="x", huuid=HEX)
 
-    def test_init_invalid_class_name(self):
-        with pytest.raises(ValueError, match="class_name muss ein nicht-leerer String sein"):
-            SUUID(class_name="")
-        with pytest.raises(ValueError, match="class_name muss ein nicht-leerer String sein"):
-            SUUID(class_name=123)
-
-    def test_init_invalid_huuid(self):
-        with pytest.raises(ValueError, match="huuid muss ein 32-Zeichen langer Hex-String sein"):
-            SUUID(class_name="Test", huuid="invalid")
-        with pytest.raises(ValueError, match="huuid muss ein 32-Zeichen langer Hex-String sein"):
-            SUUID(class_name="Test", huuid="1234567890abcdef1234567890abcde")  # Zu kurz
-
-    def test_clean_name(self):
-        assert SUUID.generate_safe_filename("name@|;\n\rbad") == "name_bad"
-        assert SUUID.generate_safe_filename("") == "noname"
-        assert SUUID.generate_safe_filename("clean") == "clean"
-
-    def test_str_and_repr(self):
-        sid = SUUID(class_name="Test", name="name", huuid="1234567890abcdef1234567890abcdef")
-        assert str(sid) == "(Test@name@1234567890abcdef1234567890abcdef)"
-        assert repr(sid) == "(Test@name@1234567890abcdef1234567890abcdef)"
-
-    def test_uuid_property(self):
-        sid = SUUID(class_name="Test", huuid="1234567890abcdef1234567890abcdef")
-        assert isinstance(sid.get_uuid(), uuid.UUID)
-        assert sid.get_uuid().hex == "1234567890abcdef1234567890abcdef"
-
-    def test_hex_property(self):
-        sid = SUUID(class_name="Test", huuid="1234567890abcdef1234567890abcdef")
-        assert sid.hex == "1234567890abcdef1234567890abcdef"
-
-    def test_to_list(self):
-        sid = SUUID(class_name="Test", name="name", huuid="1234567890abcdef1234567890abcdef")
-        expected_suuid_str = "MTIzNDU2Nzg5MGFiY2RlZjEyMzQ1Njc4OTBhYmNkZWZUZXN0QG5hbWU="
-        assert sid.to_list() == [expected_suuid_str, "Test", "name", "1234567890abcdef1234567890abcdef"]
-
-    def test_to_dict(self):
-        sid = SUUID(class_name="Test", name="name", huuid="1234567890abcdef1234567890abcdef")
-        expected_suuid_str = "MTIzNDU2Nzg5MGFiY2RlZjEyMzQ1Njc4OTBhYmNkZWZUZXN0QG5hbWU="
-        assert sid.to_dict() == {
-            "class_name": "Test",
-            "name": "name",
-            "huuid": "1234567890abcdef1234567890abcdef",
-            "suuid": expected_suuid_str
-        }
-
-    def test_sname(self):
-        sid = SUUID(class_name="Test", name="name", huuid="1234567890abcdef1234567890abcdef")
-        assert sid.sname == "Test@name@1234567890abcdef1234567890abcdef"
-
-    def test_suuid_and_suuid_str(self):
-        sid = SUUID(class_name="Test", name="name", huuid="1234567890abcdef1234567890abcdef")
-        expected_s = "1234567890abcdef1234567890abcdefTest@name"
-        expected_bytes = base64.b64encode(expected_s.encode())
-        assert sid.suuid_bytes == expected_bytes
-        assert sid.suuid_str == expected_bytes.decode().strip()
-
-    def test_from_uuid(self):
-        u = uuid.UUID("1234567890abcdef1234567890abcdef")
-        sid = SUUID.from_uuid(class_name="Test", uuid_obj=u)
-        assert sid.class_name == "Test"
-        assert sid.huuid == "1234567890abcdef1234567890abcdef"
-        assert sid.name == "noname"
-
-    def test_get_namespace_from_name(self):
-        ns = SUUID.get_namespace_from_name("project_xy")
-        assert ns == uuid.uuid5(uuid.NAMESPACE_OID, "PROJECT_XY")
-
-    def test_get_uuid_from_name(self):
-        uid = SUUID.get_uuid_from_name(name="DATAotto")
-        assert uid.hex == "96da1780e6225b33b9186e41838d2e2c"
-
-        uid_ns = SUUID.get_uuid_from_name(name="DATAotto", ns_name="project_xy")
-        assert uid_ns.hex == "903649d7c1f9529f9c4ba45eb79751f4"
-
-    def test_from_name(self):
-        sid = SUUID.from_name(class_name="DATA", name="otto")
-        assert sid.huuid == "96da1780e6225b33b9186e41838d2e2c"
-        assert sid.class_name == "DATA"
-        assert sid.name == "otto"
-        assert sid.suuid_str == "OTZkYTE3ODBlNjIyNWIzM2I5MTg2ZTQxODM4ZDJlMmNEQVRBQG90dG8="
+    # --- from_name: deterministisch, huuid-Vertrag erhalten -------------
+    def test_from_name_deterministic(self):
+        sid = SUUID.from_name("DATA", "otto")
+        assert sid.huuid == "96da1780e6225b33b9186e41838d2e2c"   # golden (unverändert)
+        assert sid.class_name == "DATA" and sid.name == "otto"
+        assert sid.sname == f"DATA__otto__{sid.huuid}"
+        assert SUUID.from_name("DATA", "otto") == sid
 
     def test_from_name_with_ns(self):
-        sid = SUUID.from_name(class_name="DATA", name="otto", ns_name="project_xy")
-        assert sid.huuid == "903649d7c1f9529f9c4ba45eb79751f4"
-        assert sid.suuid_str == "OTAzNjQ5ZDdjMWY5NTI5ZjljNGJhNDVlYjc5NzUxZjREQVRBQG90dG8="
+        sid = SUUID.from_name("DATA", "otto", ns_name="project_xy")
+        assert sid.huuid == "903649d7c1f9529f9c4ba45eb79751f4"   # golden (unverändert)
+        assert sid != SUUID.from_name("DATA", "otto")            # Scoping wirkt
 
-    def test_get_suuid_from_name(self):
-        suuid_bytes = SUUID.get_suuid_from_name(class_name="DATA", name="otto")
-        assert suuid_bytes == b'OTZkYTE3ODBlNjIyNWIzM2I5MTg2ZTQxODM4ZDJlMmNEQVRBQG90dG8='
+    # --- Aliasse / Properties -------------------------------------------
+    def test_aliases(self):
+        sid = SUUID.from_name("DATA", "otto")
+        assert sid.suuid_str == sid.compact_token
+        assert sid.suuid_bytes == sid.compact_token.encode()
+        assert sid.uuid == sid.as_uuid() == sid.get_uuid()
+        assert isinstance(sid.uuid, uuid.UUID)
+        assert sid.hex == sid.huuid
 
-    def test_get_sname_from_name(self):
-        sname = SUUID.get_sname_from_name(class_name="DATA", name="otto")
-        assert sname == "DATA@otto@96da1780e6225b33b9186e41838d2e2c"
+    def test_to_list_and_dict(self):
+        sid = SUUID.from_name("DATA", "otto")
+        assert sid.to_list() == [sid.sname, sid.suuid_str, "DATA", "otto", sid.huuid]
+        d = sid.to_dict()
+        assert d["sname"] == sid.sname
+        assert d["suuid"] == sid.suuid_str
+        assert d["huuid"] == sid.huuid
 
-    def test_from_str(self):
-        sid = SUUID.from_str(class_name="Data", s="test text")
-        expected_hash = '_08487142e9585eb2a39f4b8c9f64d4b60dc420af4ee136472d252d0c68d99974'
-        assert sid.name == expected_hash
-        # huuid basierend auf "Data" + hash
-        expected_input = "Data" + expected_hash
-        expected_uid = uuid.uuid5(uuid.NAMESPACE_OID, expected_input.upper())
-        assert sid.huuid == expected_uid.hex
+    # --- Roundtrips -----------------------------------------------------
+    def test_roundtrip_str_bytes_sname(self):
+        sid = SUUID.from_name("DATA", "otto")
+        assert SUUID.from_suuid_str(sid.suuid_str) == sid
+        assert SUUID.from_suuid_bytes(sid.suuid_bytes) == sid
+        assert SUUID.from_suuid_sname(sid.sname) == sid
 
-    # def test_from_file(self, temp_file):
-    #     sid = SUUID.from_file(class_name="File", filepath=temp_file)
-    #     expected_hash = hashlib.sha3_256(b"test content").hexdigest()
-    #     assert sid.name == "temp.txt"  # Da NamedTemporaryFile auf Windows/Linux .txt haben kann, aber anpassen wenn nötig
-    #     expected_input = "File" + expected_hash
-    #     expected_uid = uuid.uuid5(uuid.NAMESPACE_OID, expected_input.upper())
-    #     assert sid.huuid == expected_uid.hex
+    def test_from_suuid_sname_lenient(self):
+        assert SUUID.from_suuid_sname("kaputt") is None          # Default strict=False
+        assert SUUID.from_suuid_sname("a__b", strict=False) is None
+        with pytest.raises(ValueError):
+            SUUID.from_suuid_sname("a__b", strict=True)
 
-    def test_from_suuid_bytes(self):
-        example_bytes = b'OTZkYTE3ODBlNjIyNWIzM2I5MTg2ZTQxODM4ZDJlMmNEQVRBQG90dG8='
-        sid = SUUID.from_suuid_bytes(example_bytes)
-        assert sid.huuid == "96da1780e6225b33b9186e41838d2e2c"
-        assert sid.class_name == "DATA"
-        assert sid.name == "otto"
+    def test_from_uuid(self):
+        sid = SUUID.from_uuid("Test", uuid.UUID(HEX))
+        assert sid.class_name == "Test" and sid.huuid == HEX
 
-    def test_from_suuid_str(self):
-        example_str = "OTZkYTE3ODBlNjIyNWIzM2I5MTg2ZTQxODM4ZDJlMmNEQVRBQG90dG8="
-        sid = SUUID.from_suuid_str(example_str)
-        assert sid.huuid == "96da1780e6225b33b9186e41838d2e2c"
-        assert sid.class_name == "DATA"
-        assert sid.name == "otto"
+    def test_from_obj(self):
+        sid = SUUID.from_name("DATA", "otto")
+        assert SUUID.from_obj(sid) == sid
+        assert SUUID.from_obj(sid.sname) == sid
+        assert SUUID.from_obj(None) is None
 
-    def test_from_suuid_sname(self):
-        sname = "DATA@otto@96da1780e6225b33b9186e41838d2e2c"
-        sid = SUUID.from_suuid_sname(sname)
-        assert sid.class_name == "DATA"
-        assert sid.name == "otto"
-        assert sid.huuid == "96da1780e6225b33b9186e41838d2e2c"
+    # --- content-adressiert ---------------------------------------------
+    def test_from_str_content_addressed(self):
+        a = SUUID.from_str("Data", "test text")
+        b = SUUID.from_str("Data", "test text")
+        assert a == b
+        assert a.content_hash and len(a.content_hash) == 64
 
-    def test_from_suuid_sname_invalid(self):
-        with pytest.raises(ValueError, match="Ungültiger sname-Format"):
-            SUUID.from_suuid_sname("invalid@format")
+    def test_from_file(self, tmp_path):
+        p = tmp_path / "doc.txt"
+        p.write_bytes(b"test content")
+        sid = SUUID.from_file("File", str(p))
+        assert sid.name == "doc_txt"          # Basename, S3-sicher normalisiert
+        assert sid.content_hash
 
-    def test_from_idstr(self):
-        id_string = "96da1780e6225b33b9186e41838d2e2cDATA@otto"
-        sid = SUUID.from_idstr(id_string)
-        assert sid.huuid == "96da1780e6225b33b9186e41838d2e2c"
-        assert sid.class_name == "DATA"
-        assert sid.name == "otto"
+    # --- 100% S3-Sicherheit ---------------------------------------------
+    @pytest.mark.parametrize("cn, n", [
+        ("Data", "name@|;bad"),
+        ("Über", "Größe @ 2026.csv"),
+        ("Run", "2026_digit_start"),
+        ("Path", r"a/b\c:d*e"),
+    ])
+    def test_safe_filename_and_sname_are_s3_safe(self, cn, n):
+        safe = SUUID.generate_safe_filename(n)
+        assert safe == "" or (S3_SAFE.fullmatch(safe) and not safe.startswith("_"))
+        assert "@" not in safe
+        s = SUUID.from_name(cn, n).sname
+        assert S3_SAFE.fullmatch(s) and not s.startswith("_") and "@" not in s
 
-    def test_from_idstr_no_name(self):
-        id_string = "96da1780e6225b33b9186e41838d2e2cDATA"
-        sid = SUUID.from_idstr(id_string)
-        assert sid.class_name == "DATA"
-        assert sid.name == "noname"
+    def test_generate_safe_filename_examples(self):
+        assert SUUID.generate_safe_filename("name@|;bad") == "name_bad"
+        assert SUUID.generate_safe_filename("clean") == "clean"
 
-    def test_from_idstr_short(self):
-        with pytest.raises(ValueError, match="Ungültiger id_string: Zu kurz"):
-            SUUID.from_idstr("short")
+    def test_is_valid_suuid_str(self):
+        sid = SUUID.from_name("DATA", "otto")
+        assert SUUID.is_valid_suuid_str(sid.suuid_str) is True
+        assert SUUID.is_valid_suuid_str("nope") is False
