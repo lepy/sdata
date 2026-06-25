@@ -29,8 +29,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import requests
-import base58
 
+from .base58btc import b58encode
 from .errors import EncodingError, ResolutionError
 from .utils_didkey import pub_jwk_from_did_key, b64url_decode
 
@@ -122,7 +122,7 @@ def build_did_document(domain: str, public_input_path: str,
     else:
         if kind == "jwk":
             raw = b64url_decode(data["x"])
-            mb = "z" + base58.b58encode(bytes([0xED, 0x01]) + raw).decode()
+            mb = "z" + b58encode(bytes([0xED, 0x01]) + raw)
         else:
             mb = data["mb"]
         vm = {"id": vm_id, "type": "Ed25519VerificationKey2020", "controller": did,

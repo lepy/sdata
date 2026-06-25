@@ -5,10 +5,11 @@ Diese Modul bündelt das Signieren/Verifizieren von **Compact-JWS**
 (``header.payload.signature``, base64url), das zuvor doppelt in
 ``issue_vc`` und ``verify_vp`` implementiert war.
 
-Krypto-Backend: ``python-ecdsa`` (reine Python-Implementierung von Ed25519).
+Krypto-Backend: :mod:`sdata.did.eddsa` (reine Python-Ed25519-Implementierung,
+abhängigkeitsfrei).
 
 .. warning::
-   ``python-ecdsa`` ist nicht garantiert constant-time. Für hochsensible
+   Das Ed25519-Backend ist nicht garantiert constant-time. Für hochsensible
    Produktivumgebungen mit Seitenkanal-Anforderungen sollte ein
    libsodium-basiertes Backend (PyNaCl) oder ``cryptography`` erwogen werden.
    Siehe auch das Paket-Docstring von :mod:`sdata.did`.
@@ -22,7 +23,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict
 
-from ecdsa import SigningKey, VerifyingKey, Ed25519, BadSignatureError
+from .eddsa import SigningKey, VerifyingKey, Ed25519, BadSignatureError
 
 from .errors import EncodingError, VerificationError
 from .utils_didkey import b64url, b64url_decode
