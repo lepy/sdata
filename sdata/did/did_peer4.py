@@ -25,37 +25,11 @@ import hashlib
 from typing import Dict, Tuple
 
 from .errors import EncodingError, VerificationError
+# base58btc liegt jetzt zentral im eigenen Modul (frühere Inline-Variante);
+# Re-Export aus Kompatibilitätsgründen.
+from .base58btc import b58encode, b58decode
 
 __all__ = ["did_peer4_from_payload", "resolve_long_form", "b58encode", "b58decode"]
-
-# --- Base58 (Bitcoin-Alphabet) --------------------------------------------
-_B58_ALPHABET = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-
-
-def b58encode(b: bytes) -> str:
-    """Kodiere Bytes als base58btc (führende Nullbytes bleiben als ``1`` erhalten)."""
-    n = int.from_bytes(b, "big", signed=False)
-    out = bytearray()
-    while n > 0:
-        n, r = divmod(n, 58)
-        out.append(_B58_ALPHABET[r])
-    pad = 0
-    for byte in b:
-        if byte == 0:
-            pad += 1
-        else:
-            break
-    return ("1" * pad) + out[::-1].decode()
-
-
-def b58decode(s: str) -> bytes:
-    """Dekodiere einen base58btc-String zurück zu Bytes."""
-    n = 0
-    for ch in s.encode():
-        n = n * 58 + _B58_ALPHABET.index(ch)
-    pad = len(s) - len(s.lstrip("1"))
-    full = n.to_bytes((n.bit_length() + 7) // 8, "big") if n else b""
-    return b"\x00" * pad + full
 
 
 # --- Varint (LEB128, wie in multicodec) -----------------------------------

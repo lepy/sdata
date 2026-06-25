@@ -10,7 +10,8 @@ Funktionsumfang:
 * konventionelle ``kid``-Bildung für ``did:web`` und ``did:key``.
 
 Es werden ausschließlich **öffentliche** Schlüssel verarbeitet; private Schlüssel
-tauchen hier nicht auf. Einzige externe Abhängigkeit: ``base58``.
+tauchen hier nicht auf. Abhängigkeitsfrei (nur Standardbibliothek + die eigene
+base58btc-Kodierung in :mod:`sdata.did.base58btc`).
 
 Referenzen:
     * `RFC 7638 <https://www.rfc-editor.org/rfc/rfc7638>`_ – JWK Thumbprint
@@ -24,8 +25,7 @@ import base64
 import hashlib
 from typing import Dict
 
-import base58
-
+from .base58btc import b58encode, b58decode
 from .errors import EncodingError
 
 __all__ = [
@@ -113,7 +113,7 @@ def did_key_from_jwk_ed25519(jwk_pub: Dict) -> str:
     """Erzeuge eine ``did:key``-DID aus einem öffentlichen Ed25519-JWK."""
     _assert_ed25519_jwk_pub(jwk_pub)
     raw = b64url_decode(jwk_pub["x"])  # 32 Byte
-    mb = "z" + base58.b58encode(_ED25519_PUB_PREFIX + raw).decode()
+    mb = "z" + b58encode(_ED25519_PUB_PREFIX + raw)
     return "did:key:{}".format(mb)
 
 
@@ -121,7 +121,7 @@ def did_key_fragment_from_jwk(jwk_pub: Dict) -> str:
     """Liefere den Multibase-Teil (``z…``) – praktisch als ``kid``-Fragment."""
     _assert_ed25519_jwk_pub(jwk_pub)
     raw = b64url_decode(jwk_pub["x"])
-    return "z" + base58.b58encode(_ED25519_PUB_PREFIX + raw).decode()
+    return "z" + b58encode(_ED25519_PUB_PREFIX + raw)
 
 
 def pub_jwk_from_did_key(did_key_or_mb: str) -> Dict[str, str]:
@@ -135,7 +135,7 @@ def pub_jwk_from_did_key(did_key_or_mb: str) -> Dict[str, str]:
     mb = _strip_didkey_multibase(did_key_or_mb)
     if not mb.startswith("z"):
         raise EncodingError("did:key erwartet base58btc (z-Codec)")
-    raw = base58.b58decode(mb[1:])  # 'z' entfernen
+    raw = b58decode(mb[1:])  # 'z' entfernen
     if not (len(raw) >= 34 and raw[0] == 0xED and raw[1] == 0x01):
         raise EncodingError("unerwartetes multicodec-Präfix für ed25519-pub")
     pubkey = raw[2:34]

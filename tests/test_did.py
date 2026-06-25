@@ -2,9 +2,8 @@
 """Tests für das DID-/VC-Subpackage :mod:`sdata.did`.
 
 Importiert über die öffentliche Paket-API. Die Tests laufen ohne Netzwerk
-(HTTP wird via ``monkeypatch`` gemockt) und überspringen sich sauber, falls die
-optionalen Abhängigkeiten (``ecdsa``/``base58``, via ``pip install sdata[did]``)
-nicht installiert sind.
+(HTTP wird via ``monkeypatch`` gemockt). Das Subpackage ist abhängigkeitsfrei
+(Ed25519 + base58btc als pure Python), daher sind keine Krypto-Extras nötig.
 """
 import json
 import base64
@@ -12,12 +11,7 @@ import hashlib
 
 import pytest
 
-# Optionale Abhängigkeiten / Paket – sonst die gesamte Datei überspringen.
-pytest.importorskip("ecdsa")
-pytest.importorskip("base58")
-pytest.importorskip("sdata.did")
-
-from sdata.did import (                                              # noqa: E402
+from sdata.did import (
     gen_ed25519_jwk, pub_from_priv_jwk, did_key_from_jwk_ed25519,
     pub_jwk_from_did_key, jwk_thumbprint_rfc7638,
     sign_compact, verify_compact, jws_header, jws_verify,

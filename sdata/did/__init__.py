@@ -24,18 +24,22 @@ JWK-Thumbprint (RFC 7638).
 
 Installation
 ------------
-Die DID-Funktionen benötigen die Extra-Abhängigkeiten ``ecdsa`` und ``base58``::
+Krypto (Ed25519) und base58btc sind **abhängigkeitsfrei** (reine
+Standardbibliothek) – siehe :mod:`~sdata.did.eddsa` und
+:mod:`~sdata.did.base58btc`. Lediglich die HTTP-Auflösung von ``did:web`` /
+``did:github`` benötigt ``requests``::
 
     pip install "sdata[did]"
 
 .. warning::
-   **Sicherheit / SOTA-Hinweis.** Der produktive Krypto-Pfad nutzt
-   ``python-ecdsa`` (reine Python-Implementierung von Ed25519). Diese ist
-   bewusst dependency-arm, aber **nicht garantiert constant-time** und damit
-   potenziell anfällig für Timing-Seitenkanäle. Für hochsensible Umgebungen ein
-   libsodium-Backend (PyNaCl) oder ``cryptography`` (OpenSSL) erwägen.
-   Das Modul :mod:`sdata.did.ed25519` ist eine reine **Lern-Referenz** und
-   wird vom Funktionspfad nicht verwendet.
+   **Sicherheit / SOTA-Hinweis.** Der produktive Krypto-Pfad nutzt die
+   pure-Python-Ed25519-Implementierung in :mod:`sdata.did.ed25519` (über den
+   Adapter :mod:`sdata.did.eddsa`). Sie ist abhängigkeitsfrei, aber **nicht
+   garantiert constant-time** und damit potenziell anfällig für
+   Timing-Seitenkanäle – genau wie das zuvor genutzte ``python-ecdsa``
+   (ebenfalls pure Python). Für hochsensible Umgebungen ein libsodium-Backend
+   (PyNaCl) oder ``cryptography`` (OpenSSL) erwägen. Korrektheit ist gegen die
+   offiziellen RFC-8032-Testvektoren abgesichert.
 
 Beispiel
 --------
@@ -56,9 +60,9 @@ import importlib
 
 # Lazy-Loading (PEP 562): Submodule werden erst beim Zugriff importiert. Vorteile:
 #   * ``python -m sdata.did.<modul>`` löst keine runpy-Doppelimport-Warnung aus,
-#   * ``import sdata.did`` ist leichtgewichtig – die optionalen Krypto-Deps
-#     (ecdsa/base58) werden erst geladen, wenn eine sie nutzende Funktion
-#     tatsächlich angefasst wird.
+#   * ``import sdata.did`` ist leichtgewichtig – schwerere Submodule (z. B.
+#     ``did_web`` mit ``requests``) werden erst geladen, wenn eine sie nutzende
+#     Funktion tatsächlich angefasst wird.
 # Mapping: exportierter Name -> "submodul"  oder  ("submodul", "originalname").
 _EXPORTS = {
     # Fehler

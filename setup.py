@@ -18,7 +18,10 @@ REQUIRES = ['numpy', 'pandas', 'tabulate', 'xlrd', 'openpyxl', 'xlsxwriter', 'py
 #   pip install "sdata[hdf]"   HDF5-I/O (PyTables-Backend)
 #   pip install "sdata[sql]"   to_sqlite / pandas.to_sql (SQLAlchemy)
 EXTRAS = {
-    'did': ['ecdsa>=0.18', 'base58>=2.1'],
+    # sdata.did ist abhängigkeitsfrei (Ed25519 + base58btc als pure Python);
+    # die HTTP-Auflösung von did:web/did:github nutzt 'requests' (in REQUIRES).
+    # Extra bleibt als no-op erhalten, damit 'pip install sdata[did]' weiter funktioniert.
+    'did': [],
     'hdf': ['tables'],
     'sql': ['sqlalchemy'],
     'parquet': ['pyarrow'],   # sdata.sclass.DataFrame (Parquet-Serialisierung)
@@ -61,7 +64,7 @@ setup(
 
     install_requires=REQUIRES,
     extras_require=EXTRAS,
-    tests_require=['coverage', 'pytest', 'ecdsa', 'base58'],
+    tests_require=['coverage', 'pytest'],
     test_suite = 'tests',
     packages=find_packages(),
 )

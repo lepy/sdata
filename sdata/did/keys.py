@@ -23,7 +23,7 @@ import logging
 import argparse
 from typing import Dict
 
-from ecdsa import SigningKey, Ed25519
+from .eddsa import SigningKey, Ed25519
 
 from .utils_didkey import b64url, jwk_thumbprint_rfc7638, did_key_from_jwk_ed25519
 
