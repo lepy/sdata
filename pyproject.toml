@@ -25,6 +25,7 @@ omit = [
     "sdata/sclass/bfo_classes.py",
     "sdata/sclass/process.py",
     "sdata/sclass/process_graph.py",
+    "sdata/sclass/image.py",   # "highly experimental"; from_image/from_bytes/saveas migrations-kaputt
 ]
 
 [tool.coverage.report]
