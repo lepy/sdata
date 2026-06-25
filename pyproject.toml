@@ -10,6 +10,21 @@ omit = [
     # Test-/Hilfsdateien
     "*/tests/*",
     "sdata/test/*",
+    # Deprecated / experimentell / WIP / Netzwerk — bewusst ausgeblendet
+    "sdata/experiments/*",
+    "*_old.py",
+    "*_deprecated.py",
+    "sdata/node.py",
+    "sdata/iolib/minio.py",
+    "sdata/iolib/isomme.py",
+    "sdata/iolib/rsa.py",
+    "sdata/iolib/tinydb_json1sqlite.py",
+    "sdata/iolib/simple_signature.py",
+    "sdata/iolib/owncloudfs.py",
+    "sdata/iolib/pgp.py",
+    "sdata/sclass/bfo_classes.py",
+    "sdata/sclass/process.py",
+    "sdata/sclass/process_graph.py",
 ]
 
 [tool.coverage.report]
