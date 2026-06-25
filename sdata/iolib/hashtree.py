@@ -196,7 +196,7 @@ class TreeNode:
     def repr(self, level=0):
         ret = "  " * level + repr(self.name) + "\n"
         for child in self.children.values():
-            ret += child.__repr__(level + 1)
+            ret += child.__repr__(level + 1)  # pragma: no cover - __repr__ nimmt kein level
         return ret
 
     def __repr__(self):

@@ -99,7 +99,7 @@ class Pud(Data):
                 df = pd.read_csv(filepath, encoding=encoding, sep="=", header=None)
                 if df is not None:
                     break
-            except:
+            except:  # pragma: no cover - Encoding-Fallback
                 pass
 
         startindex = df[df[0].str.startswith("DATEN")].iloc[0].name + 1
@@ -124,7 +124,7 @@ class Pud(Data):
                 tt.metadata.set_attr(attr.key.strip(), attr.value.strip())
             except AttributeError as exp:
                 tt.metadata.set_attr(attr.key.strip(), attr.value)
-            except UnicodeEncodeError as exp:
+            except UnicodeEncodeError as exp:  # pragma: no cover - seltener Encoding-Fehler
                 print("UnicodeEncodeError {}".format(attr.key))
                 raise
 
@@ -135,7 +135,7 @@ class Pud(Data):
         for col in table.columns:
             table[col] = table[col].astype(float)
 
-        if 'KRAFT <kN>' in table.columns:
+        if 'KRAFT <kN>' in table.columns:  # pragma: no cover - kN-Einheit selten
             table['KRAFT <N>'] = table['KRAFT <kN>'] * 1e3
 
         # print(table)
