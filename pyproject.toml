@@ -11,6 +11,7 @@ omit = [
     "*/tests/*",
     "sdata/test/*",
     # Deprecated / experimentell / WIP / Netzwerk — bewusst ausgeblendet
+    "sdata/deprecated/*",   # Data (ersetzt durch sdata.sclass.dataframe.DataFrame)
     "sdata/experiments/*",
     "*_old.py",
     "*_deprecated.py",

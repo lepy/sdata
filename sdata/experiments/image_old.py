@@ -4,7 +4,7 @@ import collections
 import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
-from sdata.data import Data
+from sdata.deprecated.data import Data
 from sdata.suuid import SUUID
 from sdata.metadata import Metadata, Attribute
 import sdata.contrib

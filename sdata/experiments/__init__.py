@@ -4,7 +4,7 @@ logger = logging.getLogger("sdata")
 import pandas as pd
 import numpy as np
 from sdata import Data
-from sdata.data import Sdata_Uuid_Exeption
+from sdata.deprecated.data import Sdata_Uuid_Exeption
 import uuid
 
 # import sdata.experiments.ks2

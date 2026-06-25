@@ -114,7 +114,9 @@ class VaultSqliteIndex:
 
     def update_from_metadata(self, metadata):
         """store sdata metadata"""
-        d = metadata.get_sdict()
+        # get_dict() statt get_sdict(): Data nutzt das '!sdata_*'-Praefix, das
+        # get_sdict() (filtert auf '_sdata') nicht erfasst -> sonst fehlt die uuid.
+        d = metadata.get_dict()
         uid = d.get("!sdata_uuid")
         logger.debug(f"add '{uid}' to vault index")
         self.db.upsert_node(identifier=uid, data=d)
