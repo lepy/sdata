@@ -559,7 +559,7 @@ def cls_from_spec(
     """
     Factory function to create an instance of a dynamically generated subclass.
 
-    :param sdata_class: The base class to inherit from (default: sdata.base:Base).
+    :param sdata_spec: The ``module:class`` spec to inherit from (default: ``sdata.base:Base``).
     :param sdata_attrs: Optional dict of custom attributes/methods to add to the class.
     :param kwargs: Keyword arguments to pass to the instance initialization.
     :return: generated class.
@@ -597,7 +597,7 @@ def sclass_factory(
     """
     Factory function to create an instance of a dynamically generated subclass.
 
-    :param sdata_class: The base class to inherit from (default: sdata.base:Base).
+    :param sdata_spec: The ``module:class`` spec to inherit from (default: ``sdata.base:Base``).
     :param sdata_attrs: Optional dict of custom attributes/methods to add to the class.
     :param kwargs: Keyword arguments to pass to the instance initialization.
     :return: An instance of the generated class.

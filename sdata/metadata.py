@@ -226,7 +226,7 @@ class Attribute(object):
     ontology = property(fget=_get_ontology, fset=_set_ontology, doc="Attribute ontology")
 
     def to_dict(self):
-        """:returns dict of attribute items"""
+        """Return a dict of the attribute's items (name/value/unit/dtype/...)."""
         return {'name': self.name,
                 'value': self.value,
                 'unit': self.unit,
@@ -808,7 +808,7 @@ class Metadata(object):
             metadata.update_hash(hashobject)
             hash.hexdigest()
 
-        :param hash: hash object
+        :param hashobject: hash object
         :return: hash_function().hexdigest()
         """
         if not (hasattr(hashobject, "update") and hasattr(hashobject, "hexdigest")):

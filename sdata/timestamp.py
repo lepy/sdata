@@ -220,8 +220,8 @@ def parse_date(datestring, default_timezone=UTC):
                              is specified in the datestring. If this is set to
                              None then a naive datetime object is returned.
     :returns: A datetime.datetime instance
-    :raises: ParseError when there is a problem parsing the date or
-             constructing the datetime instance.
+    :raises ParseError: when there is a problem parsing the date or
+        constructing the datetime instance.
 
     """
     if not isinstance(datestring, _basestring):
@@ -298,13 +298,13 @@ class TimeStamp(object):
     @property
     def utc(self):
         """returns the utc.isoformat string
-        :returns str"""
+        :returns: str"""
         return get_utc_timestamp(self._datetime).isoformat()
 
     @property
     def local(self):
         """returns the datetime isoformat string for the local timezone
-        :returns str"""
+        :returns: str"""
         return get_local_timestamp(self._datetime).isoformat()
 
 def today_str():
