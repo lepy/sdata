@@ -103,6 +103,16 @@ def test_require_parquet_ok():
     dfm._require_parquet("pyarrow")
 
 
+def test_dict_roundtrip_preserves_description_and_annotations():
+    """to_dict/from_dict erhält description UND Spalten-Annotationen (Regression)."""
+    sdf = DataFrame(df=_df(), name="rt", description="a tension test")
+    sdf.set_column("weight", unit="kg", label="Gewicht", ontology="bfo:Quality")
+    r = DataFrame.from_dict(sdf.to_dict())
+    assert r.description == "a tension test"     # zuvor verloren (nur to_dict schrieb sie)
+    w = r.get_column("weight")
+    assert w.unit == "kg" and w.label == "Gewicht" and w.ontology == "bfo:Quality"
+
+
 def test_convenience_passthroughs():
     """Dünne Delegationen an das innere pandas-DataFrame."""
     sdf = DataFrame(df=_df(), name="c")

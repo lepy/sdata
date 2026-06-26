@@ -297,6 +297,7 @@ class DataFrame(Base):
         instance = cls()
         instance.metadata = metadata
         instance._column_metadata = column_metadata
+        instance.description = d.get("description", "")
 
         parquet_str = d['data'].get('parquet_bytes', '')
         parquet_bytes = base64.b64decode(parquet_str.encode("ascii"))
