@@ -24,6 +24,7 @@
    data_types
    paper
    usage/usage
+   usage/metadata_jsonld
    api
    etc
    _dynamic/sdata
