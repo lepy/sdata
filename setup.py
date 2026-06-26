@@ -33,6 +33,8 @@ EXTRAS = {
     'sql': ['sqlalchemy'],
     'parquet': ['pyarrow'],   # sdata.sclass.DataFrame (Parquet-Serialisierung)
     'blob': ['fsspec'],       # sdata.sclass.Blob (URI-Content: file/S3/Zip)
+    # Semantische Metadaten-Schicht (alles mit pure-Python-Fallback):
+    'units': ['pint'],        # Einheiten-Validierung/-Normalisierung (sonst kuratierte Tabelle)
 }
 
 setup(
