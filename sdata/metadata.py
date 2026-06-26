@@ -262,6 +262,10 @@ class Attribute(object):
 
     __repr__ = __str__
 
+    def _repr_html_(self):
+        from sdata import interactive
+        return interactive.attribute_html(self)
+
 
 class Metadata(object):
     """Metadata container class
@@ -624,6 +628,24 @@ class Metadata(object):
         """Rekonstruiere Metadata aus einem JSON-LD-Dokument (dict oder str)."""
         from sdata import semantic
         return semantic.from_jsonld(doc)
+
+    def get_prefixed(self, prefix):
+        """Neue Metadata nur mit Attributen, deren Schlüssel mit ``prefix`` beginnt."""
+        sub = Metadata()
+        for key, attr in self._attributes.items():
+            if key.startswith(prefix):
+                sub._attributes[key] = attr
+        return sub
+
+    @property
+    def a(self):
+        """Attribut-Autocomplete-Accessor für die interaktive Nutzung (``m.a.force_x``)."""
+        from sdata import interactive
+        return interactive.AttrAccessor(self)
+
+    def _repr_html_(self):
+        from sdata import interactive
+        return interactive.metadata_html(self)
 
     def validate(self, schema):
         """Validiere diese Metadaten gegen ein :class:`sdata.schema.MetadataSchema`."""
