@@ -613,6 +613,29 @@ class Metadata(object):
                              label=alist[5], required=alist[6])
         return metadata
 
+    # --- JSON-LD / Linked Data / Sidecar (siehe sdata.semantic) -------------
+    def to_jsonld(self, context_mode="inline"):
+        """Serialisiere als selbstbeschreibendes JSON-LD-Dokument (dict)."""
+        from sdata import semantic
+        return semantic.to_jsonld(self, context_mode=context_mode)
+
+    @classmethod
+    def from_jsonld(cls, doc):
+        """Rekonstruiere Metadata aus einem JSON-LD-Dokument (dict oder str)."""
+        from sdata import semantic
+        return semantic.from_jsonld(doc)
+
+    def write_sidecar(self, path=None, indent=2):
+        """Schreibe ``<sname>.meta.jsonld`` neben einen Datenblob; gibt den Pfad zurück."""
+        from sdata import semantic
+        return semantic.write_sidecar(self, path=path, indent=indent)
+
+    @classmethod
+    def read_sidecar(cls, path):
+        """Lade eine ``.meta.jsonld``-Sidecar-Datei zu Metadata."""
+        from sdata import semantic
+        return semantic.read_sidecar(path)
+
     def __repr__(self):
         return "(Metadata'%s':%d)" % (self.name, len(self.attributes))
 

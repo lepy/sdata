@@ -230,6 +230,20 @@ class Base:
         module = "sdata" # self.get_sdata_did_method()
         return f"did:suuid:{self.sname}:{module}"
 
+    def to_jsonld(self, context_mode="inline"):
+        """Serialisiere die Metadaten als JSON-LD (siehe :mod:`sdata.semantic`)."""
+        return self.metadata.to_jsonld(context_mode=context_mode)
+
+    def write_sidecar(self, path=None, indent=2):
+        """Schreibe ``<sname>.meta.jsonld`` neben einen Datenblob; gibt den Pfad zurück."""
+        return self.metadata.write_sidecar(path=path, indent=indent)
+
+    @classmethod
+    def read_sidecar(cls, path):
+        """Lade eine ``.meta.jsonld``-Sidecar-Datei zu einer Metadata."""
+        from sdata import semantic
+        return semantic.read_sidecar(path)
+
     def _get_name(self) -> str:
         return self.metadata.get(self.SDATA_NAME).value
 
