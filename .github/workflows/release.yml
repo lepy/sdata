@@ -8,6 +8,10 @@ name: release
 on:
   release:
     types: [published]
+  # Manueller Fallback: ein per API/Token erzeugtes Release-Event löst keine
+  # kaskadierenden Workflows aus (GitHub-Regel); workflow_dispatch triggert immer
+  # und erfüllt denselben Trusted Publisher (Workflow release.yml + Env pypi).
+  workflow_dispatch:
 
 jobs:
   build:
