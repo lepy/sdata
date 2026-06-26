@@ -42,7 +42,8 @@ def test_find_by_variants(store):
     assert len(store.find_by("_sdata_class", "C", limit=1, offset=0)) == 1
     # nicht-generierte Spalte -> Warnung + json_extract-Pfad
     store.insert(_rec(custom="abc"))
-    assert len(store.find_by("custom", "abc")) == 1
+    with pytest.warns(UserWarning, match="not optimized"):
+        assert len(store.find_by("custom", "abc")) == 1
 
 
 def test_get_index_df(store):
