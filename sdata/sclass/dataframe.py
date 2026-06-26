@@ -97,6 +97,27 @@ class DataFrame(Base):
         result['data']['column_metadata'] = self.column_metadata.to_dict()
         return result
 
+    def _ordered_columns(self):
+        """Spalten-Attribute in echter df-Spaltenreihenfolge (nicht alphabetisch)."""
+        cols = [self.column_metadata.get(str(c)) for c in self.df.columns]
+        return [c for c in cols if c is not None]
+
+    def to_jsonld(self, context_mode="inline"):
+        """JSON-LD der Metadaten inkl. Spalten-Metadaten (csvw:column)."""
+        from sdata import semantic
+        return semantic.to_jsonld(self.metadata, context_mode=context_mode,
+                                  columns=self._ordered_columns())
+
+    def to_turtle(self):
+        """RDF/Turtle inkl. Spalten-Metadaten."""
+        from sdata import semantic
+        return semantic.rdf_from_doc(self.to_jsonld(), fmt="turtle")
+
+    def write_sidecar(self, path=None, indent=2):
+        """Sidecar ``<sname>.meta.jsonld`` inkl. Spalten-Metadaten; gibt den Pfad zurück."""
+        from sdata import semantic
+        return semantic.write_sidecar_doc(self.to_jsonld(), path, self.sname, indent=indent)
+
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> 'DataFrame':
         """

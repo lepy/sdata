@@ -30,9 +30,9 @@ except ImportError:  # pragma: no cover - abhängig vom Environment
     _rdflib = None
 
 __all__ = [
-    "to_jsonld", "from_jsonld", "to_rdf", "to_turtle",
-    "write_sidecar", "read_sidecar", "to_verifiable_credential",
-    "verify_credential", "SIDECAR_SUFFIX",
+    "to_jsonld", "from_jsonld", "to_rdf", "to_turtle", "rdf_from_doc",
+    "column_node", "write_sidecar", "read_sidecar",
+    "to_verifiable_credential", "verify_credential", "SIDECAR_SUFFIX",
 ]
 
 SIDECAR_SUFFIX = ".meta.jsonld"
@@ -106,8 +106,28 @@ def _attr_node(attr):
     return node
 
 
-def to_jsonld(metadata, context_mode="inline"):
-    """Serialisiere ``metadata`` als JSON-LD-Dokument (dict)."""
+def column_node(attr):
+    """JSON-LD-Knoten (CSVW) für eine Tabellenspalte aus ``column_metadata``.
+
+    ``attr.name`` = Spaltenname, ``attr.value`` = pandas-dtype-Name (z.B.
+    ``float64``); optional ``unit``/``label``/``description``.
+    """
+    node = {"name": attr.name, "datatype": vocab.xsd_for_dtype(attr.value)}
+    if attr.unit not in (None, "", "-"):
+        node.update(units.unit_node(attr.unit))
+    if attr.label:
+        node["label"] = attr.label
+    if attr.description:
+        node["description"] = attr.description
+    return node
+
+
+def to_jsonld(metadata, context_mode="inline", columns=None):
+    """Serialisiere ``metadata`` als JSON-LD-Dokument (dict).
+
+    :param columns: optionale, **geordnete** Iterable von Spalten-``Attribute``s
+        (DataFrame, in df-Spaltenreihenfolge); wird als ``csvw:column``-Liste ergänzt.
+    """
     doc = {"@context": vocab.build_context(mode=context_mode)}
 
     sname = metadata.get("_sdata_sname")
@@ -142,6 +162,10 @@ def to_jsonld(metadata, context_mode="inline"):
     # User-Attribute -> sdata:<name>
     for attr in metadata.user_attributes.values():
         doc[vocab.predicate_for(attr.name)] = _attr_node(attr)
+
+    # tabellarische Spalten (DataFrame) als geordnete csvw:column-Liste
+    if columns:
+        doc["columns"] = [column_node(a) for a in columns]
     return doc
 
 
@@ -212,7 +236,11 @@ def to_rdf(metadata, fmt="turtle"):
     (turtle/nt/xml/…) serialisiert. Ohne rdflib wird das JSON-LD selbst
     zurückgegeben – ``application/ld+json`` ist bereits gültiges RDF.
     """
-    doc = to_jsonld(metadata)
+    return rdf_from_doc(to_jsonld(metadata), fmt=fmt)
+
+
+def rdf_from_doc(doc, fmt="turtle"):
+    """Serialisiere ein bereits gebautes JSON-LD-Dokument als RDF (siehe :func:`to_rdf`)."""
     data = json.dumps(doc, default=dtypes.json_default)
     if _rdflib is not None:
         graph = _rdflib.Graph()
@@ -275,9 +303,14 @@ def write_sidecar(metadata, path=None, indent=2):
     """Schreibe ``<sname>.meta.jsonld`` (JSON-LD) neben einen Blob; gibt den Pfad zurück."""
     sname_attr = metadata.get("_sdata_sname")
     sname = sname_attr.value if sname_attr is not None and sname_attr.value else "metadata"
+    return write_sidecar_doc(to_jsonld(metadata), path, sname, indent=indent)
+
+
+def write_sidecar_doc(doc, path, sname, indent=2):
+    """Schreibe ein bereits gebautes JSON-LD-Dokument als ``<sname>.meta.jsonld``."""
     target = _sidecar_path(path, sname)
     with open(target, "w") as fh:
-        json.dump(to_jsonld(metadata), fh, indent=indent, default=dtypes.json_default)
+        json.dump(doc, fh, indent=indent, default=dtypes.json_default)
     return target
 
 
