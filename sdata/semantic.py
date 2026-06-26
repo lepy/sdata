@@ -24,9 +24,14 @@ import os
 import sdata.dtypes as dtypes
 from sdata import vocab, units
 
+try:  # optionales RDF-Backend ([rdf]=rdflib)
+    import rdflib as _rdflib
+except ImportError:  # pragma: no cover - abhängig vom Environment
+    _rdflib = None
+
 __all__ = [
-    "to_jsonld", "from_jsonld", "write_sidecar", "read_sidecar",
-    "SIDECAR_SUFFIX",
+    "to_jsonld", "from_jsonld", "to_rdf", "to_turtle",
+    "write_sidecar", "read_sidecar", "SIDECAR_SUFFIX",
 ]
 
 SIDECAR_SUFFIX = ".meta.jsonld"
@@ -197,6 +202,27 @@ def from_jsonld(doc):
         if key.startswith("sdata:"):
             _set_from_node(m, key.split(":", 1)[1], val)
     return m
+
+
+def to_rdf(metadata, fmt="turtle"):
+    """Serialisiere die Metadaten als RDF.
+
+    Mit installiertem ``rdflib`` (``[rdf]``) wird das JSON-LD nach ``fmt``
+    (turtle/nt/xml/…) serialisiert. Ohne rdflib wird das JSON-LD selbst
+    zurückgegeben – ``application/ld+json`` ist bereits gültiges RDF.
+    """
+    doc = to_jsonld(metadata)
+    data = json.dumps(doc, default=dtypes.json_default)
+    if _rdflib is not None:
+        graph = _rdflib.Graph()
+        graph.parse(data=data, format="json-ld")
+        return graph.serialize(format=fmt)
+    return json.dumps(doc, indent=2, default=dtypes.json_default)
+
+
+def to_turtle(metadata):
+    """Convenience: RDF im Turtle-Format (siehe :func:`to_rdf`)."""
+    return to_rdf(metadata, fmt="turtle")
 
 
 def _sidecar_path(path, sname):
