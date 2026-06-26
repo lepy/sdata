@@ -21,6 +21,10 @@ class TestProgram(Data):
     """A sdata Testprogram
 
     """
+    # Trotz "Test"-Präfix keine pytest-Testklasse (gilt via Vererbung auch für
+    # TestSeries/Test) -> unterdrückt PytestCollectionWarning.
+    __test__ = False
+
     ATTRIBUTES = [
         ['material_name', '', 'str', '-', 'Der Name des Materials.', '', False],
         ['material_norm_name', '', 'str', '-', 'Der normative Name des Materials.', '', False],
