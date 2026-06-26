@@ -19,11 +19,11 @@ def test_extract_name_unit_variants():
 
 
 def test_to_utc_naive_and_aware():
-    import pytz
+    import zoneinfo
     naive = datetime.datetime(2020, 1, 1, 12, 0, 0)
     assert _to_utc(naive).tzinfo is not None
-    aware = pytz.timezone("Europe/Berlin").localize(naive)
-    assert _to_utc(aware).tzinfo == pytz.UTC
+    aware = naive.replace(tzinfo=zoneinfo.ZoneInfo("Europe/Berlin"))
+    assert _to_utc(aware).tzinfo == datetime.timezone.utc
 
 
 # --- Attribute ----------------------------------------------------------

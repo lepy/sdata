@@ -36,7 +36,7 @@ import datetime
 from decimal import Decimal
 import sys
 import re
-import pytz
+import zoneinfo
 
 __all__ = ["parse_date", "ParseError", "UTC",
            "FixedOffset", "TimeStamp"]
@@ -263,13 +263,17 @@ def get_utc_timestamp(dt):
     """datetime --> 2017-04-26T09:04:00.660000+00:00"""
     if not isinstance(dt, datetime.datetime):
         return
-    return dt.astimezone(tz=pytz.UTC)
+    return dt.astimezone(tz=UTC)
 
 
 def get_local_timestamp(dt):
     """datetime --> 2017-04-26T09:04:00.660000+02:00"""
     tzname = local_tzname()
-    return dt.astimezone(tz=pytz.timezone(tzname))
+    try:
+        tz = zoneinfo.ZoneInfo(tzname)
+    except zoneinfo.ZoneInfoNotFoundError:  # pragma: no cover - System ohne tz-Datenbank
+        return dt.astimezone()              # System-Lokalzeit (ohne tzdata)
+    return dt.astimezone(tz=tz)
 
 
 class TimeStamp(object):
@@ -278,7 +282,7 @@ class TimeStamp(object):
     def __init__(self, datetimestr=None):
         """'2017-04-26T09:04:00.660000+00:00' --> datetime"""
         if datetimestr is None:
-            self._datetime = datetime.datetime.now(tz=pytz.UTC)
+            self._datetime = datetime.datetime.now(tz=UTC)
         else:
             try:
                 self._datetime = parse_date(datetimestr)
