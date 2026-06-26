@@ -48,6 +48,10 @@ class Base:
         SDATA_PARENT_SNAME, SDATA_PROJECT_SNAME, SDATA_TOPOLOGY_CLASS
     ]
 
+    #: optionales MetadataSchema/Template (Default None); Subklassen/Factory können
+    #: es setzen, dann werden die Metadaten beim Init vervollständigt (vollqualifiziert).
+    SDATA_SCHEMA = None
+
     @classmethod
     def get_sdata_spec(cls: type) -> str:
         """Kanonischer, importierbarer String für eine Klasse: ``modul:Klasse``."""
@@ -130,7 +134,21 @@ class Base:
         self._description = kwargs.get("description", "")
         self._data: Dict[str, Any] = kwargs.get("data", {})
 
+        # Optionales Schema/Template anwenden (vollqualifizieren), falls deklariert
+        if self.SDATA_SCHEMA is not None:
+            self.SDATA_SCHEMA.apply(self.metadata)
+
         # logger.debug(f"Created {self.__class__.__name__} '{suuid.sname}'")
+
+    def validate(self):
+        """Validiere die Metadaten gegen das deklarierte ``SDATA_SCHEMA``.
+
+        Ohne Schema ist das Ergebnis trivial gültig.
+        """
+        from sdata.schema import ValidationReport
+        if self.SDATA_SCHEMA is None:
+            return ValidationReport(ok=True)
+        return self.SDATA_SCHEMA.validate(self.metadata)
 
     def _resolve_relation_sname(self, obj: Any, sname: Optional[str], label: str) -> str:
         """Ermittle den sname-Wert für eine Relation (``project``/``parent``).

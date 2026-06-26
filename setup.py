@@ -36,6 +36,7 @@ EXTRAS = {
     # Semantische Metadaten-Schicht (alles mit pure-Python-Fallback):
     'units': ['pint'],        # Einheiten-Validierung/-Normalisierung (sonst kuratierte Tabelle)
     'rdf': ['rdflib'],        # RDF/Turtle-Serialisierung (sonst JSON-LD = gültiges RDF)
+    'schema': ['jsonschema'], # JSON-Schema-Validierung (sonst native MetadataSchema-Prüfung)
 }
 
 setup(
