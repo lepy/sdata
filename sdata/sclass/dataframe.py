@@ -6,8 +6,8 @@ from typing import Any, Dict, Optional, Union
 import logging
 
 from sdata.metadata import Metadata, Attribute
-# from sdata.sclass.blob import Blob  # Assuming Blob is in sdata.blob or adjust import
 from sdata.base import Base
+from sdata.interactive import ColumnAccessor
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,9 @@ class DataFrame(Base):
 
         self._df = pd.DataFrame()
         if df is not None:
-            self.df = df
+            # Bei der Konstruktion vom Nutzer gelieferte column_metadata bewahren
+            # (kein Prune); Waisen werden nur gemeldet.
+            self._assign_df(df, prune=False)
             self._warn_orphan_columns()
 
     def _warn_orphan_columns(self):
@@ -92,13 +94,34 @@ class DataFrame(Base):
         return self._df
 
     def _set_df(self, df):
+        # Zuweisung über die ``df``-Property synchronisiert die column_metadata und
+        # entfernt dabei Attribute zu nicht mehr vorhandenen Spalten (prune).
+        self._assign_df(df, prune=True)
+
+    def _assign_df(self, df, prune=False):
         if isinstance(df, pd.DataFrame):
             self._df = df
             if self._df.index.name is None:
                 self._df.index.name = "index"
-            for col in df.columns:
-                dtype = df[col].dtype
-                self._column_metadata.add(name=col, value=dtype.name)
+            self._sync_column_metadata(prune=prune)
+
+    def _sync_column_metadata(self, prune=False):
+        """Halte column_metadata mit den df-Spalten konsistent.
+
+        Ergänzt fehlende Spalten-Attribute (Wert = pandas-dtype-Name) und bewahrt
+        dabei vorhandene Annotationen (unit/label/description/ontology), da
+        :meth:`~sdata.metadata.Metadata.set_attr` vorhandene Attribute wiederverwendet.
+
+        :param prune: wenn ``True``, werden Attribute zu Spalten entfernt, die nicht
+          (mehr) im df vorhanden sind (z. B. nach einer df-Neuzuweisung).
+        """
+        colnames = [str(c) for c in self._df.columns]
+        for col in self._df.columns:
+            self._column_metadata.add(name=str(col), value=self._df[col].dtype.name)
+        if prune:
+            for key in list(self._column_metadata.keys()):
+                if key not in colnames:
+                    self._column_metadata.pop(key)
 
     df = property(fget=_get_df, fset=_set_df, doc="df object(pandas.DataFrame)")
 
@@ -111,6 +134,59 @@ class DataFrame(Base):
           column (e.g. ``label``/``unit`` annotations).
         """
         return self._column_metadata
+
+    def get_column(self, name) -> Optional[Attribute]:
+        """Return the column :class:`~sdata.metadata.Attribute` for ``name``.
+
+        :param name: column name.
+        :return: the column's :class:`Attribute`, or ``None`` if unknown.
+        """
+        return self._column_metadata.get(str(name))
+
+    def set_column(self, name, *, unit=None, label=None, description=None,
+                   ontology=None, required=None, dtype=None) -> Attribute:
+        """Annotate a column; writes through to :attr:`column_metadata`.
+
+        Only the provided fields are changed; existing annotations are preserved
+        (delegates to :meth:`~sdata.metadata.Metadata.set_attr`). A warning is
+        logged if ``name`` is not a column of the current df.
+
+        :param name: column name.
+        :param unit: physical unit (e.g. ``"kg"``).
+        :param label: human-readable label.
+        :param description: free-text description.
+        :param ontology: CURIE/IRI of the column's class.
+        :param required: whether the column is required.
+        :param dtype: declared dtype string.
+        :return: the (created or updated) column :class:`Attribute`.
+        """
+        name = str(name)
+        fields = {"unit": unit, "label": label, "description": description,
+                  "ontology": ontology, "required": required, "dtype": dtype}
+        self._column_metadata.set_attr(
+            name, **{k: v for k, v in fields.items() if v is not None})
+        if name not in {str(c) for c in self._df.columns}:
+            logger.warning("set_column: %r is not a df column", name)
+        return self._column_metadata.get(name)
+
+    @property
+    def col(self) -> ColumnAccessor:
+        """Column-annotation accessor: ``df.col.weight`` / ``df.col['weight']``.
+
+        Returns the column :class:`Attribute`; mutate its fields in place
+        (``df.col.weight.unit = 'kg'``) or use :meth:`set_column`.
+        """
+        return ColumnAccessor(self)
+
+    @property
+    def column_units(self) -> Dict[str, str]:
+        """Mapping ``{column: unit}`` (in df-column order) from column_metadata."""
+        units = {}
+        for col in self._df.columns:
+            attr = self._column_metadata.get(str(col))
+            if attr is not None:
+                units[str(col)] = attr.unit
+        return units
 
     def __len__(self) -> int:
         """Number of rows of the underlying df."""

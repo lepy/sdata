@@ -7,7 +7,7 @@ tabulate-Abhängigkeit).
 """
 import html as _html
 
-__all__ = ["attribute_html", "metadata_html", "AttrAccessor"]
+__all__ = ["attribute_html", "metadata_html", "AttrAccessor", "ColumnAccessor"]
 
 
 def _esc(value):
@@ -73,3 +73,44 @@ class AttrAccessor:
 
     def __repr__(self):
         return "AttrAccessor({})".format(self.__dir__())
+
+
+class ColumnAccessor:
+    """Spalten-Annotation-Autocomplete: ``df.col.weight`` / ``df.col['weight']``.
+
+    Liefert das Spalten-:class:`Attribute` aus ``column_metadata``; dessen Felder
+    lassen sich direkt mutieren (``df.col.weight.unit = 'kg'``). Zum Anlegen/Setzen
+    ganzer Felder dient :meth:`~sdata.sclass.dataframe.DataFrame.set_column`.
+
+    Liegt – wie :class:`AttrAccessor` – bewusst auf einem eigenen Objekt, damit die
+    Tab-Completion nur Spaltennamen zeigt und keine Methoden überschattet.
+    """
+
+    def __init__(self, owner):
+        object.__setattr__(self, "_owner", owner)
+
+    def _cm(self):
+        return self._owner.column_metadata
+
+    def __getattr__(self, name):
+        attr = self._cm().get(name)
+        if attr is None:
+            raise AttributeError(name)
+        return attr
+
+    def __getitem__(self, name):
+        attr = self._cm().get(str(name))
+        if attr is None:
+            raise KeyError(name)
+        return attr
+
+    def __setattr__(self, name, value):
+        raise AttributeError(
+            "use df.set_column({0!r}, ...) or mutate fields "
+            "(df.col.{0}.unit = ...) instead of assigning df.col.{0}".format(name))
+
+    def __dir__(self):
+        return [str(c) for c in self._owner.df.columns if str(c).isidentifier()]
+
+    def __repr__(self):
+        return "ColumnAccessor({})".format(self.__dir__())
