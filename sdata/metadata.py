@@ -625,6 +625,14 @@ class Metadata(object):
         from sdata import semantic
         return semantic.from_jsonld(doc)
 
+    def validate(self, schema):
+        """Validiere diese Metadaten gegen ein :class:`sdata.schema.MetadataSchema`."""
+        return schema.validate(self)
+
+    def apply_schema(self, schema):
+        """Vervollständige diese Metadaten in-place gemäß einem MetadataSchema."""
+        return schema.apply(self)
+
     def to_rdf(self, fmt="turtle"):
         """Serialisiere als RDF (rdflib falls vorhanden, sonst JSON-LD)."""
         from sdata import semantic
