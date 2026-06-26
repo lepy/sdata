@@ -5,7 +5,7 @@ import zlib
 import base64
 import shutil
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sdata.iolib.jsonsqlitestore import JSONSQLiteStore
 
 
@@ -126,7 +126,7 @@ def test_backup_and_restore(tmp_path):
 def test_delete_expired(tmp_path):
     db = str(tmp_path / "exp.sqlite")
     store = JSONSQLiteStore(db)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     rid1 = store.insert({"t": 1})
     # artificially update created_at to past
     past = (now - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%fZ')
