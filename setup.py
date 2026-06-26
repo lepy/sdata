@@ -11,8 +11,9 @@ with open('sdata/__init__.py', 'r') as f:
 with open('README.md', 'rb') as f:
     readme = f.read().decode('utf-8')
 
-# Schlanker Kern: nur numpy/pandas (Datenmodell), pytz (Zeitzonen) und suuid.
-REQUIRES = ['numpy', 'pandas', 'pytz', 'suuid>=0.2.0']
+# Schlanker Kern: nur numpy/pandas (Datenmodell) und suuid. Zeitzonen über das
+# stdlib-Modul zoneinfo (Python >= 3.9).
+REQUIRES = ['numpy', 'pandas', 'suuid>=0.2.0']
 
 # Optionale Abhängigkeiten:
 #   pip install "sdata[did]"     DID-/VC-Subpackage (sdata.did, pure Python)
@@ -62,8 +63,6 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Natural Language :: English',
         'Operating System :: OS Independent',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
@@ -71,7 +70,7 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
     ],
-    python_requires='>=3.7',
+    python_requires='>=3.9',
 
     install_requires=REQUIRES,
     extras_require=EXTRAS,

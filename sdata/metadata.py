@@ -6,7 +6,6 @@ import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
 import sdata.dtypes as dtypes
-import pytz
 import datetime
 from dateutil.parser import parse as parse_date
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
@@ -60,8 +59,8 @@ def extract_name_unit(value):
 def _to_utc(dt: datetime.datetime) -> datetime.datetime:
     """Sichere UTC-Normalisierung (aware)."""
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=pytz.UTC)
-    return dt.astimezone(pytz.UTC)
+        return dt.replace(tzinfo=datetime.timezone.utc)
+    return dt.astimezone(datetime.timezone.utc)
 
 class Attribute(object):
     """Attribute class"""
