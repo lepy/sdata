@@ -5,6 +5,7 @@ from sdata import __version__
 import pandas as pd
 import numpy as np
 from sdata.timestamp import TimeStamp
+import sdata.dtypes as dtypes
 import pytz
 import datetime
 from dateutil.parser import parse as parse_date
@@ -65,27 +66,26 @@ def _to_utc(dt: datetime.datetime) -> datetime.datetime:
 class Attribute(object):
     """Attribute class"""
 
-    DTYPES = {'float': float,
-              'int': int,
-              'str': str,
-              'timestamp': datetime.datetime,
-              "bool": bool,
-              'list': list, # list of strings!
-              }
-    DTYPES_INV = {v: k for k, v in DTYPES.items()}
+    # Kompat-Aliasse: identische Inhalte für die 6 Alt-dtypes; die Registry in
+    # :mod:`sdata.dtypes` ist die Single Source of Truth (+ bytes/json/uri).
+    DTYPES = dtypes.DTYPES
+    DTYPES_INV = dtypes.DTYPES_INV
 
-    def __init__(self, name, value, **kwargs):
+    def __init__(self, name, value, *, strict=False, **kwargs):
         """Attribute(name, value, dtype=str, unit="-", description="", label="", required=False,
-            ontology:"BFO:quality")
+            ontology:"BFO:quality", strict=False)
         :param name
         :param value
-        :param dtype ['float', 'int', 'str', 'timestamp', 'bool', 'list']
+        :param dtype ['float', 'int', 'str', 'timestamp', 'bool', 'list', 'bytes', 'json', 'uri']
         :param description
         :param unit
         :param label
         :param required
         :param ontology
+        :param strict: bei True wirft fehlgeschlagene Coercion ``dtypes.DtypeError``
+            statt still zu degradieren (Default False = bisheriges Verhalten)
         """
+        self._strict: bool = bool(strict)
         self._name: str = None
         self._value: Any = None
         self._unit:str = "-"
@@ -126,36 +126,13 @@ class Attribute(object):
         return self._value
 
     def _set_value(self, value):
+        spec = dtypes.get(self._dtype) or dtypes.get("str")
         try:
-            dtype = self.DTYPES.get(self.dtype, self.guess_dtype(value))
-            # ---- Listen-Sonderfälle ----
-            if self.dtype == "list":
-                if value is None or value == "":
-                    self._value = []
-                elif isinstance(value, str):
-                    self._value = [v.strip() for v in value.split(",") if v.strip()]
-                elif isinstance(value, list):
-                    self._value = [str(v) for v in value]
-                else:
-                    raise ValueError(f"Cannot cast {value} to list[str]")
-
-            # ---- normale Dtypen ----
-            elif self.dtype == "str" and value == "":
-                self._value = ""
-            elif not value and self.dtype not in ["int", "float", "bool"]:
-                self._value = None
-            elif not value and self.dtype in ["int", "float"]:
-                self._value = np.nan
-            elif pd.isna(value) and self.dtype in ["int", "float"]:
-                self._value = np.nan
-            elif dtype.__name__ == "bool" and value not in [1, "1", "true", "True"]:
-                self._value = False
-            elif dtype.__name__ == "bool" and value in [1, "1", "true", "True"]:
-                self._value = True
-            else:
-                self._value = dtype(value)
-
-        except ValueError as exp:
+            self._value = spec.coerce(value, strict=self._strict)
+        except dtypes.DtypeError as exp:
+            if self._strict:
+                raise
+            # lenient: loggen und vorhandenen Wert unverändert lassen (Altverhalten)
             logger.error("error Attribute.value: {}".format(exp))
 
     value = property(fget=_get_value, fset=_set_value, doc="Attribute value")
@@ -183,26 +160,20 @@ class Attribute(object):
 
     def _set_dtype(self, value):
         """set dtype str
-s
-        :param value:
+
+        Akzeptiert dtype-String ('float', 'float64', ...) ODER Klasse (float, int).
+        Ist bereits ein Wert gesetzt, wird er in den neuen dtype umgecastet.
+
+        :param value: dtype-String oder -Klasse
         :return:
         """
-        if value is None:
+        name = dtypes.resolve(value)
+        if name is None:
             return None
-        if value in self.DTYPES_INV.keys():
-            value = self.DTYPES_INV.get(value, "str")
-        elif "float" in value:
-            value = "float"
-        elif "int" in value:
-            value = "int"
-        if value in self.DTYPES.keys():
-            self._dtype = value
-        # todo: cast self.value to new dtype
-        # if self._value is not None:
-        #     try:
-        #         self._value = self.DTYPES[self.dtype](self.value)
-        #     except Exception as exp:
-        #         logger.error("_set_dtype:{}:{}-{}".format(self.dtype, exp, exp.__class__.__name__))
+        self._dtype = name
+        # Re-Cast eines bereits gesetzten Werts (während __init__ ist _value noch None)
+        if getattr(self, "_value", None) is not None:
+            self._set_value(self._value)
 
     dtype = property(fget=_get_dtype, fset=_set_dtype, doc="Attribute type str")
 
@@ -304,6 +275,8 @@ class Metadata(object):
         """
 
     ATTRIBUTEKEYS = ["name", "value", "unit", "dtype", "description", "label", "required", "ontology"]
+    #: reservierte Attribut-Schlüssel, der den Objektnamen autoritativ hält
+    RESERVED_NAME_KEY = "_sdata_name"
 
     def __init__(self, **kwargs):
         """Metadata class
@@ -314,10 +287,18 @@ class Metadata(object):
         self._name = kwargs.get("name") or "N.N."
 
     def _get_name(self):
+        # Single Source of Truth: das reservierte _sdata_name-Attribut ist
+        # autoritativ, sobald gesetzt; sonst der einfache _name-Fallback.
+        attr = self._attributes.get(self.RESERVED_NAME_KEY)
+        if attr is not None and attr.value:
+            return attr.value
         return self._name
 
     def _set_name(self, value):
         self._name = str(value)
+        attr = self._attributes.get(self.RESERVED_NAME_KEY)
+        if attr is not None:
+            attr.value = str(value)
 
     name = property(fget=_get_name, fset=_set_name, doc="Name of the Metadata")
 
@@ -586,8 +567,8 @@ class Metadata(object):
         d = self.to_dict()
         if filepath:
             with open(filepath, "w") as fh:
-                json.dump(d, fh)
-        return json.dumps(d)
+                json.dump(d, fh, default=dtypes.json_default)
+        return json.dumps(d, default=dtypes.json_default)
 
     @classmethod
     def from_json(cls, jsonstr=None, filepath=None):
@@ -655,13 +636,14 @@ class Metadata(object):
         :param newname: new attribute name
         :return: None
         """
-        attr = self.get(name)
-        if not attr:
+        attr = self._attributes.get(name)
+        if attr is None:
             logger.warning("{0}: no Attribute {1} to relabel.".format(self.__class__, name))
-        else:
-            attr.name = newname
-            self.attributes.pop(name)
-            self.add(attr)
+            return
+        # explizit umschlüsseln (kein Präfix-Raten -> robust auch bei prefixed keys)
+        self._attributes.pop(name)
+        attr.name = newname
+        self._attributes[newname] = attr
 
     def get(self, name, default=None):
         #default = default or Attribute(name=name, value=None)
@@ -760,7 +742,7 @@ class Metadata(object):
 
         metadatastr = self.to_json().encode(errors="replace")
         hashobject.update(metadatastr)
-        return hash
+        return hashobject
 
     def set_unit_from_name(self, add_description=True, fix_name=True):
         """try to extract unit from attribute name
