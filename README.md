@@ -146,7 +146,8 @@ report = sdf.validate_table(schema)            # ValidationReport (truthy if ok)
 ```
 
 Arrow/Feather/Parquet need `pip install "sdata[parquet]"`; CSV, dict and JSON-LD
-work with the core install. See `docs/source/usage/dataframe.rst` for details.
+work with the core install. See the [Tabular data docs](https://lepy.github.io/sdata/usage/dataframe/)
+([`docs/usage/dataframe.md`](docs/usage/dataframe.md)) for details.
 
 ## Howto
 
