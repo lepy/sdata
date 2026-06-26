@@ -256,6 +256,10 @@ class Base:
         """Serialisiere die Metadaten als RDF/Turtle (siehe :mod:`sdata.semantic`)."""
         return self.metadata.to_turtle()
 
+    def _repr_html_(self):
+        """Jupyter-Darstellung der Metadaten (siehe :mod:`sdata.interactive`)."""
+        return self.metadata._repr_html_()
+
     def write_sidecar(self, path=None, indent=2):
         """Schreibe ``<sname>.meta.jsonld`` neben einen Datenblob; gibt den Pfad zurück."""
         return self.metadata.write_sidecar(path=path, indent=indent)
