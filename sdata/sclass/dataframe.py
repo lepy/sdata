@@ -2,6 +2,7 @@ import pandas as pd
 import io
 import os
 import base64
+import json
 from typing import Any, Dict, Optional, Union
 import logging
 
@@ -407,6 +408,127 @@ class DataFrame(Base):
         if attrs is not None:
             tt.df.attrs.pop("_sdata")
         return tt
+
+    # ------------------------------------------------------------------ CSV
+    def to_csv(self, path=None, filename=None, sidecar=False, **kwargs):
+        """Serialize the df to CSV (pure pandas, no extra dependency).
+
+        CSV carries data only; the qualifying metadata travels in the optional
+        ``<sname>.meta.jsonld`` sidecar. The index is dropped by default
+        (override via ``index=True``).
+
+        :param path: directory to write ``<sname>.csv`` into (if given).
+        :param filename: exact output filename (defaults to ``<sname>.csv``).
+        :param sidecar: also write a JSON-LD metadata sidecar next to the file.
+        :param kwargs: forwarded to :meth:`pandas.DataFrame.to_csv`.
+        :return: the file path (if written to disk) or the CSV string.
+        """
+        kwargs.setdefault("index", False)
+        if filename is None and path is not None:
+            filename = self.sname + ".csv"
+        if filename is not None:
+            filepath = os.path.join(path, filename) if path else filename
+            self.df.to_csv(filepath, **kwargs)
+            logger.info(f"DataFrame CSV saved to {filepath}")
+            if sidecar:
+                self.write_sidecar(path)
+            return filepath
+        return self.df.to_csv(**kwargs)
+
+    @classmethod
+    def from_csv(cls, filepath, **kwargs):
+        """Load a DataFrame from a CSV file (pure pandas).
+
+        :param filepath: path to the CSV file.
+        :param kwargs: forwarded to :func:`pandas.read_csv`.
+        :return: a :class:`DataFrame` instance (data only; use a sidecar for metadata).
+        :raises FileNotFoundError: if ``filepath`` does not exist.
+        """
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"no CSV file {filepath}")
+        df = pd.read_csv(filepath, **kwargs)
+        tt = cls(name=filepath)
+        tt.df = df
+        return tt
+
+    # ---------------------------------------------------------------- Arrow
+    def to_arrow(self):
+        """Return a :class:`pyarrow.Table` with sdata metadata in the schema.
+
+        The metadata, column_metadata and description are embedded as JSON under
+        the ``b"_sdata"`` schema-metadata key (alongside pandas' own metadata).
+
+        :return: a ``pyarrow.Table``.
+        :raises ImportError: if pyarrow is not installed (``pip install sdata[parquet]``).
+        """
+        _require_parquet("pyarrow")
+        import pyarrow as pa
+        table = pa.Table.from_pandas(self.df)
+        meta = dict(table.schema.metadata or {})
+        meta[b"_sdata"] = json.dumps({
+            "metadata": self.metadata.to_dict(),
+            "column_metadata": self.column_metadata.to_dict(),
+            "description": self.description,
+        }).encode("utf-8")
+        return table.replace_schema_metadata(meta)
+
+    @classmethod
+    def from_arrow(cls, table):
+        """Build a DataFrame from a :class:`pyarrow.Table` written by :meth:`to_arrow`.
+
+        :param table: a ``pyarrow.Table`` (sdata metadata restored if present).
+        :return: a :class:`DataFrame` instance.
+        :raises ImportError: if pyarrow is not installed.
+        """
+        _require_parquet("pyarrow")
+        tt = cls()
+        tt.df = table.to_pandas()
+        raw = (table.schema.metadata or {}).get(b"_sdata")
+        if raw is not None:
+            tt._restore_from_attrs(json.loads(raw.decode("utf-8")))
+        return tt
+
+    # -------------------------------------------------------------- Feather
+    def to_feather(self, path=None, filename=None, sidecar=False, **kwargs):
+        """Serialize to the Feather (Arrow IPC) format, embedding sdata metadata.
+
+        :param path: directory to write ``<sname>.feather`` into (if given).
+        :param filename: exact output filename (defaults to ``<sname>.feather``).
+        :param sidecar: also write a JSON-LD metadata sidecar next to the file.
+        :param kwargs: forwarded to :func:`pyarrow.feather.write_feather`.
+        :return: the file path (if written to disk) or the Feather bytes.
+        :raises ImportError: if pyarrow is not installed.
+        """
+        _require_parquet("pyarrow")
+        import pyarrow.feather as feather
+        table = self.to_arrow()
+        if filename is None and path is not None:
+            filename = self.sname + ".feather"
+        if filename is not None:
+            filepath = os.path.join(path, filename) if path else filename
+            feather.write_feather(table, filepath, **kwargs)
+            logger.info(f"DataFrame Feather saved to {filepath}")
+            if sidecar:
+                self.write_sidecar(path)
+            return filepath
+        sink = io.BytesIO()
+        feather.write_feather(table, sink, **kwargs)
+        return sink.getvalue()
+
+    @classmethod
+    def from_feather(cls, filepath):
+        """Load a DataFrame from a Feather file written by :meth:`to_feather`.
+
+        :param filepath: path to the ``.feather`` file.
+        :return: a :class:`DataFrame` instance.
+        :raises FileNotFoundError: if ``filepath`` does not exist.
+        :raises ImportError: if pyarrow is not installed.
+        """
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"no Feather file {filepath}")
+        _require_parquet("pyarrow")
+        import pyarrow.feather as feather
+        return cls.from_arrow(feather.read_table(filepath))
 
 
 if __name__ == '__main__':
