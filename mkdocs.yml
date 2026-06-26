@@ -1,0 +1,70 @@
+site_name: sdata
+site_description: a structured data format — self-describing, machine-readable data
+site_url: https://lepy.github.io/sdata/
+repo_url: https://github.com/lepy/sdata
+repo_name: lepy/sdata
+edit_uri: edit/master/docs/
+copyright: MIT / Apache-2.0
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+
+exclude_docs: |
+  requirements.txt
+  build/
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: sphinx
+            show_root_heading: true
+            show_root_full_path: false
+            show_source: false
+            members_order: source
+            separate_signature: true
+            filters: ["!^_"]
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+
+nav:
+  - Home: index.md
+  - Usage:
+      - Tabular data (DataFrame): usage/dataframe.md
+      - Machine-readable metadata: usage/metadata-jsonld.md
+  - API reference: api.md
+  - RFCs:
+      - "0001 — json1sqlitestore index naming": rfc/0001-json1sqlitestore-index-naming.md
+  - Releasing: releasing.md
