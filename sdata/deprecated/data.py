@@ -24,7 +24,6 @@ import json
 import hashlib
 import base64
 import re
-from tabulate import tabulate
 from sdata.contrib.sqlitedict import SqliteDict
 
 if sys.version_info < (3, 0):
@@ -1340,6 +1339,7 @@ class Data(object):
         else:
             xlsx_tag = ""
 
+        from tabulate import tabulate  # optional; nur für HTML-Repr benötigt
         param = {"title":"{0} [{1}]".format(self.osname,
                                             self.uuid),
                  "description":self.description,

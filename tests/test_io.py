@@ -15,6 +15,7 @@ import sdata
 import uuid
 
 def test_data_to_html():
+    pytest.importorskip("xlsxwriter")  # to_html bettet xlsx ein (sdata[excel])
     df = pd.DataFrame({'a': ['x', 'y', '', 'z'], 'b': [1, 2, 2, 3.2]})
     data = sdata.Data(name="data", uuid="38b26864e7794f5182d38459bab8584d", table=df, description="abc")
     data.to_html("/tmp/data.html")

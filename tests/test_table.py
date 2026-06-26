@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.join(modulepath, "..", "..", "src"))
 import sdata
 import pandas as pd
 import numpy as np
+import pytest
 
 
 def test_table():
@@ -30,6 +31,7 @@ def test_table():
 
     ts.to_folder("/tmp/sdata_table")
 
+    pytest.importorskip("xlsxwriter")  # Excel-Export optional (sdata[excel])
     table.to_xlsx("/tmp/sdata_table.xlsx")
     print(table.metadata.to_dataframe())
 
