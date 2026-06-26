@@ -12,46 +12,73 @@ from sdata.base import Base
 logger = logging.getLogger(__name__)
 
 
+def _require_parquet(engine: str = "pyarrow") -> None:
+    """Stelle sicher, dass die Parquet-Engine importierbar ist.
+
+    pandas meldet ein fehlendes Backend erst tief im Aufruf; diese Vorabprüfung
+    liefert stattdessen eine klare, handlungsorientierte Meldung.
+
+    :param engine: Name des Parquet-Backends (z. B. ``"pyarrow"``).
+    :raises ImportError: wenn das Backend nicht installiert ist.
+    """
+    try:
+        __import__(engine)
+    except ImportError as exp:
+        raise ImportError(
+            f"Parquet engine {engine!r} is not available. "
+            f"Install it, e.g. `pip install sdata[parquet]`."
+        ) from exp
+
+
 class DataFrame(Base):
     SDATA_CLS = "sdata.sclass.dataframe.DataFrame"
 
 
     def __init__(
             self,
-            df: Optional[pd.DataFrame] = pd.DataFrame(),
+            df: Optional[pd.DataFrame] = None,
             column_metadata: Optional[
                 Union[Dict[str, Dict[str, str]], Metadata]
             ] = None,
             **kwargs: Any
     ) -> None:
         """
-        Initialize DataFrame with an optional Pandas DataFrame and optional column metadata.
-        If df is provided, serialize it to Parquet bytes and set as Blob content with filetype='parquet'.
-        If df is None (e.g., during deserialization), expect content to be set via data.
+        Initialize a DataFrame with an optional pandas DataFrame and column metadata.
 
-        :param df: Optional Pandas DataFrame to store.
-        :param column_metadata: Optional dict of column metadata, e.g., {colname: {'label': 'Description', 'unit': 'kg'}}.
-          If provided, must include all columns in df; colname is the key.
-        :param kwargs: Keyword arguments passed to Blob.__init__ (e.g., name, description).
-        :raises ValueError: If column_metadata doesn't match df columns.
+        The pandas DataFrame is kept in memory; serialization to Parquet/dict/JSON-LD
+        happens on demand. Per-column annotations (unit/label/description/ontology)
+        live in ``column_metadata`` (a :class:`~sdata.metadata.Metadata`).
+
+        :param df: Optional pandas DataFrame to store (default: an empty DataFrame).
+        :param column_metadata: Optional per-column metadata, either a dict
+          ``{colname: {'label': ..., 'unit': ...}}`` or a :class:`Metadata`. Keys
+          that do not match a df column are kept but a warning is logged.
+        :param kwargs: forwarded to :class:`~sdata.base.Base` (e.g. ``name``,
+          ``description``, ``project``).
         """
         super().__init__(**kwargs)
-        self._df = None
-        self._column_metadata = Metadata()
 
-        if column_metadata is not None and isinstance(column_metadata, dict):
+        if isinstance(column_metadata, dict):
             self._column_metadata = Metadata.from_dict(column_metadata)
-        elif column_metadata is not None and isinstance(column_metadata, Metadata):
+        elif isinstance(column_metadata, Metadata):
             self._column_metadata = column_metadata.copy()
-        elif column_metadata is not None:
-            logger.warning("column_metadata not supported")
-            self._column_metadata = Metadata(name="column_metadata")
         else:
+            if column_metadata is not None:
+                logger.warning("column_metadata type not supported: %s",
+                               type(column_metadata).__name__)
             self._column_metadata = Metadata(name="column_metadata")
 
         self._df = pd.DataFrame()
         if df is not None:
             self.df = df
+            self._warn_orphan_columns()
+
+    def _warn_orphan_columns(self):
+        """Warne, wenn column_metadata-Schlüssel keiner df-Spalte entsprechen."""
+        cols = {str(c) for c in self._df.columns}
+        orphans = [k for k in self._column_metadata.keys() if k not in cols]
+        if orphans:
+            logger.warning("column_metadata keys not in df columns: %s", orphans)
 
     @property
     def cmd(self):
@@ -78,20 +105,55 @@ class DataFrame(Base):
     @property
     def column_metadata(self) -> Metadata:
         """
-        Retrieve the column metadata.
+        Retrieve the per-column metadata.
 
-        :return: Dict of column metadata {colname: {'label': str, 'unit': str}}.
+        :return: a :class:`~sdata.metadata.Metadata` holding one attribute per
+          column (e.g. ``label``/``unit`` annotations).
         """
         return self._column_metadata
 
-    def to_dict(self) -> Dict[str, Any]:
+    def __len__(self) -> int:
+        """Number of rows of the underlying df."""
+        return len(self.df)
+
+    @property
+    def shape(self):
+        """``(nrows, ncols)`` of the underlying df."""
+        return self.df.shape
+
+    @property
+    def columns(self):
+        """Column index of the underlying df."""
+        return self.df.columns
+
+    @property
+    def dtypes(self):
+        """Per-column dtypes of the underlying df."""
+        return self.df.dtypes
+
+    def head(self, n: int = 5) -> pd.DataFrame:
+        """First ``n`` rows of the underlying df (delegates to ``pandas.DataFrame.head``)."""
+        return self.df.head(n)
+
+    def describe(self, *args, **kwargs) -> pd.DataFrame:
+        """Descriptive statistics of the df (delegates to ``pandas.DataFrame.describe``)."""
+        return self.df.describe(*args, **kwargs)
+
+    def __repr__(self) -> str:
+        return f"({self.__class__.__name__} <{self.sname}> shape={self.df.shape})"
+
+    def to_dict(self, engine: str = "pyarrow") -> Dict[str, Any]:
         """
-        Extend Blob.to_dict to include column_metadata.
-        The content (Parquet bytes) is handled by Blob.
+        Serialize to a dict, embedding the df as base64 Parquet plus column_metadata.
+
+        :param engine: Parquet engine for pandas (default ``"pyarrow"``).
+        :return: dict with the :class:`~sdata.base.Base` payload plus
+          ``data['parquet_bytes']`` and ``data['column_metadata']``.
         """
+        _require_parquet(engine)
         result = super().to_dict()
         bytes_io = io.BytesIO()
-        self.df.to_parquet(bytes_io, engine='pyarrow')
+        self.df.to_parquet(bytes_io, engine=engine)
         parquet_bytes = bytes_io.getvalue()
         result['data']['parquet_bytes'] = base64.b64encode(parquet_bytes).decode("ascii")
         result['data']['column_metadata'] = self.column_metadata.to_dict()
@@ -119,12 +181,18 @@ class DataFrame(Base):
         return semantic.write_sidecar_doc(self.to_jsonld(), path, self.sname, indent=indent)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> 'DataFrame':
+    def from_dict(cls, d: Dict[str, Any], engine: str = "pyarrow") -> 'DataFrame':
         """
-        Create a DataFrame instance from a dictionary.
-        Uses Blob.from_dict and restores column_metadata; df is loaded lazily.
+        Reconstruct a DataFrame from a dict produced by :meth:`to_dict`.
+
+        Restores metadata and column_metadata and decodes the df from the
+        embedded base64 Parquet payload.
+
+        :param d: dict with ``metadata`` and ``data.{parquet_bytes,column_metadata}``.
+        :param engine: Parquet engine for pandas (default ``"pyarrow"``).
+        :return: a :class:`DataFrame` instance.
         """
-        # instance = super().from_dict(d)
+        _require_parquet(engine)
         metadata = Metadata.from_dict(d.get("metadata", {}))
         column_metadata_dict = d['data'].get('column_metadata', {})
         column_metadata = Metadata.from_dict(column_metadata_dict)
@@ -135,19 +203,24 @@ class DataFrame(Base):
 
         parquet_str = d['data'].get('parquet_bytes', '')
         parquet_bytes = base64.b64decode(parquet_str.encode("ascii"))
-        instance.df = pd.read_parquet(io.BytesIO(parquet_bytes), engine='pyarrow')
+        instance.df = pd.read_parquet(io.BytesIO(parquet_bytes), engine=engine)
         return instance
 
     def to_dataframe(self):
-        """Export the DataFrame with additional metadata and description.
+        """Return a copy of the pandas DataFrame with sdata metadata in ``df.attrs``.
+
+        Metadata, column_metadata and description are embedded under the
+        ``"_sdata"`` key (same layout as :meth:`to_parquet`), so that a round-trip
+        through pandas keeps the annotations discoverable.
 
         Returns:
-            pandas.DataFrame: A copy of the DataFrame with added attributes.
+            pandas.DataFrame: A copy of the DataFrame with ``attrs['_sdata']`` set.
         """
         df = self.df.copy()
-        df.attrs["!sdata"] = {
+        df.attrs["_sdata"] = {
             "metadata": self.metadata.to_dict(),
-            "description": self.description
+            "column_metadata": self.column_metadata.to_dict(),
+            "description": self.description,
         }
         return df
 
@@ -188,6 +261,7 @@ class DataFrame(Base):
         engine = kwargs.get("engine", "pyarrow")
         compression = kwargs.get("compression", "zstd")
         sidecar = kwargs.get("sidecar", False)
+        _require_parquet(engine)
 
         df = self.df.copy()
         df.attrs["_sdata"] = {"metadata": self.metadata.to_dict(),
@@ -205,74 +279,58 @@ class DataFrame(Base):
         else:
             return df.to_parquet(engine=engine, compression=compression)
 
-    @classmethod
-    def from_parquet_bytes(cls, parquet_bytes, **kwargs):
-        """load data from parquet file
+    def _restore_from_attrs(self, attrs):
+        """Restore metadata/column_metadata/description from a ``_sdata`` attrs dict.
 
-        :param filepath:
-        :return: Data object
+        :param attrs: the dict stored under ``df.attrs['_sdata']`` (may be ``None``
+          or empty, in which case nothing is restored).
         """
-        engine = kwargs.get("engine", "pyarrow")
+        if not attrs:
+            return
+        if "metadata" in attrs:
+            self.metadata = Metadata.from_dict(attrs["metadata"])
+        if "column_metadata" in attrs:
+            self._column_metadata = Metadata.from_dict(attrs["column_metadata"])
+        if "description" in attrs:
+            self.description = attrs.get("description")
+
+    @classmethod
+    def from_parquet_bytes(cls, parquet_bytes, engine: str = "pyarrow"):
+        """Load a DataFrame from in-memory Parquet bytes.
+
+        :param parquet_bytes: Parquet file content as bytes.
+        :param engine: Parquet engine for pandas (default ``"pyarrow"``).
+        :return: a :class:`DataFrame` instance.
+        """
+        _require_parquet(engine)
         buffer = io.BytesIO(parquet_bytes)
         df = pd.read_parquet(buffer, engine=engine)
         tt = cls()
         tt.df = df
-
-        attrs = df.attrs.get("_sdata")
-        try:
-            tt.metadata = tt.metadata.from_dict(attrs["metadata"])
-        except:
-            logger.warning(f"ignore metadata")
-
-        try:
-            tt._column_metadata = tt.metadata.from_dict(attrs["column_metadata"])
-        except:
-            logger.warning(f"ignore column_metadata")
-
-        try:
-            tt.description = attrs.get("description")
-        except:
-            logger.warning(f"ignore description")
-
+        tt._restore_from_attrs(df.attrs.get("_sdata"))
         return tt
 
     @classmethod
-    def from_parquet(cls, filepath):
-        """load data from parquet file
+    def from_parquet(cls, filepath, engine: str = "pyarrow"):
+        """Load a DataFrame from a Parquet file on disk.
 
-        :param filepath:
-        :return: Data object
+        :param filepath: path to the ``.spq``/Parquet file.
+        :param engine: Parquet engine for pandas (default ``"pyarrow"``).
+        :return: a :class:`DataFrame` instance.
+        :raises FileNotFoundError: if ``filepath`` does not exist.
         """
-        try:
-            if os.path.exists(filepath):
-                df = pd.read_parquet(filepath)
-                tt = cls(name=filepath)
-                tt.df = df
-                logger.info(f"{tt}")
-                attrs = df.attrs.get("_sdata")
-                try:
-                    tt.metadata = tt.metadata.from_dict(attrs["metadata"])
-                except:
-                    logger.warning(f"ignore metadata {filepath}")
-
-                try:
-                    tt._column_metadata = tt.metadata.from_dict(attrs["column_metadata"])
-                except:
-                    logger.warning(f"ignore column_metadata")
-
-                try:
-                    tt.description = attrs.get("description")
-                except:
-                    logger.warning(f"ignore description {filepath}")
-                if attrs is not None:
-                    tt.df.attrs.pop("_sdata")
-
-                return tt
-            else:
-                raise Exception(f"no DataFrame parquet file {filepath}")
-
-        except Exception as exp:
-            raise
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"no DataFrame parquet file {filepath}")
+        _require_parquet(engine)
+        df = pd.read_parquet(filepath, engine=engine)
+        tt = cls(name=filepath)
+        tt.df = df
+        logger.info(f"{tt}")
+        attrs = df.attrs.get("_sdata")
+        tt._restore_from_attrs(attrs)
+        if attrs is not None:
+            tt.df.attrs.pop("_sdata")
+        return tt
 
 
 if __name__ == '__main__':

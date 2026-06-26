@@ -47,7 +47,11 @@ def test_to_from_dict_roundtrip():
 def test_to_dataframe_attrs():
     sdf = DataFrame(df=_df(), name="att", description="d")
     out = sdf.to_dataframe()
-    assert "!sdata" in out.attrs
+    assert "!sdata" not in out.attrs            # alter Tippfehler-Bug behoben
+    assert "_sdata" in out.attrs
+    sd = out.attrs["_sdata"]
+    assert sd["description"] == "d"
+    assert "metadata" in sd and "column_metadata" in sd
 
 
 def test_to_parquet_bytes_and_from_bytes():
