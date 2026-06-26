@@ -35,6 +35,7 @@ EXTRAS = {
     'blob': ['fsspec'],       # sdata.sclass.Blob (URI-Content: file/S3/Zip)
     # Semantische Metadaten-Schicht (alles mit pure-Python-Fallback):
     'units': ['pint'],        # Einheiten-Validierung/-Normalisierung (sonst kuratierte Tabelle)
+    'rdf': ['rdflib'],        # RDF/Turtle-Serialisierung (sonst JSON-LD = gültiges RDF)
 }
 
 setup(

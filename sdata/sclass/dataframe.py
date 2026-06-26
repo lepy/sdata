@@ -166,6 +166,7 @@ class DataFrame(Base):
         """
         engine = kwargs.get("engine", "pyarrow")
         compression = kwargs.get("compression", "zstd")
+        sidecar = kwargs.get("sidecar", False)
 
         df = self.df.copy()
         df.attrs["_sdata"] = {"metadata": self.metadata.to_dict(),
@@ -177,6 +178,8 @@ class DataFrame(Base):
             filepath = os.path.join(path, filename)
             df.to_parquet(filepath, engine=engine, compression=compression)
             logger.info(f"DataFrame Parquet saved to {filepath}")
+            if sidecar:
+                self.write_sidecar(path)
             return filepath
         else:
             return df.to_parquet(engine=engine, compression=compression)

@@ -234,6 +234,10 @@ class Base:
         """Serialisiere die Metadaten als JSON-LD (siehe :mod:`sdata.semantic`)."""
         return self.metadata.to_jsonld(context_mode=context_mode)
 
+    def to_turtle(self):
+        """Serialisiere die Metadaten als RDF/Turtle (siehe :mod:`sdata.semantic`)."""
+        return self.metadata.to_turtle()
+
     def write_sidecar(self, path=None, indent=2):
         """Schreibe ``<sname>.meta.jsonld`` neben einen Datenblob; gibt den Pfad zurück."""
         return self.metadata.write_sidecar(path=path, indent=indent)
@@ -389,17 +393,21 @@ class Base:
         b.description = d.get("description", "")
         return b
 
-    def to_json(self, filepath: Optional[str] = None) -> Optional[str]:
+    def to_json(self, filepath: Optional[str] = None, sidecar: bool = False) -> Optional[str]:
         """
         Export the object to JSON format, either as a string or to a file.
 
         :param filepath: Optional file path to write JSON (default: None).
+        :param sidecar: bei True zusätzlich ``<dir>/<sname>.meta.jsonld`` schreiben
+            (nur wirksam mit ``filepath``; Default False = unverändertes Verhalten).
         :return: JSON string if filepath is None, else None.
         """
         data_dict = self.to_dict()
         if filepath:
             with open(filepath, "w") as fh:
                 json.dump(data_dict, fh, indent=4)
+            if sidecar:
+                self.write_sidecar(os.path.dirname(filepath) or ".")
             return None
         else:
             return json.dumps(data_dict, indent=4)

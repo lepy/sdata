@@ -625,6 +625,16 @@ class Metadata(object):
         from sdata import semantic
         return semantic.from_jsonld(doc)
 
+    def to_rdf(self, fmt="turtle"):
+        """Serialisiere als RDF (rdflib falls vorhanden, sonst JSON-LD)."""
+        from sdata import semantic
+        return semantic.to_rdf(self, fmt=fmt)
+
+    def to_turtle(self):
+        """Convenience: RDF im Turtle-Format."""
+        from sdata import semantic
+        return semantic.to_turtle(self)
+
     def write_sidecar(self, path=None, indent=2):
         """Schreibe ``<sname>.meta.jsonld`` neben einen Datenblob; gibt den Pfad zurück."""
         from sdata import semantic
