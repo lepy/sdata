@@ -24,6 +24,7 @@
    data_types
    paper
    usage/usage
+   usage/dataframe
    usage/metadata_jsonld
    api
    etc
