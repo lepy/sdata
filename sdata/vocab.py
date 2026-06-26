@@ -22,9 +22,11 @@ __all__ = [
     "safe_term", "predicate_for", "type_iri",
 ]
 
-#: Default-Namespace-IRI des sdata-Vokabulars (Platzhalter – bei Bedarf anpassen).
-SDATA_NS = "https://sdata.tools/ns#"
-CONTEXT_URL = "https://sdata.tools/ns/context.jsonld"
+#: Namespace-IRI des sdata-Vokabulars (auflösbar via GitHub Pages des Repos).
+SDATA_NS = "https://lepy.github.io/sdata/ns#"
+#: gehostetes JSON-LD-@context (statische Datei ``ns/context.jsonld`` im Repo-Root,
+#: von GitHub Pages unter dieser URL ausgeliefert).
+CONTEXT_URL = "https://lepy.github.io/sdata/ns/context.jsonld"
 
 NAMESPACES = {
     "sdata":   SDATA_NS,
