@@ -1,6 +1,10 @@
 import sys
 import os
 import pandas as pd
+import pytest
+
+pytest.importorskip("PIL")  # Bild-Funktionen optional (Pillow)
+
 from sdata.sclass.image import Image
 modulepath = os.path.dirname(__file__)
 

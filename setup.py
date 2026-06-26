@@ -11,12 +11,15 @@ with open('sdata/__init__.py', 'r') as f:
 with open('README.md', 'rb') as f:
     readme = f.read().decode('utf-8')
 
-REQUIRES = ['numpy', 'pandas', 'tabulate', 'xlrd', 'openpyxl', 'xlsxwriter', 'pytz', 'Pillow', 'suuid>=0.2.0']
+# Schlanker Kern: nur numpy/pandas (Datenmodell), pytz (Zeitzonen) und suuid.
+REQUIRES = ['numpy', 'pandas', 'pytz', 'suuid>=0.2.0']
 
 # Optionale Abhängigkeiten:
-#   pip install "sdata[did]"   DID-/VC-Subpackage (sdata.did)
-#   pip install "sdata[hdf]"   HDF5-I/O (PyTables-Backend)
-#   pip install "sdata[sql]"   to_sqlite / pandas.to_sql (SQLAlchemy)
+#   pip install "sdata[did]"     DID-/VC-Subpackage (sdata.did, pure Python)
+#   pip install "sdata[http]"    requests als HTTP-Backend (sonst urllib-Fallback)
+#   pip install "sdata[excel]"   Excel-I/O (openpyxl/xlsxwriter via pandas)
+#   pip install "sdata[hdf]"     HDF5-I/O (PyTables-Backend)
+#   pip install "sdata[sql]"     to_sqlite / pandas.to_sql (SQLAlchemy)
 EXTRAS = {
     # sdata.did ist abhängigkeitsfrei (Ed25519 + base58btc als pure Python).
     # Extra bleibt als no-op erhalten, damit 'pip install sdata[did]' weiter funktioniert.
@@ -24,6 +27,8 @@ EXTRAS = {
     # Optionales HTTP-Backend: ohne 'requests' nutzt sdata einen urllib-Fallback
     # (Standardbibliothek). 'requests' bietet certifi-CA-Bundle/Connection-Pooling.
     'http': ['requests'],
+    # Excel-I/O (z. B. deprecated Data.to_xlsx); 'tabulate' für das HTML-Repr.
+    'excel': ['openpyxl', 'xlsxwriter', 'tabulate'],
     'hdf': ['tables'],
     'sql': ['sqlalchemy'],
     'parquet': ['pyarrow'],   # sdata.sclass.DataFrame (Parquet-Serialisierung)
