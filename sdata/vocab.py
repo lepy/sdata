@@ -37,6 +37,7 @@ NAMESPACES = {
     "xsd":     "http://www.w3.org/2001/XMLSchema#",
     "bfo":     "http://purl.obolibrary.org/obo/",
     "rdfs":    "http://www.w3.org/2000/01/rdf-schema#",
+    "csvw":    "http://www.w3.org/ns/csvw#",
     "did":     "https://www.w3.org/ns/did#",
 }
 
@@ -54,6 +55,9 @@ CONTEXT_TERMS = {
     "symbol":          "qudt:symbol",
     "label":           "rdfs:label",
     "required":        {"@id": "sdata:required", "@type": "xsd:boolean"},
+    # tabellarische Spalten (CSVW)
+    "columns":         {"@id": "csvw:column", "@container": "@list"},
+    "datatype":        {"@id": "csvw:datatype", "@type": "@id"},
 }
 
 #: BFO-2.0-Klassenname -> OBO-CURIE (für ``_sdata_topology_class``).
