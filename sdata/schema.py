@@ -22,7 +22,7 @@ try:  # optionales Backend ([schema]=jsonschema)
 except ImportError:  # pragma: no cover - abhängig vom Environment
     _jsonschema = None
 
-__all__ = ["AttrSpec", "MetadataSchema", "ValidationReport"]
+__all__ = ["AttrSpec", "MetadataSchema", "TableSchema", "ValidationReport"]
 
 # sdata-dtype -> JSON-Schema-Typ
 _JSON_TYPE = {
@@ -188,3 +188,86 @@ class MetadataSchema:
             return ValidationReport(ok=True)
         except _jsonschema.ValidationError as exp:
             return ValidationReport(ok=False, messages=[str(exp).splitlines()[0]])
+
+
+class TableSchema:
+    """Spalten-Schema für eine :class:`~sdata.sclass.dataframe.DataFrame`.
+
+    Deklariert je Spalte den erwarteten ``name``/``dtype``/``unit``/``required``
+    (wiederverwendet :class:`AttrSpec`) und kann ein DataFrame dagegen *validieren*
+    sowie dessen ``column_metadata`` aus dem Schema *vervollständigen*.
+
+    Der dtype wird gegen die tatsächlichen ``df.dtypes`` geprüft, die Einheit gegen
+    die ``column_metadata``-Annotation der Spalte.
+    """
+
+    def __init__(self, name, columns):
+        self.name = name
+        self.columns = list(columns)
+
+    @property
+    def _by_name(self):
+        return {s.name: s for s in self.columns}
+
+    def to_dict(self):
+        return {"name": self.name, "columns": [s.to_dict() for s in self.columns]}
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(name=d.get("name", "N.N."),
+                   columns=[AttrSpec.from_dict(s) for s in d.get("columns", [])])
+
+    def validate(self, dataframe):
+        """Prüfe ein :class:`DataFrame` gegen das Spalten-Schema.
+
+        Wirft nie; liefert einen :class:`ValidationReport` mit fehlenden Spalten,
+        dtype-Abweichungen (gegen ``df.dtypes``), Einheiten-Abweichungen (gegen
+        ``column_metadata``) und zusätzlichen (nicht spezifizierten) Spalten.
+        """
+        report = ValidationReport(ok=True)
+        df = dataframe.df
+        cm = dataframe.column_metadata
+        present = {str(c) for c in df.columns}
+        specs = self._by_name
+        for name, spec in specs.items():
+            if name not in present:
+                report.missing.append(name)
+                continue
+            actual = dtypes.resolve(str(df[name].dtype))
+            if actual is not None and dtypes.resolve(spec.dtype) != actual:
+                report.type_errors.append((name, spec.dtype))
+            if spec.unit not in ("-", ""):
+                attr = cm.get(name)
+                attr_unit = attr.unit if attr is not None else "-"
+                if units.normalize_symbol(attr_unit) != units.normalize_symbol(spec.unit):
+                    report.unit_errors.append(name)
+        for name in present:
+            if name not in specs:
+                report.extra.append(name)
+        report.ok = not (report.missing or report.type_errors or report.unit_errors)
+        return report
+
+    def apply(self, dataframe):
+        """Vervollständige ``column_metadata`` in-place aus dem Schema.
+
+        Für jede im df vorhandene Schema-Spalte: fehlende Annotation anlegen bzw.
+        leere ``unit``/``ontology``/``description`` auffüllen. Gibt ``dataframe`` zurück.
+        """
+        cm = dataframe.column_metadata
+        present = {str(c) for c in dataframe.df.columns}
+        for spec in self.columns:
+            if spec.name not in present:
+                continue
+            attr = cm.get(spec.name)
+            if attr is None:
+                cm.set_attr(spec.name, spec.default, dtype=spec.dtype,
+                            unit=spec.unit, ontology=spec.ontology,
+                            description=spec.description)
+                continue
+            if attr.unit in ("-", "", None) and spec.unit not in ("-", ""):
+                attr.unit = spec.unit
+            if not attr.ontology and spec.ontology:
+                attr.ontology = spec.ontology
+            if not attr.description and spec.description:
+                attr.description = spec.description
+        return dataframe
