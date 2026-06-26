@@ -1,0 +1,226 @@
+# -*- coding: utf-8 -*-
+"""Tests für die dtype-Registry (sdata/dtypes.py) und die Attribute-Anbindung."""
+import datetime
+
+import numpy as np
+import pytest
+
+from sdata import dtypes
+from sdata.dtypes import DtypeError
+from sdata.metadata import Attribute, Metadata
+from sdata.timestamp import TimeStamp
+
+
+# --- resolve ----------------------------------------------------------------
+def test_resolve_class_string_and_unknown():
+    assert dtypes.resolve(float) == "float"
+    assert dtypes.resolve(int) == "int"
+    assert dtypes.resolve(datetime.datetime) == "timestamp"
+    assert dtypes.resolve(bytes) == "bytes"
+    assert dtypes.resolve(dict) == "json"
+    assert dtypes.resolve("float64") == "float"
+    assert dtypes.resolve("int32") == "int"
+    assert dtypes.resolve("boolean") == "bool"
+    assert dtypes.resolve("mylist") == "list"
+    assert dtypes.resolve("timestamp") == "timestamp"
+    assert dtypes.resolve("banana") == "str"
+    assert dtypes.resolve(None) is None
+
+
+def test_xsd_map_and_names():
+    xsd = dtypes.xsd_map()
+    for name, iri in {
+        "str": "xsd:string", "int": "xsd:integer", "float": "xsd:double",
+        "bool": "xsd:boolean", "timestamp": "xsd:dateTime",
+        "bytes": "xsd:base64Binary", "uri": "xsd:anyURI",
+    }.items():
+        assert xsd[name] == iri
+    assert set(["str", "int", "float", "bool", "timestamp", "list",
+                "bytes", "json", "uri"]).issubset(set(dtypes.names()))
+    assert dtypes.get("nope") is None
+
+
+# --- str / int / float (lenient = Altverhalten) -----------------------------
+def test_str_coercion():
+    assert Attribute("a", "", dtype="str").value == ""
+    assert Attribute("a", None, dtype="str").value is None
+    assert Attribute("a", 0, dtype="str").value is None
+    assert Attribute("a", "x", dtype="str").value == "x"
+    assert Attribute("a", float("nan"), dtype="str").value == "nan"
+
+
+def test_int_float_empty_and_cast():
+    assert np.isnan(Attribute("a", 0, dtype="int").value)
+    assert np.isnan(Attribute("a", None, dtype="int").value)
+    assert np.isnan(Attribute("a", float("nan"), dtype="int").value)    # truthy NaN -> _isna
+    assert np.isnan(Attribute("a", 0.0, dtype="float").value)           # falsy float
+    assert np.isnan(Attribute("a", float("nan"), dtype="float").value)
+    assert Attribute("a", "5", dtype="int").value == 5
+    assert Attribute("a", "1.5", dtype="float").value == 1.5
+
+
+def test_int_uncastable_lenient_vs_strict():
+    # lenient: Wert bleibt unverändert (None aus init), nur geloggt
+    assert Attribute("a", "abc", dtype="int").value is None
+    # list -> int trifft _isna(array)-Zweig, dann DtypeError (lenient -> None)
+    assert Attribute("a", [1, 2], dtype="int").value is None
+    with pytest.raises(DtypeError):
+        Attribute("a", "abc", dtype="int", strict=True)
+    with pytest.raises(DtypeError):
+        Attribute("a", "x", dtype="float", strict=True)
+
+
+# --- bool -------------------------------------------------------------------
+@pytest.mark.parametrize("value,expected", [
+    (True, True), (1, True), ("1", True), ("true", True), ("True", True),
+    (False, False), (0, False), ("0", False), ("false", False), ("x", False),
+])
+def test_bool_lenient_matrix(value, expected):
+    assert Attribute("b", value, dtype="bool").value is expected
+
+
+@pytest.mark.parametrize("value,expected", [
+    ("yes", True), ("on", True), ("t", True), (1, True),
+    ("no", False), ("off", False), ("", False), (0, False),
+])
+def test_bool_strict_recognized(value, expected):
+    assert Attribute("b", value, dtype="bool", strict=True).value is expected
+
+
+def test_bool_strict_ambiguous_raises():
+    with pytest.raises(DtypeError):
+        Attribute("b", "maybe", dtype="bool", strict=True)
+    with pytest.raises(DtypeError):
+        Attribute("b", 2, dtype="bool", strict=True)
+
+
+# --- timestamp --------------------------------------------------------------
+def test_timestamp_coercion():
+    attr = Attribute("create", "2017-04-27", dtype="timestamp")
+    assert isinstance(attr.value, TimeStamp)
+    assert attr.value.utc == "2017-04-27T00:00:00+00:00"
+    assert Attribute("t", None, dtype="timestamp").value is None
+    # datetime-Eingang
+    dt = datetime.datetime(2020, 1, 2, 3, 4, 5)
+    assert isinstance(Attribute("t", dt, dtype="timestamp").value, TimeStamp)
+    # idempotent
+    ts = TimeStamp("2017-04-27")
+    assert Attribute("t", ts, dtype="timestamp").value is ts
+
+
+def test_timestamp_invalid():
+    assert Attribute("t", "not-a-date", dtype="timestamp").value is None  # lenient
+    with pytest.raises(DtypeError):
+        Attribute("t", "not-a-date", dtype="timestamp", strict=True)
+
+
+# --- list -------------------------------------------------------------------
+def test_list_coercion():
+    assert Attribute("l", None, dtype="list").value == []
+    assert Attribute("l", "a, b ,c", dtype="list").value == ["a", "b", "c"]
+    assert Attribute("l", [1, 2], dtype="list").value == ["1", "2"]
+    with pytest.raises(DtypeError):
+        Attribute("l", 5, dtype="list", strict=True)
+
+
+# --- bytes / json / uri (neu) ----------------------------------------------
+def test_bytes_dtype():
+    assert Attribute("b", b"\x00\x01", dtype="bytes").value == b"\x00\x01"
+    assert Attribute("b", "AAE=", dtype="bytes").value == b"\x00\x01"   # base64
+    assert Attribute("b", "nothex!!", dtype="bytes").value == b"nothex!!"  # utf-8
+    assert Attribute("b", bytearray(b"xy"), dtype="bytes").value == b"xy"
+    assert Attribute("b", None, dtype="bytes").value is None
+    with pytest.raises(DtypeError):
+        Attribute("b", 5, dtype="bytes", strict=True)
+
+
+def test_json_dtype():
+    assert Attribute("j", {"a": 1}, dtype="json").value == {"a": 1}
+    assert Attribute("j", '{"a": 1}', dtype="json").value == {"a": 1}
+    assert Attribute("j", None, dtype="json").value is None
+    with pytest.raises(DtypeError):
+        Attribute("j", "{bad", dtype="json", strict=True)
+    with pytest.raises(DtypeError):
+        Attribute("j", 5, dtype="json", strict=True)
+
+
+def test_uri_dtype():
+    assert Attribute("u", "https://x.org/a", dtype="uri").value == "https://x.org/a"
+    assert Attribute("u", None, dtype="uri").value is None
+    assert Attribute("u", "", dtype="uri").value == ""
+    assert Attribute("u", "rel/path", dtype="uri", strict=True).value == "rel/path"
+    with pytest.raises(DtypeError):
+        Attribute("u", "   ", dtype="uri", strict=True)
+
+
+# --- dtype=class & Re-Cast --------------------------------------------------
+def test_dtype_class_accepted():
+    assert Attribute("a", 1, dtype=int).dtype == "int"
+    assert Attribute("f", "1.5", dtype=float).value == 1.5
+
+
+def test_dtype_recast_on_change():
+    a = Attribute("a", "3")            # dtype geraten -> str
+    a.dtype = "int"
+    assert a.value == 3 and isinstance(a.value, int)
+    a.dtype = "float"
+    assert a.value == 3.0
+
+
+# --- DtypeSpec.to_json / json_default --------------------------------------
+def test_spec_to_json_and_default():
+    assert dtypes.get("timestamp").to_json(TimeStamp("2017-04-27")) == "2017-04-27T00:00:00+00:00"
+    assert dtypes.get("bytes").to_json(b"\x00\x01") == "AAE="
+    assert dtypes.get("str").to_json("x") == "x"          # passthrough
+    assert dtypes.json_default(TimeStamp("2017-04-27")) == "2017-04-27T00:00:00+00:00"
+    assert dtypes.json_default(b"\x00\x01") == "AAE="
+    with pytest.raises(TypeError):
+        dtypes.json_default(object())
+
+
+def test_coerce_convenience_and_register():
+    assert dtypes.coerce("5", "int") == 5
+    assert dtypes.coerce(b"x", bytes) == b"x"
+    spec = dtypes.DtypeSpec("dummy", str, lambda v, s: "D", "xsd:string")
+    dtypes.register(spec)
+    assert dtypes.get("dummy").coerce("anything") == "D"
+
+
+# --- Metadata-Bugfix-Regressionen ------------------------------------------
+def test_name_sdata_name_single_source():
+    m = Metadata(name="x")
+    assert m.name == "x"                       # Fallback _name
+    m.set_attr("_sdata_name", "y")
+    assert m.name == "y"                        # _sdata_name autoritativ
+    m.name = "z"
+    assert m.get("_sdata_name").value == "z"    # Setter spiegelt zurück
+
+
+def test_relabel_explicit_rekey():
+    m = Metadata()
+    m.add("foo", 1)
+    m.relabel("foo", "bar")
+    assert "bar" in m and "foo" not in m
+    assert m.get("bar").value == 1
+    m.relabel("missing", "x")                   # no-op + warning
+
+
+def test_update_hash_returns_object():
+    import hashlib
+    m = Metadata()
+    m.add("a", 1)
+    h = hashlib.sha3_256()
+    assert m.update_hash(h) is h
+
+
+def test_strict_via_set_attr():
+    m = Metadata()
+    with pytest.raises(DtypeError):
+        m.set_attr("i", "abc", dtype="int", strict=True)
+
+
+def test_timestamp_json_roundtrip():
+    m = Metadata()
+    m.add("create", "2017-04-27", dtype="timestamp")
+    restored = Metadata.from_json(m.to_json())
+    assert restored.get("create").value.utc == "2017-04-27T00:00:00+00:00"
