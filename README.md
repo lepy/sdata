@@ -2,8 +2,6 @@
 [![PyPI version](https://badge.fury.io/py/sdata.svg)](https://badge.fury.io/py/sdata)
 [![PyPI](https://img.shields.io/pypi/v/sdata.svg?style=flat-square)](https://pypi.python.org/pypi/sdata/)
 [![readthedocs](https://readthedocs.org/projects/sdata/badge/?version=latest)](http://sdata.readthedocs.io/en/latest/) 
-[![Build Status](https://travis-ci.org/lepy/sdata.svg?branch=master)](https://travis-ci.org/lepy/sdata)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/107e46dc4eee4b58a6ef82fce3043a3e)](https://www.codacy.com/app/lepy/sdata?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=lepy/sdata&amp;utm_campaign=Badge_Grade)
 [![Coverage Status](https://coveralls.io/repos/github/lepy/sdata/badge.svg?branch=master)](https://coveralls.io/github/lepy/sdata?branch=master)
 [![Das sdata-Format v0.8.4](https://zenodo.org/badge/DOI/10.5281/zenodo.4311323.svg)](https://doi.org/10.5281/zenodo.4311323)
 
@@ -35,24 +33,87 @@ https://lepy.github.io/sdata/
 * (single writer/ multiple reader (swmr) support)
 * (nested data support)
 
-```
-df = pandas.DataFrame({"a":[1,2,3]})
-import sdata
-data = sdata.Data(name="my_data", table=df, comment="A remarkable comment")
-data.metadata.add("my_key", 123, unit="m^3", description="a volume")
-data.metadata.add("force", 1.234, unit="kN", description="x force")
-data.to_xlsx(filepath="my_data.xlsx")
-print(data.metadata.df)
+## Quickstart
+
+```python
+import pandas as pd
+from sdata.sclass.dataframe import DataFrame
+
+df = pd.DataFrame({"force": [1.0, 2.0, 3.0]})
+data = DataFrame(df=df, name="specimen_01", description="a tension test")
+data.metadata.add("max_force", 12.5, unit="kN", dtype="float",
+                  description="max force", ontology="bfo:Quality")
+
+print(data.metadata.df[["value", "unit", "dtype", "ontology"]])
 ```
 
 ```
-          name                             value  dtype unit description
-key                                                                     
-name      name                           my_data    str    -            
-uuid      uuid  08222ca66e5047808bdc3b35d8f17224    str    -            
-my_key  my_key                               123    int  m^3    a volume
-force    force                             1.234  float   kN     x force
+                                          value unit  dtype     ontology
+key
+_sdata_name                         specimen_01    -    str
+_sdata_sname    DataFrame__specimen_01__3003...    -    str
+...
+max_force                                  12.5   kN  float  bfo:Quality
 ```
+
+Every object has a deterministic, content-addressable identity (`SUUID`), a set
+of reserved `_sdata_*` attributes (name, sname, suuid, class, ctime, parent,
+project, topology class) and freely extensible, fully-described user attributes.
+
+## Machine-readable metadata (JSON-LD / Linked Data)
+
+The metadata is the backbone of the data description: it lives next to every
+data blob and fully qualifies the data — units (QUDT/UCUM), ontology classes
+(BFO), provenance (PROV/DCAT), tabular columns (CSVW) and identity (DID).
+
+```python
+# self-describing JSON-LD (qudt:Quantity units, BFO @type, did:suuid @id, csvw columns)
+doc = data.to_jsonld()
+
+# RDF/Turtle (uses rdflib if installed, otherwise returns the JSON-LD)
+print(data.to_turtle())
+
+# write the data + a sidecar <sname>.meta.jsonld right next to it
+data.to_json("specimen_01.sjson", sidecar=True)
+
+# validate / auto-complete against a schema template
+from sdata.schema import MetadataSchema, AttrSpec
+schema = MetadataSchema("TensileTest", [
+    AttrSpec("max_force", dtype="float", unit="kN", required=True, ontology="bfo:Quality"),
+])
+report = data.metadata.validate(schema)      # ValidationReport (truthy if ok)
+
+# sign the metadata as a W3C Verifiable Credential (pure-Python Ed25519)
+from sdata.did import keys, pub_from_priv_jwk
+priv = keys.gen_ed25519_jwk()
+vc = data.metadata.to_verifiable_credential("did:example:issuer", priv)
+subject = data.metadata.from_verifiable_credential(vc, pub_from_priv_jwk(priv))
+
+# interactive: attribute autocomplete + rich Jupyter display
+data.metadata.a.max_force        # -> Attribute; tab-completion in Jupyter
+data.metadata                    # -> _repr_html_ table
+```
+
+Resulting JSON-LD for `max_force` (excerpt):
+
+```json
+{
+  "@id": "did:suuid:DataFrame__specimen_01__3003...:sdata",
+  "@type": ["sdata:DataFrame", "bfo:BFO_0000004"],
+  "name": "specimen_01",
+  "sdata:max_force": {
+    "@type": ["qudt:Quantity", "bfo:Quality"],
+    "value": {"@value": 12.5, "@type": "xsd:double"},
+    "unitRef": "unit:KiloN", "symbol": "kN"
+  },
+  "columns": [{"name": "force", "datatype": "xsd:double"}]
+}
+```
+
+The optional semantic backends degrade gracefully to pure Python (no hard
+dependency): `pip install "sdata[rdf]"` (rdflib), `sdata[units]` (pint),
+`sdata[schema]` (jsonschema). Core install needs only `numpy`, `pandas`, `suuid`.
+
 ## Howto
 
   
@@ -77,6 +138,7 @@ Try to paste some Excel-Data in the forms ...
 * description
 * label
 * required
+* ontology (CURIE/IRI of the value's class, e.g. `bfo:Quality`)
 
 ### dtypes for attributes
 
@@ -84,7 +146,14 @@ Try to paste some Excel-Data in the forms ...
 * float
 * str
 * bool
-* timestamp (datetime.isoformat with timezone)
+* list (list of strings)
+* timestamp (ISO-8601 with timezone, stdlib `zoneinfo`)
+* bytes (base64 in JSON)
+* json (dict/list)
+* uri
+
+Set `strict=True` (e.g. `metadata.add(..., strict=True)`) to raise on invalid
+values instead of the lenient default coercion.
 
 ## paper
 
