@@ -1,11 +1,8 @@
 
-[![PyPI version](https://badge.fury.io/py/sdata.svg)](https://badge.fury.io/py/sdata)
 [![PyPI](https://img.shields.io/pypi/v/sdata.svg?style=flat-square)](https://pypi.python.org/pypi/sdata/)
-[![readthedocs](https://readthedocs.org/projects/sdata/badge/?version=latest)](http://sdata.readthedocs.io/en/latest/) 
-[![Coverage Status](https://coveralls.io/repos/github/lepy/sdata/badge.svg?branch=master)](https://coveralls.io/github/lepy/sdata?branch=master)
-[![Das sdata-Format v0.8.4](https://zenodo.org/badge/DOI/10.5281/zenodo.4311323.svg)](https://doi.org/10.5281/zenodo.4311323)
-
-https://lepy.github.io/sdata/
+[![Python versions](https://img.shields.io/pypi/pyversions/sdata.svg?style=flat-square)](https://pypi.python.org/pypi/sdata/)
+[![Docs](https://img.shields.io/badge/docs-mkdocs--material-blue?style=flat-square)](https://lepy.github.io/sdata/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4311323.svg)](https://doi.org/10.5281/zenodo.4311323)
 
 # Structured data format (sdata)
 
