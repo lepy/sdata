@@ -1,0 +1,39 @@
+# Generalprobe: lädt sdata nach TestPyPI (test.pypi.org), manuell ausgelöst.
+#
+# Wie release.yml, aber on: workflow_dispatch und Environment testpypi.
+# Erfordert einen separaten Trusted Publisher auf test.pypi.org
+# (Owner lepy, Repo sdata, Workflow release-testpypi.yml, Environment testpypi).
+name: release-testpypi
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Build sdist + wheel
+        run: uv build
+      - name: Check metadata
+        run: uvx twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write   # OIDC-Token für Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
