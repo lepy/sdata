@@ -660,6 +660,19 @@ class Metadata(object):
         from sdata import semantic
         return semantic.to_rdf(self, fmt=fmt)
 
+    def to_verifiable_credential(self, issuer_did, issuer_priv_jwk, kid=None,
+                                 extra_claims=None):
+        """Signiere die Metadaten als W3C Verifiable Credential (Compact-JWS)."""
+        from sdata import semantic
+        return semantic.to_verifiable_credential(
+            self, issuer_did, issuer_priv_jwk, kid=kid, extra_claims=extra_claims)
+
+    @classmethod
+    def from_verifiable_credential(cls, vc_jws, pub_jwk):
+        """Verifiziere ein VC und rekonstruiere die Metadata aus dem credentialSubject."""
+        from sdata import semantic
+        return cls.from_jsonld(semantic.verify_credential(vc_jws, pub_jwk))
+
     def to_turtle(self):
         """Convenience: RDF im Turtle-Format."""
         from sdata import semantic

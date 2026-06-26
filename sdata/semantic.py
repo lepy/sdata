@@ -31,7 +31,8 @@ except ImportError:  # pragma: no cover - abhängig vom Environment
 
 __all__ = [
     "to_jsonld", "from_jsonld", "to_rdf", "to_turtle",
-    "write_sidecar", "read_sidecar", "SIDECAR_SUFFIX",
+    "write_sidecar", "read_sidecar", "to_verifiable_credential",
+    "verify_credential", "SIDECAR_SUFFIX",
 ]
 
 SIDECAR_SUFFIX = ".meta.jsonld"
@@ -223,6 +224,43 @@ def to_rdf(metadata, fmt="turtle"):
 def to_turtle(metadata):
     """Convenience: RDF im Turtle-Format (siehe :func:`to_rdf`)."""
     return to_rdf(metadata, fmt="turtle")
+
+
+def to_verifiable_credential(metadata, issuer_did, issuer_priv_jwk,
+                             kid=None, extra_claims=None):
+    """Signiere die Metadaten als W3C Verifiable Credential (Compact-JWS, EdDSA).
+
+    Wickelt :func:`to_jsonld` als ``credentialSubject`` und signiert über den
+    pure-Python-EdDSA-Stack (:mod:`sdata.did.jose`) – keine externe Krypto.
+
+    :return: Compact-JWS-String (``header.payload.signature``)
+    """
+    from sdata.did import jose
+    subject = to_jsonld(metadata)
+    payload = {
+        "iss": issuer_did,
+        "vc": {
+            "@context": ["https://www.w3.org/2018/credentials/v1"],
+            "type": ["VerifiableCredential", "SdataMetadataCredential"],
+            "credentialSubject": subject,
+        },
+    }
+    if subject.get("@id"):
+        payload["sub"] = subject["@id"]
+    if extra_claims:
+        payload.update(extra_claims)
+    return jose.sign_compact(payload, issuer_priv_jwk,
+                             kid=kid or (issuer_did + "#key-1"), typ="vc+ld+jwt")
+
+
+def verify_credential(vc_jws, pub_jwk):
+    """Verifiziere ein VC (Compact-JWS) und gib das ``credentialSubject`` (JSON-LD) zurück.
+
+    :raises sdata.did.errors.VerificationError: bei ungültiger Signatur.
+    """
+    from sdata.did import jose
+    payload = jose.verify_compact(vc_jws, pub_jwk)
+    return payload["vc"]["credentialSubject"]
 
 
 def _sidecar_path(path, sname):
