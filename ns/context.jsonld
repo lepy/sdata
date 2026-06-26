@@ -1,0 +1,54 @@
+{
+  "@context": {
+    "sdata": "https://lepy.github.io/sdata/ns#",
+    "schema": "https://schema.org/",
+    "dcterms": "http://purl.org/dc/terms/",
+    "dcat": "http://www.w3.org/ns/dcat#",
+    "prov": "http://www.w3.org/ns/prov#",
+    "qudt": "http://qudt.org/schema/qudt/",
+    "unit": "http://qudt.org/vocab/unit/",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "bfo": "http://purl.obolibrary.org/obo/",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "csvw": "http://www.w3.org/ns/csvw#",
+    "did": "https://www.w3.org/ns/did#",
+    "name": "schema:name",
+    "description": "schema:description",
+    "generatedAtTime": {
+      "@id": "prov:generatedAtTime",
+      "@type": "xsd:dateTime"
+    },
+    "wasDerivedFrom": {
+      "@id": "prov:wasDerivedFrom",
+      "@type": "@id"
+    },
+    "isPartOf": {
+      "@id": "dcterms:isPartOf",
+      "@type": "@id"
+    },
+    "identifier": "dcterms:identifier",
+    "topologyClass": {
+      "@id": "sdata:topologyClass",
+      "@type": "@id"
+    },
+    "value": "qudt:value",
+    "unitRef": {
+      "@id": "qudt:unit",
+      "@type": "@id"
+    },
+    "symbol": "qudt:symbol",
+    "label": "rdfs:label",
+    "required": {
+      "@id": "sdata:required",
+      "@type": "xsd:boolean"
+    },
+    "columns": {
+      "@id": "csvw:column",
+      "@container": "@list"
+    },
+    "datatype": {
+      "@id": "csvw:datatype",
+      "@type": "@id"
+    }
+  }
+}

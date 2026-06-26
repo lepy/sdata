@@ -1,6 +1,21 @@
 # -*- coding: utf-8 -*-
 """Tests für sdata/vocab.py (Namespaces, @context, XSD/BFO, CURIE/Prädikat/Typ)."""
+import json
+import os
+
 from sdata import vocab
+
+_CONTEXT_FILE = os.path.join(os.path.dirname(__file__), "..", "ns", "context.jsonld")
+
+
+def test_hosted_context_file_in_sync():
+    """Die statische, von GitHub Pages gehostete context.jsonld muss zum
+    inline-@context passen (sonst driften CONTEXT_URL und Inline auseinander)."""
+    with open(_CONTEXT_FILE) as fh:
+        hosted = json.load(fh)
+    assert hosted["@context"] == vocab.build_context("inline")
+    # NS und Context-URL bleiben konsistent (gleiche Basis)
+    assert vocab.CONTEXT_URL == vocab.SDATA_NS.rstrip("#") + "/context.jsonld"
 
 
 def test_build_context_inline_and_url():
