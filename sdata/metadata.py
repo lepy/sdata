@@ -484,7 +484,7 @@ class Metadata(object):
     @property
     def dft(self):
         """create transposed dataframe for sdata attributes"""
-        mt = self.df[["value"]].transpose(copy=True)
+        mt = self.df[["value"]].transpose().copy()
         mt.index = [self.get("_sdata_sname").value]
         return mt
 
@@ -492,7 +492,7 @@ class Metadata(object):
         """create transposed dataframe for sdata attributes"""
         if index_name is None:
             index_name = "_sdata_sname"
-        mt = self.df[["value"]].transpose(copy=True)
+        mt = self.df[["value"]].transpose().copy()
         mt.index = [self.get(index_name).value]
         return mt
 
@@ -505,7 +505,7 @@ class Metadata(object):
     @property
     def sdft(self):
         """create transposed dataframe for sdata attributes"""
-        mt = self.sdf[["value"]].transpose(copy=True)
+        mt = self.sdf[["value"]].transpose().copy()
         mt.index = [self.get("_sdata_uuid").value]
         return mt
 
