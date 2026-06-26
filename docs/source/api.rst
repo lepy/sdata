@@ -24,6 +24,15 @@ sdata.base
     :show-inheritance:
 
 
+sdata.sclass.dataframe
+----------------------
+
+.. automodule:: sdata.sclass.dataframe
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
 sdata.dtypes
 ------------
 

@@ -114,6 +114,40 @@ The optional semantic backends degrade gracefully to pure Python (no hard
 dependency): `pip install "sdata[rdf]"` (rdflib), `sdata[units]` (pint),
 `sdata[schema]` (jsonschema). Core install needs only `numpy`, `pandas`, `suuid`.
 
+## Tabular data (`DataFrame`)
+
+`DataFrame` wraps a pandas frame plus per-column metadata and serializes to
+Parquet, CSV, Arrow/Feather, dict/JSON and JSON-LD — embedded or as a sidecar.
+
+```python
+import pandas as pd
+from sdata.sclass.dataframe import DataFrame
+
+sdf = DataFrame(df=pd.DataFrame({"weight": [10, 20], "height": [1.5, 1.6]}),
+                name="specimen_01", description="a tension test")
+
+# per-column annotations (only the fields you pass are changed)
+sdf.set_column("weight", unit="kg", label="Gewicht", ontology="bfo:Quality")
+sdf.col["height"].unit = "m"          # mutate the column Attribute in place
+sdf.column_units                       # {'weight': 'kg', 'height': 'm'}
+
+# serialize (optional <sname>.meta.jsonld sidecar; bytes/str without a path)
+sdf.to_parquet(path="out", sidecar=True)      # out/<sname>.spq + sidecar
+sdf.to_csv(path="out")                         # data-only CSV (pure pandas)
+sdf.to_feather(path="out")                     # Arrow IPC (needs sdata[parquet])
+DataFrame.from_parquet("out/specimen_01.spq")
+
+# validate the table against a schema (missing/dtype/unit/extra columns)
+from sdata.schema import TableSchema, AttrSpec
+schema = TableSchema("TensileTable", [
+    AttrSpec("weight", dtype="int", unit="kg", required=True),
+])
+report = sdf.validate_table(schema)            # ValidationReport (truthy if ok)
+```
+
+Arrow/Feather/Parquet need `pip install "sdata[parquet]"`; CSV, dict and JSON-LD
+work with the core install. See `docs/source/usage/dataframe.rst` for details.
+
 ## Howto
 
   
