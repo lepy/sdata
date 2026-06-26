@@ -34,6 +34,9 @@ def _require_parquet(engine: str = "pyarrow") -> None:
 class DataFrame(Base):
     SDATA_CLS = "sdata.sclass.dataframe.DataFrame"
 
+    #: optionales :class:`~sdata.schema.TableSchema`; beim Init angewandt (Default None)
+    TABLE_SCHEMA = None
+
 
     def __init__(
             self,
@@ -75,6 +78,10 @@ class DataFrame(Base):
             # (kein Prune); Waisen werden nur gemeldet.
             self._assign_df(df, prune=False)
             self._warn_orphan_columns()
+
+        # Optionales Tabellen-Schema anwenden (column_metadata vollqualifizieren)
+        if self.TABLE_SCHEMA is not None:
+            self.TABLE_SCHEMA.apply(self)
 
     def _warn_orphan_columns(self):
         """Warne, wenn column_metadata-Schlüssel keiner df-Spalte entsprechen."""
@@ -188,6 +195,19 @@ class DataFrame(Base):
             if attr is not None:
                 units[str(col)] = attr.unit
         return units
+
+    def validate_table(self, schema=None):
+        """Validate the df/column_metadata against a :class:`~sdata.schema.TableSchema`.
+
+        :param schema: a ``TableSchema``; defaults to the class-level
+          :attr:`TABLE_SCHEMA`. Without any schema the result is trivially valid.
+        :return: a :class:`~sdata.schema.ValidationReport` (truthy if valid).
+        """
+        from sdata.schema import ValidationReport
+        schema = schema or self.TABLE_SCHEMA
+        if schema is None:
+            return ValidationReport(ok=True)
+        return schema.validate(self)
 
     def __len__(self) -> int:
         """Number of rows of the underlying df."""
