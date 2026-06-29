@@ -2,22 +2,24 @@
 
 | Feld        | Wert                                                         |
 |-------------|--------------------------------------------------------------|
-| Status      | Accepted — Teil A (Kern) implementiert; Rest offen           |
+| Status      | Accepted — Teil A vollständig implementiert; Teil B offen     |
 | Datum       | 2026-06-29                                                  |
 | Autor       | lepy <lepy@tuta.io>                                          |
 | Komponente  | `sdata/sclass/blob.py` (+ `dataframe.py`, `image.py`, `filereference.py`) |
 | Betrifft    | `Blob` als gemeinsame Content-/Integritäts-/Provenienz-Basis |
-| Validierung | Teil-A-Kern umgesetzt; `tests/test_sclass_blob_hardening.py`, blob.py 100 % |
+| Validierung | Teil A komplett; `tests/test_sclass_blob_{hardening,io}.py`, blob.py 100 % |
 
-> **Umsetzungsstand.** Aus **Teil A** umgesetzt (rückwärtskompatibel, kanonische CI
-> grün, `blob.py` 100 %): **B4** `saf:`→Standard-Vokabular (`schema:sha256`,
+> **Umsetzungsstand.** **Teil A vollständig** umgesetzt (rückwärtskompatibel,
+> kanonische CI grün, `blob.py` 100 %):
+> **B1** `sha256`-Property; **B2** Auto-Befüllung `mime_type` (aus `filetype`) und
+> `creation_date` (aus dem reservierten `_sdata_ctime` — kein zweiter Zeitstempel);
+> **B3** Cache als nicht-serialisiertes Instanzattribut `_content_cache` (nicht mehr
+> in `self.data`); **B4** `saf:`→Standard-Vokabular (`schema:sha256`,
 > `dcat:mediaType`, `dcterms:source`/`created`/`modified`/`publisher`/`license`);
-> **B1** `sha256`-Property; **B6** `verify()` + `update_checksum()`; **B3** Cache als
-> nicht-serialisiertes Instanzattribut `_content_cache` (nicht mehr in `self.data`);
-> **B7** `size`-Property.
-> **Offen** (Folge-PRs): **B2** Auto-Befüllung `mime_type`/`creation_date` (Determinismus
-> abzuwägen), **B5** `write(uri)`/`open()` (fsspec-Schreib-API), **Teil B** (Foundation:
-> `FileReference`/`Image` → `Blob`; `DataFrame(Blob)` eigener Folge-RFC).
+> **B5** `write(uri)` + `open(mode)` (fsspec; `open` streamt URIs, `io.BytesIO` für
+> bytes); **B6** `verify()` + `update_checksum()`; **B7** `size`-Property.
+> **Offen:** **Teil B** (Foundation: `FileReference`/`Image` → `Blob`; `DataFrame(Blob)`
+> als eigener Folge-RFC).
 
 ## 1. Zusammenfassung
 

@@ -3,6 +3,7 @@ import logging
 import hashlib
 import os
 import io
+import mimetypes
 import typing
 from typing import Any, List, Dict, Optional, Literal, Optional, Type
 from sdata.base import Base
@@ -148,8 +149,21 @@ class Blob(Base):
             'filetype': filetype,
         }
         self._set_value(value)
+        self._autofill_metadata()
 
         logger.debug(f"Created Blob '{self.sname}' with content_type '{content_type}' and filetype '{filetype}'")
+
+    def _autofill_metadata(self) -> None:
+        """Fill derivable metadata: ``mime_type`` from ``filetype`` and
+        ``creation_date`` from the reserved ``_sdata_ctime`` (no second timestamp).
+        Only sets values that can be derived; leaves the rest untouched.
+        """
+        mime = mimetypes.guess_type(f"x.{self.filetype}")[0]
+        if mime:
+            self.metadata.set_attr("mime_type", mime)
+        ctime = self.metadata.get(self.SDATA_CTIME)
+        if ctime is not None and ctime.value:
+            self.metadata.set_attr("creation_date", ctime.value)
 
     def _set_value(self, value: Any) -> None:
         """
@@ -194,6 +208,7 @@ class Blob(Base):
             self.data['content']['filetype'] = filetype
         self._set_value(value)
         self._content_cache = None  # Clear cache for lazy reloading
+        self._autofill_metadata()
         logger.debug(
             f"Updated Blob '{self.sname}' to content_type '{content_type}' and filetype '{self.data['content']['filetype']}'")
 
@@ -367,6 +382,46 @@ class Blob(Base):
             logger.warning("Blob.verify: no checksum stored (call update_checksum first)")
             return False
         return stored == self.sha256
+
+    def write(self, uri: str, **kwargs: Any) -> str:
+        """Write the content to a destination ``uri`` via fsspec (local/S3/zip/…).
+
+        :param uri: destination URI/path (e.g. ``/out/file.pdf``, ``s3://bucket/key``).
+        :param kwargs: forwarded to ``fsspec.open``.
+        :return: the destination ``uri``.
+        :raises ImportError: if fsspec is not installed (``pip install sdata[blob]``).
+        """
+        if fsspec is None:
+            raise ImportError("fsspec is required for write() (pip install sdata[blob]).")
+        data = self.content_bytes
+        with fsspec.open(uri, "wb", **kwargs) as f:
+            f.write(data)
+        logger.info(f"Blob content written to {uri}")
+        return uri
+
+    def open(self, mode: str = "rb"):
+        """Return a file-like handle to the content; use as a context manager.
+
+        For ``uri`` content a **streaming** fsspec handle is returned (no full
+        in-memory load); for ``bytes`` content an :class:`io.BytesIO` over the
+        decoded bytes.
+
+        :param mode: open mode (default ``"rb"``).
+        :raises ValueError: if no content/value is set or the content_type is unknown.
+        :raises ImportError: if fsspec is required (uri) but not installed.
+        """
+        content = self.data.get('content')
+        if content is None or content.get('value') is None:
+            raise ValueError("No content set in Blob.")
+        ctype = content['type']
+        if ctype == 'uri':
+            if fsspec is None:
+                raise ImportError("fsspec is required for uri open() (pip install sdata[blob]).")
+            return fsspec.open(content['value'], mode)
+        elif ctype == 'bytes':
+            return io.BytesIO(self.content_bytes)
+        else:
+            raise ValueError(f"Unknown content_type: {ctype}")
 
     def to_dict(self) -> Dict[str, Any]:
         """
