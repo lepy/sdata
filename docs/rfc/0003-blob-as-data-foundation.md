@@ -18,12 +18,16 @@
 > `dcat:mediaType`, `dcterms:source`/`created`/`modified`/`publisher`/`license`);
 > **B5** `write(uri)` + `open(mode)` (fsspec; `open` streamt URIs, `io.BytesIO` für
 > bytes); **B6** `verify()` + `update_checksum()`; **B7** `size`-Property.
-> Aus **Teil B** (Foundation, Option 3 gestaffelt) umgesetzt: **`FileReference(Blob)`**
-> — die Datei wird als `uri`-Content gehalten (der Pfad bleibt jetzt erhalten, ging
-> zuvor verloren) und `FileReference` erbt `content_bytes`/`open`/`exists`/`verify`/
-> `size`; `blob.py`/`filereference.py` 100 %.
-> **Offen:** `Image` → `Blob` (experimentell/`omit`, vorher stabilisieren);
-> `DataFrame(Blob)` als eigener Folge-RFC.
+> Aus **Teil B** (Foundation, Option 3 gestaffelt) umgesetzt:
+> **`FileReference(Blob)`** — die Datei als `uri`-Content (Pfad bleibt erhalten, ging
+> zuvor verloren); erbt `content_bytes`/`open`/`exists`/`verify`/`size`
+> (`blob.py`/`filereference.py` 100 %).
+> **`Image(Blob)`** — stabilisiert und neu auf `Blob` aufgesetzt: Bild als Content,
+> Pillow nur lazy (`pil`/`to_numpy`/`save`), PNG-Metadaten-Embedding; die kaputten
+> Alt-Pfade (`saveas`/`_from_filepath`/piexif/`PIL.Image`-Importbug) entfernt;
+> `image.py` bleibt in `omit` (Pillow nicht als CI-Dep deklariert), verifiziert via
+> `tests/test_image.py` (`importorskip("PIL")`).
+> **Offen:** `DataFrame(Blob)` als eigener Folge-RFC.
 
 ## 1. Zusammenfassung
 

@@ -34,7 +34,7 @@ omit = [
     "sdata/sclass/bfo_classes.py",
     "sdata/sclass/process.py",
     "sdata/sclass/process_graph.py",
-    "sdata/sclass/image.py",   # "highly experimental"; from_image/from_bytes/saveas migrations-kaputt
+    "sdata/sclass/image.py",   # Image(Blob); optionales Pillow-Backend (nicht als CI-Dep deklariert)
 ]
 
 [tool.coverage.report]

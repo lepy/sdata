@@ -1,314 +1,112 @@
-import copy
-import logging
-import collections
-import pandas as pd
-import numpy as np
-from sdata.timestamp import TimeStamp
-# from sdata.data import Data
-from sdata.base import Base
-from sdata.suuid import SUUID
-from sdata.metadata import Metadata, Attribute
-import sdata.contrib
-import sdata.contrib.piexif
-import sdata.contrib.piexif.helper
-import json
+# -*- coding: utf-8 -*-
+"""Image — ein :class:`~sdata.sclass.blob.Blob` über Bild-Inhalt.
+
+Der Bild-Inhalt liegt als Blob-Content (``uri`` für Dateien, ``bytes`` für
+In-Memory-Daten); Pillow wird nur lazy zum Dekodieren genutzt
+(:attr:`Image.pil`/:meth:`Image.to_numpy`/:meth:`Image.save`). Pillow ist optional
+(``pip install pillow``). sdata-Metadaten können in PNGs eingebettet werden.
+"""
+import io
 import os
-from io import BytesIO
-import base64
-import hashlib
+import json
+import logging
+from pathlib import Path
+
+import numpy as np
+
+from sdata.suuid import SUUID
+from sdata.metadata import Metadata
+from sdata.sclass.blob import Blob
+
 try:
-    import PIL
-except:
-    logging.warning("PIL is not available -> no image import")
+    import PIL.Image
+    import PIL.PngImagePlugin
+except ImportError:  # pragma: no cover - optionale Abhängigkeit (Pillow)
     PIL = None
 
-class Image(Base):
-    """Image Object
-
-    .. warning::
-
-        highly experimental"""
+logger = logging.getLogger(__name__)
 
 
-    def __init__(self, url, **kwargs):
-        """Image Object"""
+class Image(Blob):
+    """Image object based on :class:`~sdata.sclass.blob.Blob`."""
 
-        # url = kwargs.get("url", "")
-        load = kwargs.get("load", False)
-        try:
-            name = os.path.basename(url)
-        except Exception as exp:
-            name = None
-        if "name" not in kwargs:
-            kwargs["name"] = name
-        Base.__init__(self, **kwargs)
-        self.url = url
-        self.img = None
-        if load is True:
-            self.load()
+    SDATA_CLS = "sdata.sclass.image.Image"
 
     @classmethod
-    def _from_filepath(cls, filepath, **kwargs):
-        """read image from file
+    def from_file(cls, filepath, project=None, ns_name=None, **kwargs):
+        """Create an Image referencing an image file (kept as ``uri`` content).
 
-        :param fielpath: image file path
-        :return: sdata.Image
+        :param filepath: path to the image file.
+        :param project: namespace for the deterministic SUUID (alias of ``ns_name``).
+        :param ns_name: namespace for the deterministic SUUID.
+        :param kwargs: forwarded to :class:`Blob`/:class:`~sdata.base.Base`.
+        :return: an :class:`Image` instance.
         """
-        project = kwargs.get("project")
-        suuid = SUUID.from_file(cls.__class__.__name__, filepath, ns_name=project)
-        kwargs["uuid"] = suuid.huuid
-        kwargs["url"] = filepath
-        data = cls(name=os.path.basename(filepath), **kwargs)
-        return data
+        suuid = SUUID.from_file("Image", filepath, ns_name=ns_name or project)
+        suffix = Path(filepath).suffix.lstrip(".").lower() or "binary"
+        img = cls(content_type="uri", value=filepath, filetype=suffix,
+                  name=os.path.basename(filepath), suuid=suuid, **kwargs)
+        img._load_embedded_metadata()
+        return img
 
     @classmethod
-    def from_image(cls, name, img, **kwargs):
-        """read image from PIL.Image
+    def from_bytes(cls, name, image_data, project=None, **kwargs):
+        """Create an Image from in-memory image bytes.
 
+        :param name: a name for the image (its suffix sets the filetype).
+        :param image_data: the raw image bytes.
+        :param project: namespace for the deterministic SUUID.
+        :return: an :class:`Image` instance.
         """
-        project = kwargs.get("project", "")
-        parent = kwargs.get("parent", "")
-        class_name = "Image" #cls.__class__.__name__
-
-        sh = hashlib.sha3_256()
-        sh.update(img.tobytes())
-        suuid = SUUID.from_name(class_name=class_name, name=sh.hexdigest(), ns_name=project)
-        suuid.project = project
-        kwargs["parent"] = parent
-        kwargs["project"] = suuid.project
-        kwargs["sname"] = suuid.sname
-        kwargs["uuid"] = suuid.huuid
-        kwargs["suuid"] = suuid.idstr
-        kwargs["url"] = sdata.osname(name)
-        # name = os.path.basename(filepath)
-        data = cls(name=name, **kwargs)
-        data.img = img
-        return data
-
-
-    @classmethod
-    def from_bytes(cls, name, image_data, **kwargs):
-        """read image from file
-
-        """
-        project = kwargs.get("project")
-        class_name = "Image" #cls.__class__.__name__
-        suuid = SUUID.from_str(class_name, name, ns_name=project)
-        kwargs["sname"] = suuid.sname
-        kwargs["uuid"] = suuid.huuid
-        kwargs["suuid"] = suuid.idstr
-        kwargs["url"] = name
-        data = cls(name=name, **kwargs)
-        data.img = PIL.Image.open(BytesIO(image_data))
-        try:
-            d = None
-            if name.lower().endswith(".png"):
-                d = cls._get_png_metadata(image_data)
-            elif name.lower().endswith(("jpg", "jpeg")):
-                d = cls._get_jpg_metadata(image_data)
-            if d is not None:
-                data.metadata = data.metadata.from_json(d)
-        except:
-            pass
-        return data
-
-
-    @classmethod
-    def from_file(cls, filepath, **kwargs):
-        """read image from file
-
-        """
-        project = kwargs.get("project")
-        class_name = "Image" #cls.__class__.__name__
-        suuid = SUUID.from_file(class_name, filepath, ns_name=project)
-        kwargs["sname"] = suuid.sname
-        kwargs["uuid"] = suuid.huuid
-        kwargs["suuid"] = suuid.suuid_str
-        kwargs["url"] = filepath
-        name = os.path.basename(filepath)
-
-
-        if filepath.lower().endswith(".png"):
-            data = cls.from_png(filepath, **kwargs)
-        elif filepath.lower().endswith(("jpg", "jpeg")):
-            data = cls.from_jpg(filepath, **kwargs)
-        else:
-            data = cls(name=name, **kwargs)
-        return data
-
-    def get_sha3_256(self, filepath):
-        sh = hashlib.sha3_256()
-        with open(filepath, "rb") as fh:
-            sh.update(fh.read())
-        return sh.hexdigest()
-
-    def get_image_metadata(self):
-        """get metadata dict from pillow image"""
-        if self.img is None:
-            self.load()
-        return self.img.info
-
-    def load(self):
-        """store image data in sdata.Image.img"""
-        if PIL is None:
-            logging.warning("PIL is not available -> no image import")
-            return
-
-        if os.path.exists(self.url):
-            self.img = PIL.Image.open(self.url)
-        return self.img
-
-    def to_numpy(self):
-        """returns a NumPy array created from the color channels of the given Image object
-
-            array([[[192, 190, 187],
-                    [193, 190, 187],
-                    [193, 190, 185],
-        """
-        return np.array(self.img)
-
-    @classmethod
-    def from_png(cls, filepath, **kwargs):
-        """load png image and metadata
-
-        """
-        if PIL is None:
-            logging.warning("PIL is not available -> no image import")
-            return
-        data = cls._from_filepath(filepath, **kwargs)
-        data.load()
-        if "sdata" in data.img.info:
-            d = json.loads(data.img.info.get("sdata"))
-            data.metadata.update_from_usermetadata(data.metadata.from_json(d))
-        return data
-
-    @staticmethod
-    def _get_metadata(filepath, **kwargs):
-        """
-
-        """
-        if filepath.lower().endswith(".png"):
-            d = Image._get_png_metadata(filepath, **kwargs)
-        elif filepath.lower().endswith(".jpg"):
-            d = Image._get_png_metadata(filepath, **kwargs)
-        else:
-            d = {}
-        return d
-
-    @staticmethod
-    def _get_png_metadata(filepath, **kwargs):
-        """load metadata json dict from img.info
-        """
-        img = PIL.Image.open(filepath)
-        try:
-            d = json.loads(img.info.get("sdata"))
-        except Exception as exp:
-            d = {}
-        return d
-
-    @classmethod
-    def from_jpg(cls, filepath, **kwargs):
-        """load jpg image and metadata
-
-        """
-        if PIL is None:
-            logging.warning("PIL is not available -> no image import")
-            return
-        data = cls._from_filepath(filepath, **kwargs)
-        # data.load()
-        try:
-            d = cls._get_jpg_metadata(filepath)
-            if d is not None:
-                data.metadata.update_from_usermetadata(data.metadata.from_json(d))
-        except Exception as exp:
-            logging.debug(exp)
-        return data
-
-    @staticmethod
-    def _get_jpg_metadata(filepath):
-        """load metadata json dict from exif usercomment
-
-        """
-        exif_dict = sdata.contrib.piexif.load(filepath)
-        exif = exif_dict.get("Exif")
-        user_comment = exif.get(sdata.contrib.piexif.ExifIFD.UserComment)
-        d = None
-        if user_comment is not None:
-            json_string = sdata.contrib.piexif.helper.UserComment.load(user_comment)
-            d = json.loads(json_string)
-        return d
+        suuid = SUUID.from_str("Image", name, ns_name=project)
+        suffix = Path(name).suffix.lstrip(".").lower() or "binary"
+        img = cls(content_type="bytes", value=image_data, filetype=suffix,
+                  name=name, suuid=suuid, **kwargs)
+        img._load_embedded_metadata()
+        return img
 
     @property
-    def basename(self):
-        return os.path.basename(self.url)
+    def pil(self):
+        """The image decoded lazily with Pillow (:class:`PIL.Image.Image`)."""
+        if PIL is None:
+            raise ImportError("Pillow is required for Image decoding (pip install pillow).")
+        return PIL.Image.open(io.BytesIO(self.content_bytes))
 
-    def saveas(self, filepath, rename=True, random=True, **kwargs):
-        """save image
+    def to_numpy(self) -> np.ndarray:
+        """The image as a NumPy array (colour channels)."""
+        return np.array(self.pil)
 
-        """
-        other = copy.deepcopy(self) # keep parent ...
-        if rename is True:
-            basename = os.path.basename(filepath)
-            other.rename(basename, random=random)
-        other.update_mtime()
-        other.save(filepath)
-        return other
+    @property
+    def basename(self) -> str:
+        """The image file base name (== ``name``)."""
+        return self.name
+
+    def _load_embedded_metadata(self) -> None:
+        """Merge sdata metadata embedded in a PNG (``img.info['sdata']``), if present."""
+        if PIL is None:
+            return
+        try:
+            raw = self.pil.info.get("sdata")
+            if raw:
+                self.metadata.update_from_usermetadata(Metadata.from_json(raw))
+        except Exception as exp:
+            logger.debug(f"no embedded sdata metadata: {exp}")
 
     def save(self, filepath, **kwargs):
+        """Save the image to ``filepath``; for PNG the sdata metadata is embedded.
 
-        if self.img is None:
-            self.load()
-
-        if filepath.endswith(".png"):
-            self._save_png(filepath)
-        elif filepath.lower().endswith(".jpg"):
-            self._save_jpg(filepath)
-        else:
-            logging.warning(f"metadata not supported for {filepath}")
-            self.img.save(filepath)
-
-    def _save_png(self, filepath):
-        """save png with metadata
-
+        :param filepath: destination path.
+        :raises ImportError: if Pillow is not installed.
+        :return: the destination ``filepath``.
         """
-        if self.img is None:
-            self.load()
-
-        json_string = json.dumps(self.metadata.to_json())
-        metadaten = PIL.PngImagePlugin.PngInfo()
-        metadaten.add_text("sdata", json_string)
-
-        self.img.save(filepath, "PNG", pnginfo=metadaten)
-
-    def _save_jpg(self, filepath):
-        """save jpg with metadata
-
-        """
-        if self.img is None:
-            self.load()
-        json_string = json.dumps(self.metadata.to_json())
-        exif_dict = {"Exif": {sdata.contrib.piexif.ExifIFD.UserComment: sdata.contrib.piexif.helper.UserComment.dump(json_string)}}
-        exif_bytes = sdata.contrib.piexif.dump(exif_dict)
-        self.img.save(filepath, "jpeg", exif=exif_bytes)
-
-    def get_image_download_link(self, img, filename, text):
-
-        json_string = json.dumps(self.metadata.to_json())
-        buffered = BytesIO()
-
-        if filename.endswith(".png"):
-            metadaten = PIL.PngImagePlugin.PngInfo()
-            metadaten.add_text("sdata", json_string)
-            img.save(buffered, "PNG", pnginfo=metadaten)
-        elif filename.lower().endswith(".jpg"):
-            exif_dict = {"Exif": {
-                sdata.contrib.piexif.ExifIFD.UserComment: sdata.contrib.piexif.helper.UserComment.dump(json_string)}}
-            exif_bytes = sdata.contrib.piexif.dump(exif_dict)
-            img.save(buffered, format="JPEG", exif=exif_bytes)
+        if PIL is None:
+            raise ImportError("Pillow is required for Image.save (pip install pillow).")
+        img = self.pil
+        if str(filepath).lower().endswith(".png"):
+            info = PIL.PngImagePlugin.PngInfo()
+            info.add_text("sdata", self.metadata.to_json())
+            img.save(filepath, "PNG", pnginfo=info)
         else:
-            logging.warning(f"metadata not supported for {filepath}")
-            img.save(buffered)
-
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        href = f'<a href="data:file/txt;base64,{img_str}" download="{filename}">{text}</a>'
-        return href
+            img.save(filepath, **kwargs)
+        logger.info(f"Image saved to {filepath}")
+        return filepath

@@ -1,32 +1,59 @@
-import sys
+# -*- coding: utf-8 -*-
+"""Image(Blob) — RFC 0003 Teil B: Image auf Blob (Bild als Content), PIL lazy.
+
+Pillow ist optional und nicht in der kanonischen CI -> dieser Test skippt dort;
+image.py bleibt in der Coverage-``omit``. Verifiziert in Umgebungen mit Pillow.
+"""
 import os
-import pandas as pd
 import pytest
 
-pytest.importorskip("PIL")  # Bild-Funktionen optional (Pillow)
+pytest.importorskip("PIL")
 
+from sdata.sclass.blob import Blob
 from sdata.sclass.image import Image
+
 modulepath = os.path.dirname(__file__)
 
-sys.path.insert(0, os.path.join(modulepath, "..", "..", "src"))
 
-import sdata
-import uuid
+def _img(name):
+    return os.path.join(modulepath, "images", name)
 
-def test_image():
-    imagepath = os.path.join(modulepath, "images/a.png")
-    png = Image.from_file(imagepath, project="ImageProject", description="a png image")
 
+def test_image_from_file_identity():
+    png = Image.from_file(_img("a.png"), project="ImageProject", description="a png image")
     assert png.name == "a.png"
+    assert isinstance(png, Blob)
 
-    imagepath = os.path.join(modulepath, "images/sdata.png")
-    png = Image.from_file(imagepath, ns_name="ImageProject", description="a png image")
-    print(png.name)
+    png = Image.from_file(_img("sdata.png"), ns_name="ImageProject", description="a png image")
     assert png.name == "sdata.png"
-    assert png.suuid.suuid_bytes == b"ODZiNTVmM2MwZGNhNWQ2NmJhOTdkZDVmZGNlOWExNjRJbWFnZV9fc2RhdGFfcG5n"
+    assert png.sname == "Image__sdata_png__f4cacf348db05dcfb36b8174985290e6"
 
-    imagepath = os.path.join(modulepath, "images/sdata.jpg")
-    jpg = Image.from_file(imagepath, ns_name="ImageProject", description="a jpg image")
-
+    jpg = Image.from_file(_img("sdata.jpg"), ns_name="ImageProject", description="a jpg image")
     assert jpg.name == "sdata.jpg"
-    assert jpg.sname == 'Image__sdata_jpg__d05005986f875e749604e3a61da836e3'
+    assert jpg.sname == "Image__sdata_jpg__d0874e8e90d95e3988027658fb9000d5"
+
+
+def test_image_blob_capabilities():
+    png = Image.from_file(_img("sdata.png"), ns_name="ImageProject")
+    assert png.data["content"]["type"] == "uri"        # Bild als uri-Content
+    assert png.exists() is True
+    assert png.size and png.size > 0                   # geerbte Blob-Größe
+    assert len(png.sha256) == 64                        # geerbte Blob-Integrität
+    arr = png.to_numpy()                                # PIL-Dekodierung
+    assert arr.ndim >= 2
+    assert png.pil.size[0] > 0
+
+
+def test_image_from_bytes_and_png_metadata_roundtrip(tmp_path):
+    import PIL.Image
+    src = tmp_path / "src.png"
+    PIL.Image.new("RGB", (4, 3), (10, 20, 30)).save(str(src), "PNG")
+
+    img = Image.from_bytes("pic.png", src.read_bytes())
+    img.metadata.add("exposure", 1.5, unit="s", description="exposure time")
+
+    out = str(tmp_path / "out.png")
+    img.save(out)                                       # bettet sdata-Metadaten ein
+    reloaded = Image.from_file(out)
+    assert reloaded.metadata.get("exposure").value == 1.5
+    assert reloaded.to_numpy().shape == (3, 4, 3)       # (Höhe, Breite, Kanäle)
