@@ -52,6 +52,8 @@ _DTYPE_FROM_XSD = {
     "xsd:string": "str", "xsd:integer": "int", "xsd:double": "float",
     "xsd:boolean": "bool", "xsd:dateTime": "timestamp",
     "xsd:base64Binary": "bytes", "xsd:anyURI": "uri",
+    "xsd:date": "date", "xsd:time": "time",
+    "xsd:duration": "duration", "xsd:decimal": "decimal",
 }
 
 
