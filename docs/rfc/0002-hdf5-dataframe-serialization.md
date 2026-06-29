@@ -2,12 +2,20 @@
 
 | Feld        | Wert                                                         |
 |-------------|--------------------------------------------------------------|
-| Status      | Proposed                                                     |
+| Status      | Accepted — implementiert (Option A)                         |
 | Datum       | 2026-06-29                                                  |
 | Autor       | lepy <lepy@tuta.io>                                          |
 | Komponente  | `sdata/sclass/dataframe.py` (+ Extra `sdata[hdf]`)          |
-| Betrifft    | neue Methoden `DataFrame.to_hdf` / `from_hdf`               |
-| Validierung | Designvorschlag — noch nicht implementiert                  |
+| Betrifft    | `DataFrame.to_hdf` / `from_hdf`                             |
+| Validierung | umgesetzt (Option A); verifiziert via `tests/test_sclass_dataframe_hdf.py` (PyTables) |
+
+> **Umsetzung.** Implementiert wie in **Option A** beschrieben (`pd.HDFStore` +
+> `_sdata`-Node-Attribut, wiederverwendetes `_restore_from_attrs`, mehrere Keys/Datei
+> via `mode="a"`). Zur **CI-Frage** (Abschnitt 8): PyTables wird **nicht** in die
+> kanonische CI aufgenommen (das vorbestehende WIP-`tests/iolib/test_hdf.py` bricht mit
+> installiertem PyTables). Stattdessen sind `to_hdf`/`from_hdf` `# pragma: no cover`
+> (wie die übrigen optionalen Backends in `omit`) und werden über
+> `importorskip("tables")`-Tests in Umgebungen mit `sdata[hdf]` real verifiziert.
 
 ## 1. Zusammenfassung
 
