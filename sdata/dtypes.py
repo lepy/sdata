@@ -15,8 +15,11 @@ Designziele:
 * **Strikt opt-in** – ``strict=True`` wirft ``DtypeError`` statt still zu
   degradieren.
 * **Erweiterbar** – neben den 6 Alt-dtypes (str/int/float/bool/timestamp/list)
-  zusätzlich ``bytes`` (base64), ``json`` (dict/list), ``uri`` sowie ``date``,
-  ``time``, ``duration`` (ISO 8601 / ``timedelta``) und ``decimal`` (exakt).
+  zusätzlich ``bytes`` (base64), ``json`` (dict/list), ``uri``, ``date``, ``time``,
+  ``duration`` (ISO 8601 / ``timedelta``), ``decimal`` (exakt), ``complex`` sowie
+  ``floatlist`` (typisierte Float-Liste). ``complex``/``floatlist`` haben keinen
+  Standard-XSD-Typ und nutzen daher eigene Datentyp-CURIEs (``sdata:complex`` /
+  ``sdata:floatlist``).
 """
 import base64
 import binascii
@@ -235,6 +238,36 @@ def _c_decimal(value, strict):
         raise DtypeError("decimal: {!r}".format(value)) from exp
 
 
+def _c_complex(value, strict):
+    if value is None or value == "":
+        return None
+    if isinstance(value, complex):
+        return value
+    if isinstance(value, bool):                  # bool ist kein komplexer Wert
+        raise DtypeError("complex: {!r}".format(value))
+    try:
+        return complex(value.strip()) if isinstance(value, str) else complex(value)
+    except (ValueError, TypeError) as exp:
+        raise DtypeError("complex: {!r}".format(value)) from exp
+
+
+def _c_floatlist(value, strict):
+    if value is None:
+        return []
+    if isinstance(value, str):                    # "" / "1,2,3" (Leer-Check skalar-sicher)
+        items = [s for s in (p.strip() for p in value.split(",")) if s]
+    elif isinstance(value, (list, tuple)):
+        items = value
+    elif hasattr(value, "tolist"):               # numpy-Array & Co. -> Liste
+        items = value.tolist()
+    else:
+        raise DtypeError("floatlist: {!r}".format(value))
+    try:
+        return [float(x) for x in items]
+    except (ValueError, TypeError) as exp:
+        raise DtypeError("floatlist: {!r}".format(value)) from exp
+
+
 # --- JSON-Serialisierung je dtype -------------------------------------------
 def _ts_to_json(value):
     return str(value.utc) if isinstance(value, TimeStamp) else value
@@ -280,6 +313,10 @@ def _decimal_to_json(value):
     return str(value) if isinstance(value, Decimal) else value
 
 
+def _complex_to_json(value):
+    return str(value) if isinstance(value, complex) else value
+
+
 class DtypeSpec:
     """Beschreibt einen dtype: Coercion, JSON-Repräsentation, Klasse, XSD-Typ."""
 
@@ -318,6 +355,10 @@ for _spec in [
     DtypeSpec("time", datetime.time, _c_time, "xsd:time", _time_to_json),
     DtypeSpec("duration", datetime.timedelta, _c_duration, "xsd:duration", _duration_to_json),
     DtypeSpec("decimal", Decimal, _c_decimal, "xsd:decimal", _decimal_to_json),
+    # komplexe Zahlen & typisierte Float-Listen haben keinen Standard-XSD-Typ
+    # -> eigener Datentyp-CURIE in der sdata-Namespace (verlustfreier JSON-LD-Roundtrip).
+    DtypeSpec("complex", complex, _c_complex, "sdata:complex", _complex_to_json),
+    DtypeSpec("floatlist", list, _c_floatlist, "sdata:floatlist"),
 ]:
     register(_spec)
 
@@ -341,6 +382,7 @@ DTYPES_INV = {
     bytes: "bytes", dict: "json",
     datetime.date: "date", datetime.time: "time",
     datetime.timedelta: "duration", Decimal: "decimal",
+    complex: "complex",
 }
 XSD = {name: spec.xsd for name, spec in _REGISTRY.items()}
 
@@ -364,6 +406,8 @@ def resolve(dtype):
     token = str(dtype).strip().lower()
     if token in _REGISTRY:
         return token
+    if token in ("list[float]", "float[]"):      # Alias -> floatlist (vor 'list'/'float')
+        return "floatlist"
     if "float" in token:
         return "float"
     if "int" in token:
@@ -389,6 +433,8 @@ def json_default(obj):
     if isinstance(obj, (bytes, bytearray)):
         return base64.b64encode(bytes(obj)).decode("ascii")
     if isinstance(obj, Decimal):
+        return str(obj)
+    if isinstance(obj, complex):
         return str(obj)
     if isinstance(obj, datetime.timedelta):
         return _duration_to_json(obj)

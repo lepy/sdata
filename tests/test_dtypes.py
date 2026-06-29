@@ -275,6 +275,78 @@ def test_new_dtypes_jsonld_roundtrip():
     assert back.get("price").value == Decimal("19.99")
 
 
+# --- complex / floatlist (neu) ---------------------------------------------
+def test_complex_dtype():
+    assert Attribute("c", "1+2j", dtype="complex").value == complex(1, 2)
+    assert Attribute("c", "(1+2j)", dtype="complex").value == complex(1, 2)   # mit Klammern
+    assert Attribute("c", complex(3, -4), dtype="complex").value == complex(3, -4)
+    assert Attribute("c", 5, dtype="complex").value == complex(5, 0)
+    assert Attribute("c", 2.5, dtype="complex").value == complex(2.5, 0)
+    assert Attribute("c", None, dtype="complex").value is None
+    assert Attribute("c", "", dtype="complex").value is None
+    assert Attribute("c", "nope", dtype="complex").value is None              # lenient
+    with pytest.raises(DtypeError):
+        Attribute("c", "nope", dtype="complex", strict=True)
+    with pytest.raises(DtypeError):
+        Attribute("c", True, dtype="complex", strict=True)                    # bool abgelehnt
+
+
+def test_floatlist_dtype():
+    import numpy as np
+    assert Attribute("v", "1.0, 2.5, 3", dtype="floatlist").value == [1.0, 2.5, 3.0]
+    assert Attribute("v", [1, 2, 3], dtype="floatlist").value == [1.0, 2.0, 3.0]
+    assert Attribute("v", (1.5, 2.5), dtype="floatlist").value == [1.5, 2.5]
+    assert Attribute("v", np.array([1, 2, 3]), dtype="floatlist").value == [1.0, 2.0, 3.0]
+    assert Attribute("v", None, dtype="floatlist").value == []
+    assert Attribute("v", "", dtype="floatlist").value == []
+    # dtype-Alias "list[float]"
+    assert Attribute("v", [1, 2], dtype="list[float]").value == [1.0, 2.0]
+    # nicht-castbare Elemente / unzulässiger Typ -> lenient None (Wert unverändert), strict raises
+    assert Attribute("v", ["a", "b"], dtype="floatlist").value is None
+    assert Attribute("v", 5, dtype="floatlist").value is None
+    with pytest.raises(DtypeError):
+        Attribute("v", ["a"], dtype="floatlist", strict=True)     # nicht-castbares Element
+    with pytest.raises(DtypeError):
+        Attribute("v", 5, dtype="floatlist", strict=True)         # unzulässiger Typ
+
+
+def test_complex_floatlist_resolve_xsd_json():
+    assert dtypes.resolve(complex) == "complex"
+    assert dtypes.resolve("complex") == "complex"
+    assert dtypes.resolve("floatlist") == "floatlist"
+    assert dtypes.resolve("list[float]") == "floatlist"
+    assert dtypes.resolve("float[]") == "floatlist"
+    xsd = dtypes.xsd_map()
+    assert xsd["complex"] == "sdata:complex" and xsd["floatlist"] == "sdata:floatlist"
+    # to_json / json_default
+    assert dtypes.get("complex").to_json(complex(1, 2)) == "(1+2j)"
+    assert dtypes.get("complex").to_json(None) is None                        # passthrough
+    assert dtypes.get("floatlist").to_json([1.0, 2.0]) == [1.0, 2.0]          # passthrough (JSON-nativ)
+    assert dtypes.json_default(complex(1, 2)) == "(1+2j)"
+
+
+def test_complex_floatlist_json_roundtrip():
+    m = Metadata()
+    m.add("impedance", "50+3j", dtype="complex")
+    m.add("spectrum", [1.0, 2.5, 3.0], dtype="floatlist")
+    restored = Metadata.from_json(m.to_json())
+    assert restored.get("impedance").value == complex(50, 3)
+    assert restored.get("spectrum").value == [1.0, 2.5, 3.0]
+
+
+def test_complex_floatlist_jsonld_roundtrip():
+    from sdata import semantic
+    m = Metadata(name="probe")
+    m.add("impedance", "50+3j", dtype="complex")
+    m.add("spectrum", [1.0, 2.5, 3.0], dtype="floatlist")
+    doc = semantic.to_jsonld(m)
+    assert doc["sdata:impedance"]["@type"] == "sdata:complex"
+    assert doc["sdata:spectrum"]["@type"] == "sdata:floatlist"
+    back = semantic.from_jsonld(doc)
+    assert back.get("impedance").value == complex(50, 3)
+    assert back.get("spectrum").value == [1.0, 2.5, 3.0]          # floatlist, nicht str-list
+
+
 # --- dtype=class & Re-Cast --------------------------------------------------
 def test_dtype_class_accepted():
     assert Attribute("a", 1, dtype=int).dtype == "int"

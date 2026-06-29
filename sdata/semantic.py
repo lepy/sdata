@@ -54,6 +54,7 @@ _DTYPE_FROM_XSD = {
     "xsd:base64Binary": "bytes", "xsd:anyURI": "uri",
     "xsd:date": "date", "xsd:time": "time",
     "xsd:duration": "duration", "xsd:decimal": "decimal",
+    "sdata:complex": "complex",
 }
 
 
@@ -190,7 +191,7 @@ def _set_from_node(metadata, name, node):
         raw, xsd = node, None
     # dtype bestimmen: JSON-Typ hat Vorrang (list/json), sonst XSD-Rückabbildung
     if isinstance(raw, list):
-        dtype = "list"
+        dtype = "floatlist" if xsd == "sdata:floatlist" else "list"
     elif isinstance(raw, dict):
         dtype = "json"
     else:
