@@ -69,4 +69,5 @@ nav:
       - "0001 — json1sqlitestore index naming": rfc/0001-json1sqlitestore-index-naming.md
       - "0002 — HDF5 DataFrame serialization": rfc/0002-hdf5-dataframe-serialization.md
       - "0003 — Blob as data foundation": rfc/0003-blob-as-data-foundation.md
+      - "0004 — DataFrame and Blob": rfc/0004-dataframe-and-blob.md
   - Releasing: releasing.md
