@@ -2,12 +2,12 @@
 
 | Feld        | Wert                                                          |
 |-------------|--------------------------------------------------------------|
-| Status      | Accepted — implementiert (PNG/JPEG/JP2/GIF/WebP)             |
+| Status      | Accepted — implementiert (PNG/JPEG/JP2/GIF/WebP/TIFF)        |
 | Datum       | 2026-06-29                                                  |
 | Autor       | lepy <lepy@tuta.io>                                          |
 | Komponente  | `sdata/imagemeta.py`, `sdata/sclass/image.py`               |
 | Betrifft    | Einbettung von sdata-Metadaten direkt in Bilddateien        |
-| Validierung | `imagemeta.py` 100 %; Pillow-Round-Trips für 5 Formate       |
+| Validierung | `imagemeta.py` 100 %; Pillow-Round-Trips für 6 Formate       |
 
 > **Umsetzungsstand.** Implementiert. `sdata/imagemeta.py` bettet sdata-Metadaten
 > **nativ und Pillow-frei** in PNG, JPEG, JP2, GIF und WebP ein; `Image` nutzt es
@@ -31,6 +31,7 @@ die Nutzlast in den **nativen** Metadaten-Träger des jeweiligen Containers:
 | JP2    | `uuid`-Box (ISO BMFF) vor der `jp2c`-Codestream-Box| feste sdata-UUID   |
 | GIF    | Comment-Extension hinter dem Header                | `sdata\0`-Präfix   |
 | WebP   | eigener RIFF-Chunk `sdAT`                           | FourCC `sdAT`      |
+| TIFF   | privates IFD-Tag (65000), Original-Bytes unverändert| Tag `65000`        |
 
 ## 2. Motivation
 
@@ -76,6 +77,13 @@ supported_formats() -> tuple[str, ...]
   korrekt.
 * **WebP** — RIFF-Container. Ein eigener Chunk `sdAT` wird angehängt und die RIFF-Größe
   aktualisiert. Begründung der Wahl s. u.
+* **TIFF** — offset-basierte IFDs. Statt fehleranfälliger Offset-Chirurgie bleiben die
+  **Original-Bytes unverändert** (alle bestehenden Offsets, inkl. `StripOffsets`, gültig):
+  eine **Kopie** der ersten IFD — ergänzt um ein privates Tag (65000) mit der Nutzlast —
+  wird ans Dateiende angehängt und der Header auf diese neue IFD umgelenkt. Little- und
+  Big-Endian (`II`/`MM`, klassisches TIFF/Magic 42); BigTIFF (Magic 43) ist nicht
+  abgedeckt. Erneutes Einbetten ersetzt logisch die Nutzlast; verwaiste Vorgänger-Bytes
+  bleiben ungenutzt im File (kein Re-Pack).
 
 ### 3.3 `Image`-Integration
 
@@ -107,8 +115,8 @@ supported_formats() -> tuple[str, ...]
   `imagemeta.py` zu **100 %** ab — inkl. Replace-Semantik, fehlender Nutzlast, JPEG-
   Standalone-/Non-FF-Marker, JP2-XLBox/`LBox==0`/malformed-Guard, GIF mit/ohne (Local)
   Color Table und Nicht-Comment-Extensions, WebP-Padding. Zusätzlich Pillow-Round-Trips
-  über PNG/JPEG/JP2/GIF/WebP (Decodier-Integrität).
-* `tests/test_image.py`: einheitliche `Image`-API über alle fünf Formate + Transkodierung.
+  über PNG/JPEG/JP2/GIF/WebP/TIFF (Decodier-Integrität).
+* `tests/test_image.py`: einheitliche `Image`-API über alle sechs Formate + Transkodierung.
 
 ## 6. Kompatibilität / Migration
 
@@ -120,7 +128,7 @@ supported_formats() -> tuple[str, ...]
 
 ## 7. Offene Punkte / Zukunft
 
-* Weitere Container über die Registry: **TIFF** (IFD-Tag), **BMP** (kein nativer Träger
-  → Sidecar). 
+* Weitere Container über die Registry: **BMP** (kein nativer Träger → Sidecar),
+  **BigTIFF** (Magic 43, 8-byte-Offsets). 
 * Optional: WebP **VP8X+XMP** für strikte Interop; PNG **`zTXt`** (komprimiert) für sehr
   große Nutzlasten; JPEG **Multi-Segment-APP1** jenseits 64 KiB.

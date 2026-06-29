@@ -12,6 +12,7 @@ Unterstützte Container und ihr nativer Träger:
 * **JP2**  — ``uuid``-Box (JPEG 2000, ISO BMFF) mit fester sdata-UUID
 * **GIF**  — Comment-Extension mit Präfix ``sdata\\0``
 * **WebP** — eigener RIFF-Chunk ``sdAT`` (von Decodern als unbekannt ignoriert)
+* **TIFF** — privates IFD-Tag (65000); die Original-Bytes bleiben unverändert
 
 Das Format wird an den Magic-Bytes erkannt (:func:`detect_format`); :func:`embed`
 und :func:`extract` wählen den passenden Handler. Die Schreibsemantik ist
@@ -380,6 +381,84 @@ def _webp_extract(data: bytes) -> Optional[str]:
     return None
 
 
+# ====================================================================== TIFF
+_TIFF_LE = b"II\x2a\x00"   # little-endian, classic TIFF (magic 42)
+_TIFF_BE = b"MM\x00\x2a"   # big-endian, classic TIFF (magic 42)
+#: privates TIFF-Tag (Bereich 32768–65535) für die sdata-Nutzlast.
+_TIFF_TAG = 65000
+_TIFF_TYPE_UNDEFINED = 7   # 7 = UNDEFINED (rohe Bytes)
+
+
+def _tiff_endian(data: bytes) -> str:
+    """``struct``-Präfix für die Byte-Reihenfolge des TIFF (``<`` für ``II``)."""
+    return "<" if data[:2] == b"II" else ">"
+
+
+def _tiff_entries(data: bytes, e: str, ifd_off: int):
+    """Lies ``(entries, next_ifd_offset)`` einer IFD.
+
+    ``entries`` ist eine Liste ``(tag, type, count, value_field)`` (value_field =
+    die 4 rohen Value/Offset-Bytes, unverändert übernommen).
+    """
+    (count,) = struct.unpack(e + "H", data[ifd_off:ifd_off + 2])
+    entries = []
+    pos = ifd_off + 2
+    for _ in range(count):
+        tag, typ, cnt = struct.unpack(e + "HHI", data[pos:pos + 8])
+        entries.append((tag, typ, cnt, data[pos + 8:pos + 12]))
+        pos += 12
+    (next_off,) = struct.unpack(e + "I", data[pos:pos + 4])
+    return entries, next_off
+
+
+def _tiff_embed(data: bytes, payload: str) -> bytes:
+    """Schreibe ``payload`` ohne Offset-Chirurgie ein (replace-Semantik).
+
+    Die Original-Bytes bleiben **unverändert** (alle bestehenden Offsets, inkl.
+    ``StripOffsets``, bleiben gültig). Eine **Kopie** der ersten IFD — ergänzt um ein
+    privates Tag mit der Nutzlast — wird ans Dateiende angehängt und der Header auf
+    diese neue IFD umgelenkt. Mehrfaches Einbetten ersetzt logisch die Nutzlast;
+    verwaiste Vorgänger-Bytes bleiben ungenutzt im File (kein Re-Pack).
+    """
+    e = _tiff_endian(data)
+    (ifd0_off,) = struct.unpack(e + "I", data[4:8])
+    entries, next_off = _tiff_entries(data, e, ifd0_off)
+    entries = [en for en in entries if en[0] != _TIFF_TAG]  # vorhandenes Tag droppen
+    body = payload.encode("utf-8")
+    blob = bytearray(data)
+    if len(body) <= 4:
+        value_field = body + b"\x00" * (4 - len(body))      # inline (≤4 Byte)
+    else:
+        blob += b"\x00" * (len(blob) & 1)                   # Value wortausrichten
+        payload_off = len(blob)
+        blob += body
+        value_field = struct.pack(e + "I", payload_off)
+    entries.append((_TIFF_TAG, _TIFF_TYPE_UNDEFINED, len(body), value_field))
+    entries.sort(key=lambda en: en[0])                      # IFD-Einträge aufsteigend
+    blob += b"\x00" * (len(blob) & 1)                       # IFD wortausrichten
+    new_ifd_off = len(blob)
+    blob += struct.pack(e + "H", len(entries))
+    for tag, typ, count, value_field in entries:
+        blob += struct.pack(e + "HHI", tag, typ, count) + value_field
+    blob += struct.pack(e + "I", next_off)
+    struct.pack_into(e + "I", blob, 4, new_ifd_off)         # Header → neue IFD
+    return bytes(blob)
+
+
+def _tiff_extract(data: bytes) -> Optional[str]:
+    """Lies die sdata-Nutzlast aus dem privaten TIFF-Tag (inline oder per Offset)."""
+    e = _tiff_endian(data)
+    (ifd0_off,) = struct.unpack(e + "I", data[4:8])
+    entries, _next = _tiff_entries(data, e, ifd0_off)
+    for tag, _typ, count, value_field in entries:
+        if tag == _TIFF_TAG:
+            if count <= 4:
+                return value_field[:count].decode("utf-8")
+            (off,) = struct.unpack(e + "I", value_field)
+            return data[off:off + count].decode("utf-8")
+    return None
+
+
 # ================================================================== Fassade
 #: Registry: ``fmt -> (embed, extract)``.
 _HANDLERS = {
@@ -388,6 +467,7 @@ _HANDLERS = {
     "jp2": (_jp2_embed, _jp2_extract),
     "gif": (_gif_embed, _gif_extract),
     "webp": (_webp_embed, _webp_extract),
+    "tiff": (_tiff_embed, _tiff_extract),
 }
 
 
@@ -407,6 +487,8 @@ def detect_format(data: bytes) -> Optional[str]:
         return "gif"
     if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         return "webp"
+    if data[:4] in (_TIFF_LE, _TIFF_BE):
+        return "tiff"
     return None
 
 
