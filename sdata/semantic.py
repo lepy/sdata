@@ -78,7 +78,16 @@ def _class_local(class_spec):
 
 
 def _value_literal(attr):
-    """Typisiertes JSON-LD-Literal ``{"@value": …, "@type": xsd}`` für ein Attribut."""
+    """Typisiertes JSON-LD-Literal ``{"@value": …, "@type": xsd}`` für ein Attribut.
+
+    Ausnahme ``langstring``: rdf:langString wird über ``@language`` ausgedrückt
+    (nicht ``@type``).
+    """
+    if attr.dtype == "langstring" and isinstance(attr.value, dtypes.LangString):
+        node = {"@value": attr.value.text}
+        if attr.value.lang:
+            node["@language"] = attr.value.lang
+        return node
     spec = dtypes.get(attr.dtype) or dtypes.get("str")
     return {"@value": spec.to_json(attr.value), "@type": vocab.xsd_for_dtype(attr.dtype)}
 
@@ -176,8 +185,10 @@ def _set_from_node(metadata, name, node):
     """Rekonstruiere ein User-Attribut aus Knoten/Literal."""
     unit = "-"
     ontology = ""
+    lang = None
     if isinstance(node, dict) and "@value" in node:
         raw, xsd = node.get("@value"), node.get("@type")
+        lang = node.get("@language")
     elif isinstance(node, dict):
         literal = node.get("value", {})
         raw = literal.get("@value") if isinstance(literal, dict) else literal
@@ -189,11 +200,14 @@ def _set_from_node(metadata, name, node):
         ontology = next((t for t in type_list if t != "qudt:Quantity"), "")
     else:
         raw, xsd = node, None
-    # dtype bestimmen: JSON-Typ hat Vorrang (list/json), sonst XSD-Rückabbildung
+    # dtype bestimmen: JSON-Typ/@language haben Vorrang, sonst XSD-Rückabbildung
     if isinstance(raw, list):
         dtype = "floatlist" if xsd == "sdata:floatlist" else "list"
     elif isinstance(raw, dict):
         dtype = "json"
+    elif lang:
+        dtype = "langstring"
+        raw = "{}@{}".format(raw, lang)          # text@lang rekonstruieren
     else:
         dtype = _DTYPE_FROM_XSD.get(xsd, "str")
     metadata.set_attr(name, raw, dtype=dtype, unit=unit, ontology=ontology)

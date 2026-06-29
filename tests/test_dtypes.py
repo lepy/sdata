@@ -347,6 +347,60 @@ def test_complex_floatlist_jsonld_roundtrip():
     assert back.get("spectrum").value == [1.0, 2.5, 3.0]          # floatlist, nicht str-list
 
 
+# --- langstring (neu) ------------------------------------------------------
+def test_langstring_coercion():
+    from sdata.dtypes import LangString
+    ls = Attribute("l", "Hallo@de", dtype="langstring").value
+    assert isinstance(ls, LangString) and ls.text == "Hallo" and ls.lang == "de"
+    assert Attribute("l", "Hello@en-US", dtype="langstring").value == LangString("Hello", "en-US")
+    assert Attribute("l", "plain", dtype="langstring").value == LangString("plain", "")
+    assert Attribute("l", "a@b.com", dtype="langstring").value == LangString("a@b.com", "")  # kein Tag
+    assert Attribute("l", ("meeting@noon", "en"), dtype="langstring").value == LangString("meeting@noon", "en")
+    assert Attribute("l", {"@value": "Bonjour", "@language": "fr"},
+                     dtype="langstring").value == LangString("Bonjour", "fr")
+    assert Attribute("l", LangString("x", "de"), dtype="langstring").value == LangString("x", "de")
+    assert Attribute("l", None, dtype="langstring").value is None
+    assert Attribute("l", "", dtype="langstring").value is None
+
+
+def test_langstring_class_and_json():
+    from sdata.dtypes import LangString
+    assert str(LangString("Hallo", "de")) == "Hallo@de"
+    assert str(LangString("Hallo", "")) == "Hallo"                  # ohne Tag
+    assert repr(LangString("Hallo", "de")) == "LangString('Hallo', 'de')"
+    assert LangString("a", "de") != "a@de"                          # != Nicht-LangString
+    assert LangString("a", "de") != LangString("a", "en")           # Lang unterscheidet
+    assert {LangString("a", "de"): 1}[LangString("a", "de")] == 1   # hashbar
+    assert dtypes.resolve("langString") == "langstring"             # case-insensitiv
+    assert dtypes.resolve(LangString) == "langstring"
+    assert dtypes.xsd_map()["langstring"] == "rdf:langString"
+    assert dtypes.get("langstring").to_json(LangString("Hallo", "de")) == "Hallo@de"
+    assert dtypes.get("langstring").to_json(None) is None           # passthrough
+    assert dtypes.json_default(LangString("Hallo", "de")) == "Hallo@de"
+
+
+def test_langstring_json_roundtrip():
+    from sdata.dtypes import LangString
+    m = Metadata()
+    m.add("label", "Hallo@de", dtype="langstring")
+    restored = Metadata.from_json(m.to_json())
+    assert restored.get("label").value == LangString("Hallo", "de")
+
+
+def test_langstring_jsonld_roundtrip():
+    from sdata.dtypes import LangString
+    from sdata import semantic
+    m = Metadata(name="probe")
+    m.add("label", "Hallo@de", dtype="langstring")
+    m.add("note", "plain", dtype="langstring")          # ohne Tag -> degradiert zu str
+    doc = semantic.to_jsonld(m)
+    assert doc["sdata:label"] == {"@value": "Hallo", "@language": "de"}   # rdf:langString via @language
+    assert doc["sdata:note"] == {"@value": "plain"}                       # kein @language/@type
+    back = semantic.from_jsonld(doc)
+    assert back.get("label").value == LangString("Hallo", "de")
+    assert back.get("note").value == "plain"            # ohne Sprach-Tag -> str
+
+
 # --- dtype=class & Re-Cast --------------------------------------------------
 def test_dtype_class_accepted():
     assert Attribute("a", 1, dtype=int).dtype == "int"
