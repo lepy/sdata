@@ -153,6 +153,128 @@ def test_uri_dtype():
         Attribute("u", "   ", dtype="uri", strict=True)
 
 
+# --- date / time / duration / decimal (neu) --------------------------------
+def test_date_dtype():
+    assert Attribute("d", "2024-01-15", dtype="date").value == datetime.date(2024, 1, 15)
+    assert Attribute("d", datetime.date(2024, 1, 15), dtype="date").value == datetime.date(2024, 1, 15)
+    # datetime -> date (Subklasse korrekt zuerst behandelt)
+    assert Attribute("d", datetime.datetime(2024, 1, 15, 9, 30),
+                     dtype="date").value == datetime.date(2024, 1, 15)
+    assert Attribute("d", None, dtype="date").value is None
+    assert Attribute("d", "", dtype="date").value is None
+    assert Attribute("d", "nope", dtype="date").value is None            # lenient
+    with pytest.raises(DtypeError):
+        Attribute("d", "nope", dtype="date", strict=True)
+
+
+def test_time_dtype():
+    assert Attribute("t", "14:30:00", dtype="time").value == datetime.time(14, 30)
+    assert Attribute("t", datetime.time(14, 30), dtype="time").value == datetime.time(14, 30)
+    assert Attribute("t", datetime.datetime(2024, 1, 15, 14, 30),
+                     dtype="time").value == datetime.time(14, 30)
+    assert Attribute("t", None, dtype="time").value is None
+    assert Attribute("t", "25:99", dtype="time").value is None           # lenient
+    with pytest.raises(DtypeError):
+        Attribute("t", "25:99", dtype="time", strict=True)
+
+
+def test_duration_dtype():
+    td = datetime.timedelta
+    assert Attribute("u", "PT1H30M", dtype="duration").value == td(hours=1, minutes=30)
+    assert Attribute("u", "P2DT3H", dtype="duration").value == td(days=2, hours=3)
+    assert Attribute("u", "P1W", dtype="duration").value == td(weeks=1)
+    assert Attribute("u", "-PT5S", dtype="duration").value == td(seconds=-5)
+    assert Attribute("u", 90, dtype="duration").value == td(seconds=90)   # Zahl = Sekunden
+    assert Attribute("u", td(minutes=5), dtype="duration").value == td(minutes=5)
+    assert Attribute("u", None, dtype="duration").value is None
+    assert Attribute("u", True, dtype="duration").value is None          # bool abgelehnt (lenient)
+    # ungültig / Jahre-Monate / keine Komponenten -> lenient None, strict raises
+    for bad in ["P1Y", "P", "PT", "nope"]:
+        assert Attribute("u", bad, dtype="duration").value is None
+        with pytest.raises(DtypeError):
+            Attribute("u", bad, dtype="duration", strict=True)
+    with pytest.raises(DtypeError):
+        Attribute("u", True, dtype="duration", strict=True)
+
+
+def test_decimal_dtype():
+    from decimal import Decimal
+    assert Attribute("p", "0.1", dtype="decimal").value == Decimal("0.1")
+    assert Attribute("p", 0.1, dtype="decimal").value == Decimal("0.1")   # via str -> exakt
+    assert Attribute("p", 5, dtype="decimal").value == Decimal("5")
+    assert Attribute("p", Decimal("3.14"), dtype="decimal").value == Decimal("3.14")
+    assert Attribute("p", None, dtype="decimal").value is None
+    assert Attribute("p", "", dtype="decimal").value is None
+    assert Attribute("p", "abc", dtype="decimal").value is None          # lenient
+    with pytest.raises(DtypeError):
+        Attribute("p", "abc", dtype="decimal", strict=True)
+    with pytest.raises(DtypeError):
+        Attribute("p", True, dtype="decimal", strict=True)               # bool abgelehnt
+
+
+def test_new_dtypes_resolve_and_xsd():
+    from decimal import Decimal
+    assert dtypes.resolve(datetime.date) == "date"
+    assert dtypes.resolve(datetime.time) == "time"
+    assert dtypes.resolve(datetime.timedelta) == "duration"
+    assert dtypes.resolve(Decimal) == "decimal"
+    assert dtypes.resolve(datetime.datetime) == "timestamp"   # date-Subklasse bleibt timestamp
+    assert dtypes.resolve("date") == "date" and dtypes.resolve("decimal") == "decimal"
+    xsd = dtypes.xsd_map()
+    assert xsd["date"] == "xsd:date" and xsd["time"] == "xsd:time"
+    assert xsd["duration"] == "xsd:duration" and xsd["decimal"] == "xsd:decimal"
+
+
+def test_new_dtypes_to_json_and_default():
+    from decimal import Decimal
+    td = datetime.timedelta
+    assert dtypes.get("date").to_json(datetime.date(2024, 1, 15)) == "2024-01-15"
+    assert dtypes.get("time").to_json(datetime.time(14, 30)) == "14:30:00"
+    assert dtypes.get("duration").to_json(td(hours=1, minutes=30)) == "PT1H30M"
+    assert dtypes.get("duration").to_json(td(days=2)) == "P2D"
+    assert dtypes.get("duration").to_json(td(seconds=-5)) == "-PT5S"
+    assert dtypes.get("duration").to_json(td(0)) == "PT0S"
+    assert dtypes.get("decimal").to_json(Decimal("3.140")) == "3.140"    # Präzision erhalten
+    # passthrough (None / falscher Typ) je to_json
+    assert dtypes.get("date").to_json(None) is None
+    assert dtypes.get("time").to_json(None) is None
+    assert dtypes.get("duration").to_json(None) is None
+    assert dtypes.get("decimal").to_json(None) is None
+    # json_default deckt die Roh-Objekte ab
+    assert dtypes.json_default(Decimal("1.5")) == "1.5"
+    assert dtypes.json_default(td(minutes=90)) == "PT1H30M"
+    assert dtypes.json_default(datetime.date(2024, 1, 15)) == "2024-01-15"
+    assert dtypes.json_default(datetime.time(9, 0)) == "09:00:00"
+
+
+def test_new_dtypes_json_roundtrip():
+    from decimal import Decimal
+    m = Metadata()
+    m.add("acquired_on", "2024-01-15", dtype="date")
+    m.add("start_time", "09:30:00", dtype="time")
+    m.add("test_duration", "PT2H", dtype="duration")
+    m.add("price", "19.99", dtype="decimal")
+    restored = Metadata.from_json(m.to_json())
+    assert restored.get("acquired_on").value == datetime.date(2024, 1, 15)
+    assert restored.get("start_time").value == datetime.time(9, 30)
+    assert restored.get("test_duration").value == datetime.timedelta(hours=2)
+    assert restored.get("price").value == Decimal("19.99")
+
+
+def test_new_dtypes_jsonld_roundtrip():
+    from decimal import Decimal
+    from sdata import semantic
+    m = Metadata(name="probe")
+    m.add("acquired_on", "2024-01-15", dtype="date")
+    m.add("price", "19.99", dtype="decimal")
+    doc = semantic.to_jsonld(m)
+    assert doc["sdata:acquired_on"]["@type"] == "xsd:date"
+    assert doc["sdata:price"]["@type"] == "xsd:decimal"
+    back = semantic.from_jsonld(doc)
+    assert back.get("acquired_on").value == datetime.date(2024, 1, 15)
+    assert back.get("price").value == Decimal("19.99")
+
+
 # --- dtype=class & Re-Cast --------------------------------------------------
 def test_dtype_class_accepted():
     assert Attribute("a", 1, dtype=int).dtype == "int"

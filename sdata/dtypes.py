@@ -15,12 +15,15 @@ Designziele:
 * **Strikt opt-in** – ``strict=True`` wirft ``DtypeError`` statt still zu
   degradieren.
 * **Erweiterbar** – neben den 6 Alt-dtypes (str/int/float/bool/timestamp/list)
-  zusätzlich ``bytes`` (base64), ``json`` (dict/list) und ``uri``.
+  zusätzlich ``bytes`` (base64), ``json`` (dict/list), ``uri`` sowie ``date``,
+  ``time``, ``duration`` (ISO 8601 / ``timedelta``) und ``decimal`` (exakt).
 """
 import base64
 import binascii
 import datetime
 import json as _json
+import re
+from decimal import Decimal, InvalidOperation
 from urllib.parse import urlsplit
 
 import numpy as np
@@ -158,6 +161,80 @@ def _c_uri(value, strict):
     return text
 
 
+def _c_date(value, strict):
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime.datetime):     # vor date prüfen (Subklasse!)
+        return value.date()
+    if isinstance(value, datetime.date):
+        return value
+    try:
+        return datetime.date.fromisoformat(str(value))
+    except (ValueError, TypeError) as exp:
+        raise DtypeError("date: {!r} (ISO 8601 'YYYY-MM-DD')".format(value)) from exp
+
+
+def _c_time(value, strict):
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime.datetime):
+        return value.timetz()
+    if isinstance(value, datetime.time):
+        return value
+    try:
+        return datetime.time.fromisoformat(str(value))
+    except (ValueError, TypeError) as exp:
+        raise DtypeError("time: {!r} (ISO 8601 'HH:MM:SS')".format(value)) from exp
+
+
+#: ISO-8601-Dauer ohne Jahre/Monate (nicht als ``timedelta`` darstellbar).
+_ISO_DURATION = re.compile(
+    r"^(?P<sign>-?)P"
+    r"(?:(?P<weeks>\d+(?:\.\d+)?)W)?"
+    r"(?:(?P<days>\d+(?:\.\d+)?)D)?"
+    r"(?:T"
+    r"(?:(?P<hours>\d+(?:\.\d+)?)H)?"
+    r"(?:(?P<minutes>\d+(?:\.\d+)?)M)?"
+    r"(?:(?P<seconds>\d+(?:\.\d+)?)S)?"
+    r")?$"
+)
+
+
+def _c_duration(value, strict):
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime.timedelta):
+        return value
+    if isinstance(value, bool):                  # bool ist int-Subklasse → ablehnen
+        raise DtypeError("duration: {!r}".format(value))
+    if isinstance(value, (int, float)):
+        return datetime.timedelta(seconds=value)  # Zahl = Sekunden
+    match = _ISO_DURATION.match(str(value).strip())
+    parts = ({k: float(v) for k, v in match.groupdict().items()
+              if v is not None and k != "sign"} if match else None)
+    if not parts:
+        raise DtypeError("duration: {!r} (ISO 8601 like 'PT1H30M'; years/months "
+                         "are not representable as a timedelta)".format(value))
+    td = datetime.timedelta(
+        weeks=parts.get("weeks", 0), days=parts.get("days", 0),
+        hours=parts.get("hours", 0), minutes=parts.get("minutes", 0),
+        seconds=parts.get("seconds", 0))
+    return -td if match.group("sign") == "-" else td
+
+
+def _c_decimal(value, strict):
+    if value is None or value == "":
+        return None
+    if isinstance(value, Decimal):
+        return value
+    if isinstance(value, bool):                  # bool ist kein Dezimalwert
+        raise DtypeError("decimal: {!r}".format(value))
+    try:
+        return Decimal(str(value))               # via str: keine Float-Binär-Artefakte
+    except (InvalidOperation, ValueError, TypeError) as exp:
+        raise DtypeError("decimal: {!r}".format(value)) from exp
+
+
 # --- JSON-Serialisierung je dtype -------------------------------------------
 def _ts_to_json(value):
     return str(value.utc) if isinstance(value, TimeStamp) else value
@@ -165,6 +242,42 @@ def _ts_to_json(value):
 
 def _bytes_to_json(value):
     return base64.b64encode(value).decode("ascii") if isinstance(value, bytes) else value
+
+
+def _date_to_json(value):
+    return value.isoformat() if isinstance(value, datetime.date) else value
+
+
+def _time_to_json(value):
+    return value.isoformat() if isinstance(value, datetime.time) else value
+
+
+def _duration_to_json(value):
+    """``timedelta`` → kanonische ISO-8601-Dauer (``PT0S`` für null)."""
+    if not isinstance(value, datetime.timedelta):
+        return value
+    total = value.total_seconds()
+    sign = "-" if total < 0 else ""
+    total = abs(total)
+    days = int(total // 86400)
+    rem = total - days * 86400
+    hours = int(rem // 3600)
+    rem -= hours * 3600
+    minutes = int(rem // 60)
+    seconds = rem - minutes * 60
+    date_part = "{:d}D".format(days) if days else ""
+    time_part = ""
+    if hours:
+        time_part += "{:d}H".format(hours)
+    if minutes:
+        time_part += "{:d}M".format(minutes)
+    if seconds or not (date_part or time_part):
+        time_part += "{:g}S".format(seconds)
+    return sign + "P" + date_part + ("T" + time_part if time_part else "")
+
+
+def _decimal_to_json(value):
+    return str(value) if isinstance(value, Decimal) else value
 
 
 class DtypeSpec:
@@ -201,6 +314,10 @@ for _spec in [
     DtypeSpec("bytes", bytes, _c_bytes, "xsd:base64Binary", _bytes_to_json),
     DtypeSpec("json", dict, _c_json, "xsd:string"),
     DtypeSpec("uri", str, _c_uri, "xsd:anyURI"),
+    DtypeSpec("date", datetime.date, _c_date, "xsd:date", _date_to_json),
+    DtypeSpec("time", datetime.time, _c_time, "xsd:time", _time_to_json),
+    DtypeSpec("duration", datetime.timedelta, _c_duration, "xsd:duration", _duration_to_json),
+    DtypeSpec("decimal", Decimal, _c_decimal, "xsd:decimal", _decimal_to_json),
 ]:
     register(_spec)
 
@@ -222,6 +339,8 @@ DTYPES_INV = {
     float: "float", int: "int", str: "str",
     datetime.datetime: "timestamp", bool: "bool", list: "list",
     bytes: "bytes", dict: "json",
+    datetime.date: "date", datetime.time: "time",
+    datetime.timedelta: "duration", Decimal: "decimal",
 }
 XSD = {name: spec.xsd for name, spec in _REGISTRY.items()}
 
@@ -263,9 +382,18 @@ def coerce(value, dtype, strict=False):
 
 
 def json_default(obj):
-    """``default=`` für ``json.dumps``: serialisiert TimeStamp/bytes JSON-sicher."""
+    """``default=`` für ``json.dumps``: serialisiert die nicht-nativen dtype-Werte
+    (TimeStamp/bytes/Decimal/timedelta/date/time) JSON-sicher."""
     if isinstance(obj, TimeStamp):
         return str(obj.utc)
     if isinstance(obj, (bytes, bytearray)):
         return base64.b64encode(bytes(obj)).decode("ascii")
+    if isinstance(obj, Decimal):
+        return str(obj)
+    if isinstance(obj, datetime.timedelta):
+        return _duration_to_json(obj)
+    if isinstance(obj, datetime.date):           # fängt auch datetime.datetime
+        return obj.isoformat()
+    if isinstance(obj, datetime.time):
+        return obj.isoformat()
     raise TypeError("not JSON serializable: {!r}".format(type(obj)))
