@@ -55,7 +55,7 @@ class Blob(Base):
         "description": "A hash value (based on the SHA-256 algorithm) that verifies the integrity of the asset. It ensures that the resource has not been modified (e.g., during downloads or storage).",
         "label": "Checksum (SHA-256)",
         "required": True,
-        "ontology": "saf:checksum"
+        "ontology": "schema:sha256"
     },
     "mime_type": {
         "name": "mime_type",
@@ -65,7 +65,7 @@ class Blob(Base):
         "description": "The MIME type of the resource (e.g., 'application/pdf' for PDFs or 'text/html' for web pages), which indicates how the asset should be interpreted and processed.",
         "label": "MIME Type",
         "required": True,
-        "ontology": "saf:mimeType"
+        "ontology": "dcat:mediaType"
     },
     "source_uri": {
         "name": "source_uri",
@@ -75,7 +75,7 @@ class Blob(Base):
         "description": "The original URI (Uniform Resource Identifier) from which the asset originates (e.g., a URL to a website or file).",
         "label": "Source URI",
         "required": False,
-        "ontology": "saf:sourceURI"
+        "ontology": "dcterms:source"
     },
     "creation_date": {
         "name": "creation_date",
@@ -85,7 +85,7 @@ class Blob(Base):
         "description": "The creation date of the asset, to track the history.",
         "label": "Creation Date",
         "required": True,
-        "ontology": "saf:creationDate"
+        "ontology": "dcterms:created"
     },
     "modified_date": {
         "name": "modified_date",
@@ -95,7 +95,7 @@ class Blob(Base):
         "description": "The date of the last modification, important for version control.",
         "label": "Modified Date",
         "required": False,
-        "ontology": "saf:modifiedDate"
+        "ontology": "dcterms:modified"
     },
     "publisher": {
         "name": "publisher",
@@ -105,7 +105,7 @@ class Blob(Base):
         "description": "The publisher or owner of the resource (e.g., an organization like ISO or a company).",
         "label": "Publisher",
         "required": False,
-        "ontology": "saf:publisher"
+        "ontology": "dcterms:publisher"
     },
     "license": {
         "name": "license",
@@ -115,7 +115,7 @@ class Blob(Base):
         "description": "Information about the license (e.g., Creative Commons, proprietary), which regulates the usage rights.",
         "label": "License",
         "required": False,
-        "ontology": "saf:license"
+        "ontology": "dcterms:license"
     }
 }
 
@@ -137,6 +137,7 @@ class Blob(Base):
         :raises ValueError: If invalid content_type or mismatched value type.
         """
         super().__init__(**kwargs)
+        self._content_cache = None  # nicht-serialisierter Lazy-Cache (nicht in self.data)
         self.metadata.update_from_dict(self.DEFAULT_METADATA)
 
         if content_type not in typing.get_args(self.ContentType):
@@ -192,7 +193,7 @@ class Blob(Base):
         if filetype is not None:
             self.data['content']['filetype'] = filetype
         self._set_value(value)
-        self.data.pop('content_cached', None)  # Clear cache for lazy reloading
+        self._content_cache = None  # Clear cache for lazy reloading
         logger.debug(
             f"Updated Blob '{self.sname}' to content_type '{content_type}' and filetype '{self.data['content']['filetype']}'")
 
@@ -207,8 +208,8 @@ class Blob(Base):
         :raises ValueError: If loading fails or no value set.
         :raises Exception: If fsspec encounters an error (e.g., invalid URI, missing dependencies like s3fs for S3).
         """
-        if 'content_cached' in self.data:
-            return self.data['content_cached']
+        if getattr(self, '_content_cache', None) is not None:
+            return self._content_cache
 
         content = self.data.get('content')
         if content is None:
@@ -232,7 +233,7 @@ class Blob(Base):
         else:
             raise ValueError(f"Unknown content_type: {ctype}")
 
-        self.data['content_cached'] = loaded_bytes  # Cache the loaded bytes
+        self._content_cache = loaded_bytes  # Cache the loaded bytes (instance, not serialized)
         return loaded_bytes
 
     @property
@@ -301,6 +302,21 @@ class Blob(Base):
             logger.error(f"Failed to compute MD5: {str(e)}")
             return None
 
+    @property
+    def sha256(self) -> Optional[str]:
+        """
+        Calculate the SHA-256 hash of the blob content lazily.
+
+        :return: the hex digest, or ``None`` if the content cannot be loaded.
+        """
+        try:
+            hash_obj = hashlib.sha256()
+            self._update_hash(hash_obj)
+            return hash_obj.hexdigest()
+        except Exception as e:
+            logger.error(f"Failed to compute SHA256: {str(e)}")
+            return None
+
     def _update_hash(self, hash_obj: Any, buffer_size: int = 65536) -> None:
         """
         Update the hash object with the blob content.
@@ -314,13 +330,50 @@ class Blob(Base):
                 break
             hash_obj.update(data)
 
+    @property
+    def size(self) -> Optional[int]:
+        """
+        Size of the content in bytes (loads the content lazily).
+
+        :return: the byte count, or ``None`` if the content cannot be loaded.
+        """
+        try:
+            return len(self.content_bytes)
+        except Exception as e:
+            logger.error(f"Failed to determine size: {str(e)}")
+            return None
+
+    def update_checksum(self) -> Optional[str]:
+        """
+        Compute the SHA-256 of the content and store it in the ``checksum`` metadata
+        (ontology ``schema:sha256``).
+
+        :return: the stored SHA-256 hex digest (or ``None`` if the content is unavailable).
+        """
+        digest = self.sha256
+        self.metadata.set_attr("checksum", digest)
+        return digest
+
+    def verify(self) -> bool:
+        """
+        Verify the content against the stored ``checksum`` (SHA-256) metadata.
+
+        :return: ``True`` iff a checksum is stored and matches the current content;
+          ``False`` on mismatch or when no checksum has been stored yet.
+        """
+        attr = self.metadata.get("checksum")
+        stored = attr.value if attr is not None else None
+        if not stored:
+            logger.warning("Blob.verify: no checksum stored (call update_checksum first)")
+            return False
+        return stored == self.sha256
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Extend Base.to_dict to include the content dict as-is (with base64 for bytes and filetype).
         Does not include or load the actual content bytes.
         """
         data_copy = self.data.copy()
-        data_copy.pop('content_cached', None)  # Remove cache if present
         result = super().to_dict()
         result['data'] = data_copy
         return result
