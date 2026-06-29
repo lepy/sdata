@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from sdata import SUUID
 from sdata.metadata import Metadata, Attribute
-# from sdata.sclass.blob import Blob  # Assuming Blob is in sdata.blob or adjust import
+from sdata.sclass.blob import Blob
 from sdata.base import Base
 import hashlib
 import datetime
@@ -16,7 +16,7 @@ from sdata.timestamp import get_utc_timestamp
 logger = logging.getLogger(__name__)
 
 
-class FileReference(Base):
+class FileReference(Blob):
     SDATA_CLS = "sdata.sclass.filereference.FileReference"
 
     def __init__(
@@ -25,17 +25,22 @@ class FileReference(Base):
             **kwargs: Any
     ) -> None:
         """
-        Initialize FileReference with content type, value, and filetype.
-        :param filetype: The type of the file (e.g., 'pdf', 'png', 'jpg', 'txt').
-        :param kwargs: Keyword arguments passed to Base.__init__ (e.g., name, description).
-        :raises ValueError: If invalid content_type or mismatched value type.
+        Initialize FileReference as a :class:`~sdata.sclass.blob.Blob` over a file URI.
+
+        The file path is kept as the Blob ``uri`` content, so the reference also
+        provides ``content_bytes``/``open``/``exists``/``verify``/``size`` from Blob.
+
+        :param filetype: vestigial; the file suffix is derived from ``name``.
+        :param kwargs: Keyword arguments passed to Base (e.g. ``name`` = file path).
         """
         filepath = kwargs.get("name", "noname")
         basename = os.path.basename(filepath)
         kwargs["name"] = basename
-        super().__init__(**kwargs)
-
         path = Path(filepath)
+        # Blob-Grundlage: die Datei als uri-Content -> behält den Pfad (zuvor verloren)
+        super().__init__(content_type="uri", value=filepath,
+                         filetype=path.suffix.lstrip(".").lower() or "binary", **kwargs)
+
         self.metadata.add("_sdata_name", basename, description="base name of the file without folder")
         self.metadata.add("_sdata_stem", path.stem, description="file name without suffix")
         self.metadata.add("_sdata_filetype", path.suffix.lower(), description="file suffix")
@@ -68,7 +73,10 @@ class FileReference(Base):
 
     @property
     def filetype(self) -> str:
-        return self.metadata.get("_sdata_filetype").value
+        # robust: _sdata_filetype wird erst nach super().__init__() gesetzt, Blobs
+        # _autofill_metadata fragt filetype aber bereits währenddessen ab.
+        attr = self.metadata.get("_sdata_filetype")
+        return attr.value if attr is not None else ""
 
     @property
     def stem(self) -> str:
