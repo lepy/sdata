@@ -9,6 +9,7 @@ import logging
 from sdata.metadata import Metadata, Attribute
 from sdata.base import Base
 from sdata.interactive import ColumnAccessor
+from sdata.sclass.content import ContentIntegrityMixin
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ def _require_parquet(engine: str = "pyarrow") -> None:
         ) from exp
 
 
-class DataFrame(Base):
+class DataFrame(ContentIntegrityMixin, Base):
     SDATA_CLS = "sdata.sclass.dataframe.DataFrame"
 
     #: optionales :class:`~sdata.schema.TableSchema`; beim Init angewandt (Default None)
@@ -136,6 +137,19 @@ class DataFrame(Base):
                     self._column_metadata.pop(key)
 
     df = property(fget=_get_df, fset=_set_df, doc="df object(pandas.DataFrame)")
+
+    @property
+    def content_bytes(self) -> bytes:
+        """Binary serialization of the **data** (plain Parquet of the df, *without* the
+        embedded sdata metadata).
+
+        The hook the inherited :class:`~sdata.sclass.content.ContentIntegrityMixin`
+        hashes over — enables ``sha256``/``md5``/``sha1``, ``size`` and
+        ``verify()``/``update_checksum()`` directly on a :class:`DataFrame`. Hashing
+        the data only keeps the checksum stable when *metadata* changes (otherwise
+        storing the checksum in the metadata would alter the hash).
+        """
+        return self.df.to_parquet()
 
     @property
     def column_metadata(self) -> Metadata:

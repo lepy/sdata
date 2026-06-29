@@ -7,6 +7,7 @@ import mimetypes
 import typing
 from typing import Any, List, Dict, Optional, Literal, Optional, Type
 from sdata.base import Base
+from sdata.sclass.content import ContentIntegrityMixin
 logger = logging.getLogger(__name__)
 
 # Import fsspec for handling various URI schemes (local file, S3, Zip, etc.)
@@ -17,7 +18,7 @@ except ImportError:  # pragma: no cover - optionales Backend (sdata[blob])
     logger.warning('fsspec not installed')
     fsspec = None
 
-class Blob(Base):
+class Blob(ContentIntegrityMixin, Base):
     """
     A derived class from Base that represents a generic binary large object (Blob).
     Stores the content in self.data['content'] as a dictionary with:
@@ -288,100 +289,6 @@ class Blob(Base):
                 return False
         else:
             return False
-
-    @property
-    def sha1(self) -> Optional[str]:
-        """
-        Calculate the SHA1 hash of the blob content lazily.
-        Loads content_bytes if necessary.
-        """
-        try:
-            hash_obj = hashlib.sha1()
-            self._update_hash(hash_obj)
-            return hash_obj.hexdigest()
-        except Exception as e:
-            logger.error(f"Failed to compute SHA1: {str(e)}")
-            return None
-
-    @property
-    def md5(self) -> Optional[str]:
-        """
-        Calculate the MD5 hash of the blob content lazily.
-        Loads content_bytes if necessary.
-        """
-        try:
-            hash_obj = hashlib.md5()
-            self._update_hash(hash_obj)
-            return hash_obj.hexdigest()
-        except Exception as e:
-            logger.error(f"Failed to compute MD5: {str(e)}")
-            return None
-
-    @property
-    def sha256(self) -> Optional[str]:
-        """
-        Calculate the SHA-256 hash of the blob content lazily.
-
-        :return: the hex digest, or ``None`` if the content cannot be loaded.
-        """
-        try:
-            hash_obj = hashlib.sha256()
-            self._update_hash(hash_obj)
-            return hash_obj.hexdigest()
-        except Exception as e:
-            logger.error(f"Failed to compute SHA256: {str(e)}")
-            return None
-
-    def _update_hash(self, hash_obj: Any, buffer_size: int = 65536) -> None:
-        """
-        Update the hash object with the blob content.
-        Uses content_bytes for hashing.
-        """
-        content_bytes = self.content_bytes  # Lazy load
-        bytes_io = io.BytesIO(content_bytes)
-        while True:
-            data = bytes_io.read(buffer_size)
-            if not data:
-                break
-            hash_obj.update(data)
-
-    @property
-    def size(self) -> Optional[int]:
-        """
-        Size of the content in bytes (loads the content lazily).
-
-        :return: the byte count, or ``None`` if the content cannot be loaded.
-        """
-        try:
-            return len(self.content_bytes)
-        except Exception as e:
-            logger.error(f"Failed to determine size: {str(e)}")
-            return None
-
-    def update_checksum(self) -> Optional[str]:
-        """
-        Compute the SHA-256 of the content and store it in the ``checksum`` metadata
-        (ontology ``schema:sha256``).
-
-        :return: the stored SHA-256 hex digest (or ``None`` if the content is unavailable).
-        """
-        digest = self.sha256
-        self.metadata.set_attr("checksum", digest)
-        return digest
-
-    def verify(self) -> bool:
-        """
-        Verify the content against the stored ``checksum`` (SHA-256) metadata.
-
-        :return: ``True`` iff a checksum is stored and matches the current content;
-          ``False`` on mismatch or when no checksum has been stored yet.
-        """
-        attr = self.metadata.get("checksum")
-        stored = attr.value if attr is not None else None
-        if not stored:
-            logger.warning("Blob.verify: no checksum stored (call update_checksum first)")
-            return False
-        return stored == self.sha256
 
     def write(self, uri: str, **kwargs: Any) -> str:
         """Write the content to a destination ``uri`` via fsspec (local/S3/zip/…).

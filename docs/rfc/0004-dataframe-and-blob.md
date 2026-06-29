@@ -2,12 +2,21 @@
 
 | Feld        | Wert                                                         |
 |-------------|--------------------------------------------------------------|
-| Status      | Proposed                                                     |
+| Status      | Accepted — Option B (Integritäts-Mixin) implementiert; Option C offen |
 | Datum       | 2026-06-29                                                  |
 | Autor       | lepy <lepy@tuta.io>                                          |
-| Komponente  | `sdata/sclass/dataframe.py`, `sdata/sclass/blob.py`         |
+| Komponente  | `sdata/sclass/content.py`, `dataframe.py`, `blob.py`        |
 | Betrifft    | ob/wie `DataFrame` auf `Blob` aufbaut (Folge von RFC 0003)  |
-| Validierung | Analyse/Designvorschlag — noch nicht implementiert          |
+| Validierung | Option B umgesetzt; content/blob/dataframe je 100 %         |
+
+> **Umsetzungsstand.** **Option B** umgesetzt: `ContentIntegrityMixin`
+> (`sdata/sclass/content.py`) liefert `sha1`/`md5`/`sha256`/`size` sowie
+> `update_checksum`/`verify` über einen `content_bytes`-Hook + `self.metadata`.
+> `Blob` und `DataFrame` erben den Mixin (keine Vererbung untereinander — RFC-Befund).
+> `DataFrame.content_bytes` = **reines Daten-Parquet** (`self.df.to_parquet()`, *ohne*
+> eingebettete Metadaten): der Hash erfasst die Daten, sodass das Speichern der
+> Prüfsumme in den Metadaten den Hash nicht verändert (Selbstreferenz vermieden).
+> **Offen:** **Option C** (`DataFrame.as_blob(fmt)`) als additive Komposition.
 
 ## 1. Zusammenfassung
 
