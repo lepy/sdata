@@ -15,13 +15,14 @@ native, format-agnostic metadata embedding for images. Core dependencies remain
 
 ### Added
 
-- **New attribute dtypes** `date`, `time`, `duration`, `decimal`, `complex` and
-  `floatlist` (pure stdlib): `date`/`time` (`xsd:date`/`xsd:time`), `duration` as a
-  `datetime.timedelta` parsed from ISO 8601 (`xsd:duration`), `decimal` as
-  `decimal.Decimal` for exact numerics (`xsd:decimal`), `complex` numbers and
+- **New attribute dtypes** `date`, `time`, `duration`, `decimal`, `complex`,
+  `floatlist` and `langstring` (pure stdlib): `date`/`time` (`xsd:date`/`xsd:time`),
+  `duration` as a `datetime.timedelta` parsed from ISO 8601 (`xsd:duration`), `decimal`
+  as `decimal.Decimal` for exact numerics (`xsd:decimal`), `complex` numbers and
   `floatlist` (typed `list[float]`, also from numpy arrays) — the latter two use the
-  custom datatype CURIEs `sdata:complex` / `sdata:floatlist` (no standard XSD type) for
-  a lossless JSON-LD round-trip. Lenient/`strict=` coercion as for the existing dtypes.
+  custom datatype CURIEs `sdata:complex` / `sdata:floatlist`, and `langstring`
+  (`rdf:langString`, `"Hallo@de"`) renders via JSON-LD `@language` — all with a lossless
+  round-trip. Lenient/`strict=` coercion as for the existing dtypes.
 - **Native image metadata (RFC 0005).** New pure-Python, Pillow-free module
   `sdata.imagemeta` embeds/reads sdata metadata **natively** into six containers with
   one API (`detect_format`/`embed`/`extract`/`supported_formats`): **PNG** (`iTXt`),

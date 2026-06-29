@@ -16,10 +16,11 @@ Designziele:
   degradieren.
 * **Erweiterbar** – neben den 6 Alt-dtypes (str/int/float/bool/timestamp/list)
   zusätzlich ``bytes`` (base64), ``json`` (dict/list), ``uri``, ``date``, ``time``,
-  ``duration`` (ISO 8601 / ``timedelta``), ``decimal`` (exakt), ``complex`` sowie
-  ``floatlist`` (typisierte Float-Liste). ``complex``/``floatlist`` haben keinen
-  Standard-XSD-Typ und nutzen daher eigene Datentyp-CURIEs (``sdata:complex`` /
-  ``sdata:floatlist``).
+  ``duration`` (ISO 8601 / ``timedelta``), ``decimal`` (exakt), ``complex``,
+  ``floatlist`` (typisierte Float-Liste) sowie ``langstring`` (sprach-getaggt,
+  ``rdf:langString``). ``complex``/``floatlist`` haben keinen Standard-XSD-Typ und
+  nutzen eigene Datentyp-CURIEs (``sdata:complex`` / ``sdata:floatlist``);
+  ``langstring`` wird in JSON-LD über ``@language`` ausgedrückt.
 """
 import base64
 import binascii
@@ -35,13 +36,40 @@ import pandas as pd
 from sdata.timestamp import TimeStamp
 
 __all__ = [
-    "DtypeError", "DtypeSpec", "register", "get", "names", "resolve",
+    "DtypeError", "DtypeSpec", "LangString", "register", "get", "names", "resolve",
     "coerce", "xsd_map", "json_default", "XSD", "DTYPES", "DTYPES_INV",
 ]
 
 
 class DtypeError(ValueError):
     """Wert kann nicht in den Ziel-dtype überführt werden (v.a. im strict-Modus)."""
+
+
+class LangString:
+    """Ein sprach-getaggter String (``rdf:langString``): ``text`` + BCP-47 ``lang``.
+
+    In JSON-LD als ``{"@value": text, "@language": lang}`` repräsentiert (nicht über
+    ``@type``). Die kompakte Textform ist ``"text@lang"`` (z. B. ``"Hallo@de"``).
+    """
+
+    __slots__ = ("text", "lang")
+
+    def __init__(self, text, lang=""):
+        self.text = str(text)
+        self.lang = str(lang or "")
+
+    def __eq__(self, other):
+        return (isinstance(other, LangString)
+                and self.text == other.text and self.lang == other.lang)
+
+    def __hash__(self):
+        return hash((self.text, self.lang))
+
+    def __str__(self):
+        return "{}@{}".format(self.text, self.lang) if self.lang else self.text
+
+    def __repr__(self):
+        return "LangString({!r}, {!r})".format(self.text, self.lang)
 
 
 def _isna(value):
@@ -268,6 +296,27 @@ def _c_floatlist(value, strict):
         raise DtypeError("floatlist: {!r}".format(value)) from exp
 
 
+#: Sprach-Tag am Stringende (BCP-47-artig) zum Zerlegen von ``"text@lang"``.
+_LANG_TAG = re.compile(r"^(.*)@([A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*)$", re.DOTALL)
+
+
+def _c_langstring(value, strict):
+    if value is None:
+        return None
+    if isinstance(value, LangString):
+        return value
+    if isinstance(value, (tuple, list)) and len(value) == 2:
+        return LangString(value[0], value[1])    # (text, lang) explizit & eindeutig
+    if isinstance(value, dict):
+        return LangString(value.get("@value", value.get("text", "")),
+                          value.get("@language", value.get("lang", "")))
+    text = str(value)
+    if text == "":
+        return None
+    match = _LANG_TAG.match(text)                 # "text@lang" -> (text, lang)
+    return LangString(match.group(1), match.group(2)) if match else LangString(text, "")
+
+
 # --- JSON-Serialisierung je dtype -------------------------------------------
 def _ts_to_json(value):
     return str(value.utc) if isinstance(value, TimeStamp) else value
@@ -317,6 +366,10 @@ def _complex_to_json(value):
     return str(value) if isinstance(value, complex) else value
 
 
+def _langstring_to_json(value):
+    return str(value) if isinstance(value, LangString) else value
+
+
 class DtypeSpec:
     """Beschreibt einen dtype: Coercion, JSON-Repräsentation, Klasse, XSD-Typ."""
 
@@ -359,6 +412,8 @@ for _spec in [
     # -> eigener Datentyp-CURIE in der sdata-Namespace (verlustfreier JSON-LD-Roundtrip).
     DtypeSpec("complex", complex, _c_complex, "sdata:complex", _complex_to_json),
     DtypeSpec("floatlist", list, _c_floatlist, "sdata:floatlist"),
+    # sprach-getaggter String: JSON-LD nutzt @language (nicht @type), siehe semantic.py
+    DtypeSpec("langstring", LangString, _c_langstring, "rdf:langString", _langstring_to_json),
 ]:
     register(_spec)
 
@@ -382,7 +437,7 @@ DTYPES_INV = {
     bytes: "bytes", dict: "json",
     datetime.date: "date", datetime.time: "time",
     datetime.timedelta: "duration", Decimal: "decimal",
-    complex: "complex",
+    complex: "complex", LangString: "langstring",
 }
 XSD = {name: spec.xsd for name, spec in _REGISTRY.items()}
 
@@ -435,6 +490,8 @@ def json_default(obj):
     if isinstance(obj, Decimal):
         return str(obj)
     if isinstance(obj, complex):
+        return str(obj)
+    if isinstance(obj, LangString):
         return str(obj)
     if isinstance(obj, datetime.timedelta):
         return _duration_to_json(obj)
