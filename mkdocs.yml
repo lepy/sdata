@@ -73,3 +73,4 @@ nav:
       - "0004 — DataFrame and Blob": rfc/0004-dataframe-and-blob.md
       - "0005 — Native image metadata": rfc/0005-native-image-metadata.md
   - Releasing: releasing.md
+  - Changelog: changelog.md
