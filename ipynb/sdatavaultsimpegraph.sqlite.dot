@@ -1,0 +1,6 @@
+digraph {
+'2689e23926874382b10b95e0f1cd90eb' [label="sdata_version 0.17.0\nsdata_name otto\nsdata_uuid 2689e23926874382b10b95e0f1cd90eb\nsdata_class Data\nsdata_parent 21b83703d98e38a7be2e50e38326d0ce\nsdata_project P1\nsdata_ctime 2021-01-18T10:32:49.875372+00:00\nsdata_mtime 2021-01-18T10:32:49.876100+00:00"];
+'21b83703d98e38a7be2e50e38326d0ce' [label="sdata_version 0.17.0\nsdata_name otto\nsdata_uuid 21b83703d98e38a7be2e50e38326d0ce\nsdata_class Data\nsdata_parent \nsdata_project P1\nsdata_ctime 2021-01-18T10:32:49.875372+00:00\nsdata_mtime 2021-01-18T10:32:49.875466+00:00"];
+'df26fe1945b93a149ee710e8fa887b2e' [label="sdata_version 0.17.0\nsdata_name karl\nsdata_uuid df26fe1945b93a149ee710e8fa887b2e\nsdata_class Data\nsdata_parent \nsdata_project \nsdata_ctime 2021-01-18T10:32:49.876407+00:00\nsdata_mtime 2021-01-18T10:32:49.876470+00:00"];
+21b83703d98e38a7be2e50e38326d0ce -> 2689e23926874382b10b95e0f1cd90eb [label="action founded"];
+}

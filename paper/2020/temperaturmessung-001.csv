@@ -1,0 +1,9 @@
+#;sdata_version;0.8.4;-;str;;
+#;name;Temperaturmessung-001;-;str;;
+#;uuid;e13d9387728c375eb98686eacf42b6df;-;str;;
+#;time;nan;s;float;Zeitachse;time $t$
+#;temperature;nan;°C;float;Zeitachse;temperature $T$
+index;time;temperature
+0;1.1;2.4
+max_temp;2.1;5.2
+2;3.5;2.2

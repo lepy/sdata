@@ -1,0 +1,100 @@
+digraph CombinedProcess {
+	graph [rankdir=TD]
+	GalvanizedCopperContacts [label=GalvanizedCopperContacts shape=box]
+	CopperContainingScraps [label=CopperContainingScraps shape=box]
+	DistributedCopperConnector [label=DistributedCopperConnector shape=box]
+	CharacterizedCopperSemifinished [label=CharacterizedCopperSemifinished shape=box]
+	CalibratedCopperConnector [label=CalibratedCopperConnector shape=box]
+	ColdFormedCopperComponents [label=ColdFormedCopperComponents shape=box]
+	ManufacturedCopperContacts [label=ManufacturedCopperContacts shape=box]
+	SustainablePlasticComponents [label=SustainablePlasticComponents shape=box]
+	MilledOxygenFreeCopper [label=MilledOxygenFreeCopper shape=box]
+	ColdRolledCopperStrips [label=ColdRolledCopperStrips shape=box]
+	EolCopperMaterials [label=EolCopperMaterials shape=box]
+	SeparatedWeighedCopperMaterials [label=SeparatedWeighedCopperMaterials shape=box]
+	InspectedCopperSemifinished [label=InspectedCopperSemifinished shape=box]
+	AnnealedCopperStrips [label=AnnealedCopperStrips shape=box]
+	CopperSemifinishedWithDpp [label=CopperSemifinishedWithDpp shape=box]
+	PureMetal [label=PureMetal shape=box]
+	IntermediateAnnealedCopperStrips [label=IntermediateAnnealedCopperStrips shape=box]
+	TestedCopperConnector [label=TestedCopperConnector shape=box]
+	UsedCopperConnector [label=UsedCopperConnector shape=box]
+	CastCopperBars [label=CastCopperBars shape=box]
+	FinalCopperConnectorWithDpp [label=FinalCopperConnectorWithDpp shape=box]
+	HotFormedCopperProfiles [label=HotFormedCopperProfiles shape=box]
+	AssembledCopperConnectorWithHousing [label=AssembledCopperConnectorWithHousing shape=box]
+	MoltenCopperAlloy [label=MoltenCopperAlloy shape=box]
+	ReheatedCopperStrips [label=ReheatedCopperStrips shape=box]
+	HotRolledCopperSheets [label=HotRolledCopperSheets shape=box]
+	AssemblyProcess [label=AssemblyProcess color=lightblue shape=component style=filled]
+	CalibrationProcess [label=CalibrationProcess color=lightblue shape=component style=filled]
+	ProductUseProcess [label=ProductUseProcess color=lightblue shape=component style=filled]
+	IntermediateAnnealingProcess [label=IntermediateAnnealingProcess color=lightblue shape=component style=filled]
+	DigitalProductPassportCreationProcess [label=DigitalProductPassportCreationProcess color=lightblue shape=component style=filled]
+	SeparationAndWeighingProcess [label=SeparationAndWeighingProcess color=lightblue shape=component style=filled]
+	ColdFormingProcess [label=ColdFormingProcess color=lightblue shape=component style=filled]
+	ReheatingProcess [label=ReheatingProcess color=lightblue shape=component style=filled]
+	ProductCharacterizationProcess [label=ProductCharacterizationProcess color=lightblue shape=component style=filled]
+	IncomingInspectionProcess [label=IncomingInspectionProcess color=lightblue shape=component style=filled]
+	OfMillingProcess [label=OfMillingProcess color=lightblue shape=component style=filled]
+	AnnealingProcess [label=AnnealingProcess color=lightblue shape=component style=filled]
+	ComponentTestingProcess [label=ComponentTestingProcess color=lightblue shape=component style=filled]
+	DigitalProductPassportUpdateProcess [label=DigitalProductPassportUpdateProcess color=lightblue shape=component style=filled]
+	HotRollingProcess [label=HotRollingProcess color=lightblue shape=component style=filled]
+	ColdRollingProcess [label=ColdRollingProcess color=lightblue shape=component style=filled]
+	GalvanizingProcess [label=GalvanizingProcess color=lightblue shape=component style=filled]
+	DistributionProcess [label=DistributionProcess color=lightblue shape=component style=filled]
+	HotFormingProcess [label=HotFormingProcess color=lightblue shape=component style=filled]
+	MeltingProcess [label=MeltingProcess color=lightblue shape=component style=filled]
+	EndOfLifeProcess [label=EndOfLifeProcess color=lightblue shape=component style=filled]
+	ContactManufacturingProcess [label=ContactManufacturingProcess color=lightblue shape=component style=filled]
+	ContinuousCastingProcess [label=ContinuousCastingProcess color=lightblue shape=component style=filled]
+	CopperContainingScraps -> SeparationAndWeighingProcess
+	PureMetal -> SeparationAndWeighingProcess
+	SeparationAndWeighingProcess -> SeparatedWeighedCopperMaterials
+	SeparatedWeighedCopperMaterials -> MeltingProcess
+	MeltingProcess -> MoltenCopperAlloy
+	MoltenCopperAlloy -> ContinuousCastingProcess
+	ContinuousCastingProcess -> CastCopperBars
+	CastCopperBars -> OfMillingProcess
+	OfMillingProcess -> MilledOxygenFreeCopper
+	MilledOxygenFreeCopper -> HotFormingProcess
+	HotFormingProcess -> HotFormedCopperProfiles
+	HotFormedCopperProfiles -> HotRollingProcess
+	HotRollingProcess -> HotRolledCopperSheets
+	HotRolledCopperSheets -> ColdFormingProcess
+	ColdFormingProcess -> ColdFormedCopperComponents
+	ColdFormedCopperComponents -> ColdRollingProcess
+	ColdRollingProcess -> ColdRolledCopperStrips
+	ColdRolledCopperStrips -> ReheatingProcess
+	ReheatingProcess -> ReheatedCopperStrips
+	ReheatedCopperStrips -> IntermediateAnnealingProcess
+	IntermediateAnnealingProcess -> IntermediateAnnealedCopperStrips
+	IntermediateAnnealedCopperStrips -> AnnealingProcess
+	AnnealingProcess -> AnnealedCopperStrips
+	AnnealedCopperStrips -> ProductCharacterizationProcess
+	ProductCharacterizationProcess -> CharacterizedCopperSemifinished
+	CharacterizedCopperSemifinished -> DigitalProductPassportCreationProcess
+	DigitalProductPassportCreationProcess -> CopperSemifinishedWithDpp
+	CopperSemifinishedWithDpp -> IncomingInspectionProcess
+	IncomingInspectionProcess -> InspectedCopperSemifinished
+	InspectedCopperSemifinished -> ContactManufacturingProcess
+	ContactManufacturingProcess -> ManufacturedCopperContacts
+	ManufacturedCopperContacts -> GalvanizingProcess
+	GalvanizingProcess -> GalvanizedCopperContacts
+	GalvanizedCopperContacts -> AssemblyProcess
+	SustainablePlasticComponents -> AssemblyProcess
+	AssemblyProcess -> AssembledCopperConnectorWithHousing
+	AssembledCopperConnectorWithHousing -> ComponentTestingProcess
+	ComponentTestingProcess -> TestedCopperConnector
+	TestedCopperConnector -> DigitalProductPassportUpdateProcess
+	DigitalProductPassportUpdateProcess -> FinalCopperConnectorWithDpp
+	FinalCopperConnectorWithDpp -> CalibrationProcess
+	CalibrationProcess -> CalibratedCopperConnector
+	CalibratedCopperConnector -> DistributionProcess
+	DistributionProcess -> DistributedCopperConnector
+	DistributedCopperConnector -> ProductUseProcess
+	ProductUseProcess -> UsedCopperConnector
+	UsedCopperConnector -> EndOfLifeProcess
+	EndOfLifeProcess -> EolCopperMaterials
+}

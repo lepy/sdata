@@ -1,0 +1,26 @@
+"Variable","Units","Type","Description","AxisLabel"
+"Time","s","Real","Time","Time /s"
+"Displacement","mm","Real","Actuator displacement","Actuator displacement /mm"
+"Displacement","mm","Real","Actuator displacement","Actuator displacement /mm"
+"Force","N","Real","Load washer force",""
+"Estress","MPa","Real","Engineering stress",""
+"Estrain","mm/mm","Real","Engineering strain",""
+"Tstress","MPa","Real","True stress",""
+"Tstrain","mm/mm","Real","True strain",""
+"EstrainRate","mm/mm/s","Real","Engineering strain rate computed from smooth spline",""
+"Experiment","","Char","NCAL Experiment descriptor",NA
+"Specimen","","Char","NCAL Specimen descriptor",NA
+"Material","","Char","Material Descriptor: �1008|Al2024|TRIP�",NA
+"Material","","Char","describes heat treatment. Retained for compatibility with other scripts",NA
+"Geometry","","Char","description of major specimen geometry components by concatenating reduced parallel length, fillet radius and width",NA
+"Geometry","","Char","description of major specimen geometry components by concatenating reduced parallel length, fillet radius and width",NA
+"Path","","Char","strain path for test C=compression, T =tension",NA
+"NumisheetID","","Char","Numisheet 2020 Material designation, per Tom Stoughton 2019-11-19 email",NA
+"IntendedRate","mm/s","Real","Intended actuator velocity",NA
+"ASPID","","Char","ASP Materials Bank ID",NA
+"dedt","mm/mm/s","Real","achieved specimen engineering strain rate",""
+"dedtnomlabel","","Character","convenient axis label",""
+"StrainA","mm/mm","Real","Engineering strain based on a gauge length equal to the reduced parallel length",""
+"StrainfG","mm/mm","","Engineering strain based on a gauge length equal to 4/7 of the reduced parallel length",""
+"eyyA","mm/mm","Real","Average engineering strain in the entire reduced parallel length",""
+"eyyfgA","mm/mm","Real","Average engineering strain in the central 4/7 of the reduced parallel length",""

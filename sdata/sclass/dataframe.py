@@ -619,6 +619,54 @@ class DataFrame(ContentIntegrityMixin, Base):
         import pyarrow.feather as feather
         return cls.from_arrow(feather.read_table(filepath))
 
+    # ------------------------------------------- Blob composition (RFC 0004 C)
+    #: Serialisierer je ``as_blob``-Format: ``fmt -> (builder, filetype, mime_type)``.
+    #: Der Builder bekommt ``self`` und liefert ``bytes``. So wird eine Tabelle in
+    #: **einem gewählten Format** zu einem binären Asset (hash-/signier-/übertragbar),
+    #: ohne dass ``DataFrame`` von ``Blob`` erben muss (Komposition statt Vererbung).
+    _BLOB_FORMATS = {
+        "parquet": (lambda self: self.to_parquet(), "parquet",
+                    "application/vnd.apache.parquet"),
+        "csv": (lambda self: self.to_csv().encode("utf-8"), "csv", "text/csv"),
+        "arrow": (lambda self: self.to_feather(), "arrow",
+                  "application/vnd.apache.arrow.file"),
+        "feather": (lambda self: self.to_feather(), "feather",
+                    "application/vnd.apache.arrow.file"),
+    }
+
+    def as_blob(self, fmt: str = "parquet", **kwargs):
+        """Render the table as a standalone :class:`~sdata.sclass.blob.Blob`.
+
+        The df is serialized once (in the chosen ``fmt``) into a fixed
+        ``bytes``-content Blob — a binary snapshot that can be hashed, signed,
+        stored or transferred like any other asset. This is **composition**, not
+        inheritance: a living, multi-format table is rendered into *one* chosen
+        format on demand (RFC 0004, Option C). The Blob's ``checksum`` is filled
+        (``update_checksum``), so ``blob.verify()`` works out of the box.
+
+        :param fmt: serialization format — ``"parquet"`` (default), ``"csv"``,
+          ``"arrow"`` or ``"feather"``.
+        :param kwargs: forwarded to :class:`~sdata.sclass.blob.Blob` (``name`` and
+          ``description`` default to this DataFrame's).
+        :return: a :class:`~sdata.sclass.blob.Blob` with the serialized bytes.
+        :raises ValueError: if ``fmt`` is not a supported format.
+        :raises ImportError: if the format needs pyarrow and it is not installed.
+        """
+        from sdata.sclass.blob import Blob
+        key = fmt.lower()
+        if key not in self._BLOB_FORMATS:
+            raise ValueError(f"unsupported blob format: {fmt!r} "
+                             f"({'|'.join(self._BLOB_FORMATS)})")
+        build, filetype, mime = self._BLOB_FORMATS[key]
+        payload = build(self)
+        kwargs.setdefault("name", self.name)
+        kwargs.setdefault("description", self.description)
+        blob = Blob(content_type="bytes", value=payload, filetype=filetype, **kwargs)
+        blob.metadata.set_attr("mime_type", mime)
+        blob.update_checksum()
+        logger.info(f"DataFrame rendered as {key} Blob <{blob.sname}>")
+        return blob
+
     # --------------------------------------------------------- Data Package
     def _frictionless_type(self, series):
         """Map a pandas dtype to a Frictionless Table Schema type."""
