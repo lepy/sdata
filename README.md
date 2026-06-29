@@ -113,8 +113,10 @@ dependency): `pip install "sdata[rdf]"` (rdflib), `sdata[units]` (pint),
 
 ## Tabular data (`DataFrame`)
 
-`DataFrame` wraps a pandas frame plus per-column metadata and serializes to
-Parquet, CSV, Arrow/Feather, dict/JSON and JSON-LD — embedded or as a sidecar.
+`DataFrame` wraps a pandas frame plus per-column metadata and serializes to many
+formats — Parquet, Arrow/Feather, CSV, dict/JSON, JSON-LD, a Frictionless **Data
+Package** and **HDF5** — with the qualifying metadata embedded or written as a
+sidecar.
 
 ```python
 import pandas as pd
@@ -131,7 +133,9 @@ sdf.column_units                       # {'weight': 'kg', 'height': 'm'}
 # serialize (optional <sname>.meta.jsonld sidecar; bytes/str without a path)
 sdf.to_parquet(path="out", sidecar=True)      # out/<sname>.spq + sidecar
 sdf.to_csv(path="out")                         # data-only CSV (pure pandas)
-sdf.to_feather(path="out")                     # Arrow IPC (needs sdata[parquet])
+sdf.to_feather(path="out")                     # Arrow IPC + native per-column field metadata
+sdf.to_datapackage(path="out")                 # Frictionless Data Package (.zip)
+sdf.to_hdf(path="out")                         # HDF5 (needs sdata[hdf])
 DataFrame.from_parquet("out/specimen_01.spq")
 
 # validate the table against a schema (missing/dtype/unit/extra columns)
@@ -142,9 +146,10 @@ schema = TableSchema("TensileTable", [
 report = sdf.validate_table(schema)            # ValidationReport (truthy if ok)
 ```
 
-Arrow/Feather/Parquet need `pip install "sdata[parquet]"`; CSV, dict and JSON-LD
-work with the core install. See the [Tabular data docs](https://lepy.github.io/sdata/usage/dataframe/)
-([`docs/usage/dataframe.md`](docs/usage/dataframe.md)) for details.
+Arrow/Feather/Parquet need `pip install "sdata[parquet]"`, HDF5 `sdata[hdf]`; CSV,
+dict, JSON-LD and the (CSV) Data Package work with the core install. See the
+[Tabular data docs](https://lepy.github.io/sdata/usage/dataframe/)
+([`docs/usage/dataframe.md`](docs/usage/dataframe.md)) for the full reference.
 
 ## Howto
 

@@ -14,6 +14,7 @@ and freely extensible, fully-qualified user metadata — all machine-readable
 ```bash
 pip install sdata                 # core: numpy, pandas, suuid
 pip install "sdata[parquet]"      # pyarrow -> Parquet/Arrow/Feather DataFrame I/O
+pip install "sdata[hdf]"          # tables  -> HDF5 DataFrame I/O
 pip install "sdata[rdf]"          # rdflib  -> real Turtle/N-Triples/RDF-XML
 pip install "sdata[units]"        # pint    -> validate/normalise units
 pip install "sdata[schema]"       # jsonschema -> JSON-Schema validation

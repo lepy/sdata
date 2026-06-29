@@ -3,8 +3,9 @@
 [`sdata.sclass.dataframe.DataFrame`][sdata.sclass.dataframe.DataFrame] is the
 self-describing tabular container (it supersedes the deprecated `Data` class). It
 wraps a pandas `DataFrame` together with **per-column metadata** and **dataset-level
-metadata**, and serializes to Parquet, CSV, Arrow/Feather, dict/JSON and JSON-LD/RDF
-— with the qualifying metadata either embedded or written as an independent sidecar.
+metadata**, and serializes to Parquet, Arrow/Feather, CSV, dict/JSON, JSON-LD/RDF, a
+Frictionless Data Package and HDF5 — with the qualifying metadata either embedded or
+written as an independent sidecar.
 
 ```python
 import pandas as pd
