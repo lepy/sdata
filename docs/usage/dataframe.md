@@ -80,6 +80,18 @@ sdf.to_jsonld();    sdf.to_turtle();    sdf.write_sidecar("out")
     dict and JSON-LD work with the core install. A missing backend raises a clear
     `ImportError` pointing at the extra.
 
+!!! tip "Native per-column metadata (Arrow / Feather)"
+    Besides the `_sdata` JSON blob, `to_arrow()` (and therefore `to_feather()`)
+    attaches each column's `unit`/`label`/`description`/`ontology` **natively** to
+    that column's Arrow field metadata. Arrow-aware tools (DuckDB, Polars, pyarrow)
+    can read the per-column annotations without sdata, and `from_arrow()` merges
+    field metadata from foreign Arrow tables back into `column_metadata`.
+
+    ```python
+    table = sdf.to_arrow()
+    table.schema.field("weight").metadata   # {b'unit': b'kg', b'label': b'Gewicht', ...}
+    ```
+
 ## Table schema validation
 
 A [`TableSchema`][sdata.schema.TableSchema] declares the expected columns (reusing

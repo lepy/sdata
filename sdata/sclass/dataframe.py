@@ -12,6 +12,10 @@ from sdata.interactive import ColumnAccessor
 
 logger = logging.getLogger(__name__)
 
+#: Spalten-Annotationen, die zusätzlich nativ als Arrow-Field-Metadata mitreisen
+#: (tool-agnostisch lesbar, z. B. von DuckDB/Polars), neben dem ``_sdata``-Blob.
+_COL_FIELD_KEYS = ("unit", "label", "description", "ontology")
+
 
 def _require_parquet(engine: str = "pyarrow") -> None:
     """Stelle sicher, dass die Parquet-Engine importierbar ist.
@@ -473,11 +477,31 @@ class DataFrame(Base):
         return tt
 
     # ---------------------------------------------------------------- Arrow
+    def _field_metadata_for(self, colname):
+        """Per-column annotations as an Arrow field-metadata ``bytes->bytes`` dict.
+
+        :param colname: column name.
+        :return: ``{b"unit": b"kg", ...}`` for the annotated keys, or ``None`` if the
+          column has no (non-default) annotation.
+        """
+        attr = self._column_metadata.get(str(colname))
+        if attr is None:
+            return None
+        md = {}
+        for key in _COL_FIELD_KEYS:
+            val = getattr(attr, key, "")
+            if val not in (None, "", "-"):
+                md[key.encode("utf-8")] = str(val).encode("utf-8")
+        return md or None
+
     def to_arrow(self):
         """Return a :class:`pyarrow.Table` with sdata metadata in the schema.
 
-        The metadata, column_metadata and description are embedded as JSON under
-        the ``b"_sdata"`` schema-metadata key (alongside pandas' own metadata).
+        The dataset metadata, column_metadata and description are embedded as JSON
+        under the ``b"_sdata"`` schema-metadata key. In addition, each column's
+        ``unit``/``label``/``description``/``ontology`` are attached **natively** to
+        that column's Arrow field metadata, so Arrow-aware tools (DuckDB, Polars,
+        pyarrow) can read the per-column annotations without sdata.
 
         :return: a ``pyarrow.Table``.
         :raises ImportError: if pyarrow is not installed (``pip install sdata[parquet]``).
@@ -485,17 +509,30 @@ class DataFrame(Base):
         _require_parquet("pyarrow")
         import pyarrow as pa
         table = pa.Table.from_pandas(self.df)
-        meta = dict(table.schema.metadata or {})
-        meta[b"_sdata"] = json.dumps({
+        fields = []
+        for field in table.schema:
+            fmd = self._field_metadata_for(field.name)
+            if fmd:
+                merged = dict(field.metadata or {})
+                merged.update(fmd)
+                field = field.with_metadata(merged)
+            fields.append(field)
+        schema_meta = dict(table.schema.metadata or {})
+        schema_meta[b"_sdata"] = json.dumps({
             "metadata": self.metadata.to_dict(),
             "column_metadata": self.column_metadata.to_dict(),
             "description": self.description,
         }).encode("utf-8")
-        return table.replace_schema_metadata(meta)
+        new_schema = pa.schema(fields, metadata=schema_meta)
+        return pa.Table.from_arrays(list(table.columns), schema=new_schema)
 
     @classmethod
     def from_arrow(cls, table):
         """Build a DataFrame from a :class:`pyarrow.Table` written by :meth:`to_arrow`.
+
+        The ``b"_sdata"`` schema blob is restored if present; per-column Arrow field
+        metadata (``unit``/``label``/...) is also merged into ``column_metadata``, so
+        tables produced by other Arrow-native tools keep their column annotations.
 
         :param table: a ``pyarrow.Table`` (sdata metadata restored if present).
         :return: a :class:`DataFrame` instance.
@@ -507,7 +544,24 @@ class DataFrame(Base):
         raw = (table.schema.metadata or {}).get(b"_sdata")
         if raw is not None:
             tt._restore_from_attrs(json.loads(raw.decode("utf-8")))
+        tt._merge_field_metadata(table.schema)
         return tt
+
+    def _merge_field_metadata(self, schema):
+        """Merge per-column Arrow field metadata into ``column_metadata`` (in-place).
+
+        :param schema: a ``pyarrow.Schema``; fields carrying ``unit``/``label``/...
+          metadata update the matching column's annotation.
+        """
+        cols = {str(c) for c in self._df.columns}
+        for field in schema:
+            if not field.metadata or field.name not in cols:
+                continue
+            kwargs = {key: field.metadata[key.encode("utf-8")].decode("utf-8")
+                      for key in _COL_FIELD_KEYS
+                      if key.encode("utf-8") in field.metadata}
+            if kwargs:
+                self.set_column(field.name, **kwargs)
 
     # -------------------------------------------------------------- Feather
     def to_feather(self, path=None, filename=None, sidecar=False, **kwargs):
