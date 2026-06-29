@@ -88,6 +88,43 @@ def test_image_metadata_roundtrip_all_formats(tmp_path, ext, pil_format, kwargs)
     assert reloaded.embedded_metadata() is not None
 
 
+def test_image_sidecar_fallback_for_bmp(tmp_path):
+    """Formate ohne nativen Träger (BMP) bekommen einen verlustfreien Sidecar."""
+    import io
+    import os
+    import PIL.Image
+
+    buf = io.BytesIO()
+    PIL.Image.new("RGB", (5, 4), (7, 8, 9)).save(buf, "BMP")
+    img = Image.from_bytes("pic.bmp", buf.getvalue())
+    img.metadata.add("station", "lab-3")
+
+    out = str(tmp_path / "out.bmp")
+    img.save(out)                                       # gleiche API; schreibt Sidecar
+    assert os.path.exists(out + ".meta.json")           # Sidecar liegt daneben
+
+    reloaded = Image.from_file(out)
+    assert reloaded.metadata.get("station").value == "lab-3"
+    assert reloaded.embedded_metadata() is None         # BMP trägt nichts eingebettet
+
+
+def test_image_sidecar_opt_in_for_native_format(tmp_path):
+    """sidecar=True schreibt zusätzlich einen Sidecar auch bei nativen Formaten."""
+    import io
+    import os
+    import PIL.Image
+
+    buf = io.BytesIO()
+    PIL.Image.new("RGB", (4, 4), (1, 2, 3)).save(buf, "PNG")
+    img = Image.from_bytes("pic.png", buf.getvalue())
+    img.metadata.add("k", "v")
+
+    out = str(tmp_path / "out.png")
+    img.save(out, sidecar=True)
+    assert os.path.exists(out + ".meta.json")           # Sidecar zusätzlich zur Einbettung
+    assert Image.from_file(out).metadata.get("k").value == "v"
+
+
 def test_image_save_transcodes_between_formats(tmp_path):
     """save() in ein anderes Format transkodiert via Pillow und bettet ein."""
     import io

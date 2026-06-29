@@ -94,6 +94,11 @@ supported_formats() -> tuple[str, ...]
 * `Image.from_file`/`from_bytes` lesen eingebettete Metadaten über `imagemeta.extract`
   zurück (Pillow-frei) und mergen sie (`update_from_usermetadata`).
 * `Image.embedded_metadata()` liefert die eingebettete `Metadata` (oder `None`).
+* **Sidecar-Fallback (gleiche API):** Formate **ohne** nativen Träger (z. B. BMP)
+  werden via Pillow geschrieben und die Metadaten in einem verlustfreien
+  `<filepath>.meta.json`-Sidecar abgelegt (gleiche Nutzlast wie eingebettet);
+  `from_file` merged einen vorhandenen Sidecar. `save(sidecar=True|False|None)` steuert
+  die Policy (immer / nie / nur ohne nativen Träger).
 
 ## 4. Designentscheidungen
 
@@ -106,8 +111,11 @@ supported_formats() -> tuple[str, ...]
 * **Hash/Identität.** Das Einbetten verändert die Datei-Bytes (und damit deren Hash).
   Wer einen stabilen Inhalts-Hash braucht, hasht **vor** dem Einbetten oder die reinen
   Pixel — analog zum Daten-vs-Metadaten-Hash bei `DataFrame` (RFC 0004).
-* **Sidecar bleibt komplementär.** Für Formate ohne Handler (oder bewusst externe
-  Metadaten) bleibt der JSON-LD-Sidecar (`semantic.write_sidecar`) verfügbar.
+* **Sidecar als Fallback und Komplement.** Formate ohne nativen Träger werden über
+  einen automatischen, verlustfreien `<filepath>.meta.json`-Sidecar einheitlich
+  abgedeckt (gleiche Nutzlast wie eingebettet). Für maschinenlesbare Linked Data
+  bleibt zusätzlich der JSON-LD-Sidecar (`semantic.write_sidecar`) verfügbar; beide
+  teilen dasselbe Metadaten-Modell.
 
 ## 5. Tests / Coverage
 
@@ -128,7 +136,8 @@ supported_formats() -> tuple[str, ...]
 
 ## 7. Offene Punkte / Zukunft
 
-* Weitere Container über die Registry: **BMP** (kein nativer Träger → Sidecar),
-  **BigTIFF** (Magic 43, 8-byte-Offsets). 
+* Weitere **native** Träger über die Registry, wo ein Container sie bietet, z. B.
+  **BigTIFF** (Magic 43, 8-byte-Offsets). Formate ohne nativen Träger (BMP, …) sind
+  bereits über den Sidecar-Fallback abgedeckt. 
 * Optional: WebP **VP8X+XMP** für strikte Interop; PNG **`zTXt`** (komprimiert) für sehr
   große Nutzlasten; JPEG **Multi-Segment-APP1** jenseits 64 KiB.

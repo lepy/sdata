@@ -10,6 +10,11 @@ The embedding layer [`sdata.imagemeta`][sdata.imagemeta] is **pure Python**
 — **no Pillow** to read or write the metadata. Pillow is only used to *decode* pixels
 (`img.pil` / `img.to_numpy`) or to *transcode* between formats on `save`.
 
+Any **other** Pillow-writable format without a native metadata container (e.g. BMP)
+is handled through the **same API**: `save` writes a lossless
+`<filepath>.meta.json` sidecar and `from_file` reads it back — so metadata is never
+lost regardless of the container.
+
 | Format | Native carrier of the sdata payload        | Marker          |
 | ------ | ------------------------------------------ | --------------- |
 | PNG    | `iTXt` chunk before `IEND`                 | keyword `sdata` |
@@ -108,12 +113,28 @@ imagemeta.supported_formats()        # ('png', 'jpeg', 'jp2', 'gif', 'webp', 'ti
 * **Extensible registry:** further containers (e.g. BMP, BigTIFF) plug in as two
   small functions plus one registry entry.
 
-## When to use a sidecar instead
+## Sidecars
 
-For containers without a native handler, or when metadata must stay external (e.g.
-read-only originals), the JSON-LD **sidecar** remains the complement — see
-[Machine-readable metadata](metadata-jsonld.md). Both approaches share the same
-metadata model; embedding and a sidecar are not mutually exclusive.
+For a container **without** a native metadata slot, `save` automatically writes a
+lossless `<filepath>.meta.json` sidecar (same payload as the embedded form), and
+`from_file` merges it back — the API is identical to the embedded case:
+
+```python
+img = Image.from_bytes("scan.bmp", bmp_bytes)
+img.metadata.add("station", "lab-3")
+img.save("scan.bmp")                       # writes scan.bmp + scan.bmp.meta.json
+Image.from_file("scan.bmp").metadata.get("station").value   # 'lab-3'
+```
+
+The sidecar policy is controllable: `save(..., sidecar=True)` always writes one
+(in addition to embedding, e.g. for tooling that only reads sidecars),
+`sidecar=False` never does, and the default (`None`) writes one only when the format
+has no native container.
+
+When metadata must stay external (read-only originals) or machine-readable as Linked
+Data, the JSON-LD **sidecar** remains the complement — see
+[Machine-readable metadata](metadata-jsonld.md). Embedding and sidecars share the
+same metadata model and are not mutually exclusive.
 
 The design and the per-format details are specified in
 [RFC 0005 — Native image metadata](../rfc/0005-native-image-metadata.md).
