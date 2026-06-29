@@ -41,6 +41,8 @@ print(data.metadata.df[["value", "unit", "dtype", "ontology"]])
 
 - **[Tabular data (DataFrame)](usage/dataframe.md)** — the self-describing table
   container: column metadata, Parquet/CSV/Arrow/Feather I/O, table-schema validation.
+- **[Image metadata](usage/image-metadata.md)** — embed sdata metadata natively into
+  PNG/JPEG/JP2/GIF/WebP with one API (pure Python, no Pillow needed to read/write it).
 - **[Machine-readable metadata](usage/metadata-jsonld.md)** — JSON-LD / RDF, units
   (QUDT/UCUM), ontology classes (BFO), provenance, schema validation and signing.
 - **[API reference](api.md)** — the full Python API.

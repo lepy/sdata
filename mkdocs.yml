@@ -63,6 +63,7 @@ nav:
   - Home: index.md
   - Usage:
       - Tabular data (DataFrame): usage/dataframe.md
+      - Image metadata: usage/image-metadata.md
       - Machine-readable metadata: usage/metadata-jsonld.md
   - API reference: api.md
   - RFCs:
