@@ -108,6 +108,7 @@ the interop you need:
 | CSV | `to_csv` / `from_csv` | **sidecar only** (data-only file) | — (pure pandas) |
 | pandas `df.attrs` | `to_dataframe` | `_sdata` in `df.attrs` | — |
 | JSON-LD / RDF | `to_jsonld` / `to_turtle` / `write_sidecar` | the metadata itself | rdflib (optional) |
+| Data Package `.zip` | `to_datapackage` / `from_datapackage` | `datapackage.json` (Frictionless) + lossless `sdata` block | — (csv) / pyarrow (parquet) |
 
 All file writers share the same shape: an optional `path` (writes
 `<sname>.<ext>`), an optional exact `filename`, and a `sidecar` flag; without a
@@ -159,6 +160,26 @@ Base.read_sidecar("out/<sname>.meta.jsonld")     # read a sidecar back
     ```python
     sdf.to_arrow().schema.field("weight").metadata   # {b'unit': b'kg', b'label': ...}
     ```
+
+### Data Package (portable bundle)
+
+`to_datapackage()` writes a self-contained **Frictionless Data Package** (`.zip`):
+a standard `datapackage.json` descriptor (so generic Frictionless tooling can read
+it), the data as CSV (default, no extra dependency) or Parquet, and the full sdata
+metadata under the descriptor's `"sdata"` key for a **lossless** round-trip. The
+JSON-LD sidecar is embedded too (toggle with `sidecar=`).
+
+```python
+sdf.to_datapackage(path="out")                  # -> out/<sname>.zip  (CSV inside)
+sdf.to_datapackage(path="out", fmt="parquet")   # Parquet inside (needs sdata[parquet])
+raw = sdf.to_datapackage()                       # zip bytes (no path)
+
+DataFrame.from_datapackage("out/<sname>.zip")    # restores data + metadata losslessly
+```
+
+Column annotations map to Frictionless field properties (`title`←label, `unit`,
+`rdfType`←ontology, `description`), and the dtype to a Table Schema `type`
+(`integer`/`number`/`boolean`/`datetime`/`string`).
 
 ## Table schema validation
 

@@ -605,6 +605,119 @@ class DataFrame(Base):
         import pyarrow.feather as feather
         return cls.from_arrow(feather.read_table(filepath))
 
+    # --------------------------------------------------------- Data Package
+    def _frictionless_type(self, series):
+        """Map a pandas dtype to a Frictionless Table Schema type."""
+        return {"i": "integer", "u": "integer", "f": "number",
+                "b": "boolean", "M": "datetime"}.get(series.dtype.kind, "string")
+
+    def _datapackage_descriptor(self, data_path, fmt):
+        """Build a Frictionless ``tabular-data-package`` descriptor.
+
+        Emits standard Frictionless fields (so generic tooling can read it) plus a
+        lossless ``"sdata"`` block (full metadata/column_metadata) for a perfect
+        round-trip.
+        """
+        fields = []
+        for col in self.df.columns:
+            field = {"name": str(col), "type": self._frictionless_type(self.df[col])}
+            attr = self.column_metadata.get(str(col))
+            if attr is not None:
+                if attr.label:
+                    field["title"] = attr.label
+                if attr.description:
+                    field["description"] = attr.description
+                if attr.unit not in ("-", "", None):
+                    field["unit"] = attr.unit
+                if attr.ontology:
+                    field["rdfType"] = attr.ontology
+            fields.append(field)
+        resource = {"name": self.sname.lower(), "path": data_path, "format": fmt,
+                    "profile": "tabular-data-resource", "schema": {"fields": fields}}
+        return {"name": self.sname.lower(), "title": self.name,
+                "description": self.description, "profile": "tabular-data-package",
+                "resources": [resource],
+                "sdata": {"metadata": self.metadata.to_dict(),
+                          "column_metadata": self.column_metadata.to_dict(),
+                          "description": self.description}}
+
+    def to_datapackage(self, path=None, filename=None, fmt="csv", sidecar=True):
+        """Write a Frictionless **Data Package** (``.zip``) — a portable bundle.
+
+        The zip holds a standard ``datapackage.json`` descriptor (so generic
+        Frictionless tooling can read it), the data as CSV or Parquet, and — for a
+        lossless sdata round-trip — the full sdata metadata under the descriptor's
+        ``"sdata"`` key. Optionally the ``<sname>.meta.jsonld`` JSON-LD sidecar.
+
+        :param path: directory to write ``<sname>.zip`` into (if given).
+        :param filename: exact output filename (defaults to ``<sname>.zip``).
+        :param fmt: data format inside the package, ``"csv"`` (default) or ``"parquet"``.
+        :param sidecar: also embed the JSON-LD sidecar in the zip (default ``True``).
+        :return: the file path (if written to disk) or the zip bytes.
+        :raises ValueError: if ``fmt`` is not ``"csv"``/``"parquet"``.
+        """
+        import zipfile
+        if fmt == "csv":
+            data_path = f"data/{self.sname}.csv"
+            data_bytes = self.df.to_csv(index=False).encode("utf-8")
+        elif fmt == "parquet":
+            data_path = f"data/{self.sname}.spq"
+            data_bytes = self.to_parquet()
+        else:
+            raise ValueError(f"unsupported data package format: {fmt!r} (csv|parquet)")
+
+        descriptor = self._datapackage_descriptor(data_path, fmt)
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr(data_path, data_bytes)
+            zf.writestr("datapackage.json", json.dumps(descriptor, indent=2))
+            if sidecar:
+                zf.writestr(f"{self.sname}.meta.jsonld",
+                            json.dumps(self.to_jsonld(), indent=2))
+        payload = buffer.getvalue()
+
+        if filename is None and path is not None:
+            filename = self.sname + ".zip"
+        if filename is not None:
+            filepath = os.path.join(path, filename) if path else filename
+            with open(filepath, "wb") as fh:
+                fh.write(payload)
+            logger.info(f"DataFrame Data Package saved to {filepath}")
+            return filepath
+        return payload
+
+    @classmethod
+    def from_datapackage(cls, filepath):
+        """Load a DataFrame from a Data Package ``.zip`` written by :meth:`to_datapackage`.
+
+        Restores the data and — losslessly — metadata/column_metadata/description
+        from the descriptor's ``"sdata"`` block.
+
+        :param filepath: path to the ``.zip`` data package.
+        :return: a :class:`DataFrame` instance.
+        :raises FileNotFoundError: if ``filepath`` does not exist.
+        """
+        import zipfile
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"no Data Package {filepath}")
+        with zipfile.ZipFile(filepath) as zf:
+            descriptor = json.loads(zf.read("datapackage.json"))
+            resource = descriptor["resources"][0]
+            data_path = resource["path"]
+            fmt = resource.get("format", "csv")
+            data_bytes = zf.read(data_path)
+
+        if fmt == "parquet":
+            _require_parquet("pyarrow")
+            df = pd.read_parquet(io.BytesIO(data_bytes))
+        else:
+            df = pd.read_csv(io.BytesIO(data_bytes))
+
+        tt = cls()
+        tt.df = df
+        tt._restore_from_attrs(descriptor.get("sdata"))
+        return tt
+
 
 if __name__ == '__main__':
     # Erstelle einen Pandas DataFrame
