@@ -1,0 +1,15 @@
+digraph "Pipeline" {
+  rankdir=LR;
+  subgraph cluster_internal {
+    label="internal";
+    style=dashed;
+    node [shape=box];
+    "sum" [label="sum\n(SpecificProcessNode)"];
+    "sq" [label="sq\n(SquareNode)"];
+    "sum" -> "sq" [label="output → input"];
+  }
+  "IN::pipeline_input" [shape=oval,label="IN:pipeline_input"];
+  "IN::pipeline_input" -> "sum" [label="input"];
+  "OUT::pipeline_output" [shape=oval,label="OUT:pipeline_output"];
+  "sq" -> "OUT::pipeline_output" [label="output"];
+}

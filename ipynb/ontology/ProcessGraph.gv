@@ -1,0 +1,10 @@
+digraph ProcessGraph {
+	graph [rankdir=TD]
+	LSDynaResults [label=LSDynaResults shape=box]
+	LSDynaRunSetup [label=LSDynaRunSetup shape=box]
+	TensionTestResults [label=TensionTestResults shape=box]
+	LSDynaPostProcessing [label=LSDynaPostProcessing color=lightblue shape=component style=filled]
+	LSDynaResults -> LSDynaPostProcessing
+	LSDynaRunSetup -> LSDynaPostProcessing
+	LSDynaPostProcessing -> TensionTestResults
+}

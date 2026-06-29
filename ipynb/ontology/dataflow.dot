@@ -1,0 +1,24 @@
+digraph "DataFlow" {
+  rankdir=LR;
+  subgraph cluster_sum {
+    label="sum\n(SpecificProcessNode)";
+    style=rounded;
+    node [shape=box];
+    "sum" [label="sum"];
+    "sum.in.input" [shape=oval,label="input"];
+    "sum.out.output" [shape=oval,label="output"];
+    "sum.in.input" -> "sum" [label="input"];
+    "sum" -> "sum.out.output" [label="output"];
+  }
+  subgraph cluster_sq {
+    label="sq\n(SquareNode)";
+    style=rounded;
+    node [shape=box];
+    "sq" [label="sq"];
+    "sq.in.input" [shape=oval,label="input"];
+    "sq.out.output" [shape=oval,label="output"];
+    "sq.in.input" -> "sq" [label="input"];
+    "sq" -> "sq.out.output" [label="output"];
+  }
+  "sum.out.output" -> "sq.in.input" [style=dashed,label="data"];
+}

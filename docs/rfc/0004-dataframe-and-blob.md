@@ -2,12 +2,12 @@
 
 | Feld        | Wert                                                         |
 |-------------|--------------------------------------------------------------|
-| Status      | Accepted — Option B (Integritäts-Mixin) implementiert; Option C offen |
+| Status      | Accepted — Option B (Integritäts-Mixin) **und** C (`as_blob`) implementiert |
 | Datum       | 2026-06-29                                                  |
 | Autor       | lepy <lepy@tuta.io>                                          |
 | Komponente  | `sdata/sclass/content.py`, `dataframe.py`, `blob.py`        |
 | Betrifft    | ob/wie `DataFrame` auf `Blob` aufbaut (Folge von RFC 0003)  |
-| Validierung | Option B umgesetzt; content/blob/dataframe je 100 %         |
+| Validierung | Option B + C umgesetzt; content/blob/dataframe je 100 %     |
 
 > **Umsetzungsstand.** **Option B** umgesetzt: `ContentIntegrityMixin`
 > (`sdata/sclass/content.py`) liefert `sha1`/`md5`/`sha256`/`size` sowie
@@ -16,7 +16,13 @@
 > `DataFrame.content_bytes` = **reines Daten-Parquet** (`self.df.to_parquet()`, *ohne*
 > eingebettete Metadaten): der Hash erfasst die Daten, sodass das Speichern der
 > Prüfsumme in den Metadaten den Hash nicht verändert (Selbstreferenz vermieden).
-> **Offen:** **Option C** (`DataFrame.as_blob(fmt)`) als additive Komposition.
+>
+> **Option C** umgesetzt: `DataFrame.as_blob(fmt="parquet"|"csv"|"arrow"|"feather")`
+> rendert die Tabelle in **einem gewählten Format** zu einem `bytes`-Content-`Blob`
+> (Name/Description geerbt, `mime_type` gesetzt, `update_checksum` ausgeführt → `verify`
+> sofort nutzbar). Damit erbt die Tabelle indirekt **alle** Blob-Fähigkeiten
+> (Hash/`verify`/`size`/`write`/`open`/Sidecar) — strikt additiv, ohne Basiswechsel,
+> ohne `to_dict`-Bruch. Unbekanntes `fmt` → `ValueError`.
 
 ## 1. Zusammenfassung
 
