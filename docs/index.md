@@ -39,6 +39,8 @@ print(data.metadata.df[["value", "unit", "dtype", "ontology"]])
 
 ## Where to next
 
+- **[Cookbook (end to end)](usage/cookbook.md)** — one tensile-test dataset through
+  image → table → schema → JSON-LD/RDF → Verifiable Credential.
 - **[Tabular data (DataFrame)](usage/dataframe.md)** — the self-describing table
   container: column metadata, Parquet/CSV/Arrow/Feather I/O, table-schema validation.
 - **[Image metadata](usage/image-metadata.md)** — embed sdata metadata natively into
