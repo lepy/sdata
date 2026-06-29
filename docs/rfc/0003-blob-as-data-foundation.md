@@ -18,8 +18,12 @@
 > `dcat:mediaType`, `dcterms:source`/`created`/`modified`/`publisher`/`license`);
 > **B5** `write(uri)` + `open(mode)` (fsspec; `open` streamt URIs, `io.BytesIO` für
 > bytes); **B6** `verify()` + `update_checksum()`; **B7** `size`-Property.
-> **Offen:** **Teil B** (Foundation: `FileReference`/`Image` → `Blob`; `DataFrame(Blob)`
-> als eigener Folge-RFC).
+> Aus **Teil B** (Foundation, Option 3 gestaffelt) umgesetzt: **`FileReference(Blob)`**
+> — die Datei wird als `uri`-Content gehalten (der Pfad bleibt jetzt erhalten, ging
+> zuvor verloren) und `FileReference` erbt `content_bytes`/`open`/`exists`/`verify`/
+> `size`; `blob.py`/`filereference.py` 100 %.
+> **Offen:** `Image` → `Blob` (experimentell/`omit`, vorher stabilisieren);
+> `DataFrame(Blob)` als eigener Folge-RFC.
 
 ## 1. Zusammenfassung
 
