@@ -3,10 +3,13 @@
 
 Der Bild-Inhalt liegt als Blob-Content (``uri`` für Dateien, ``bytes`` für
 In-Memory-Daten). sdata-Metadaten werden **format-übergreifend nativ** in die
-Bilddatei eingebettet (PNG/JPEG/JP2/GIF/WebP) — über :mod:`sdata.imagemeta`, das
-ohne Pillow auskommt. Pillow wird nur lazy zum **Dekodieren/Transkodieren** der
-Pixel genutzt (:attr:`Image.pil`/:meth:`Image.to_numpy`/:meth:`Image.save` bei
-Formatwechsel) und ist optional (``pip install pillow``).
+Bilddatei eingebettet (PNG/JPEG/JP2/GIF/WebP/TIFF) — über :mod:`sdata.imagemeta`,
+das ohne Pillow auskommt. Formate **ohne** nativen Metadaten-Träger (z. B. BMP)
+erhalten einen verlustfreien ``<filepath>.meta.json``-**Sidecar**; die ``save``/
+``from_file``-API ist für alle Formate identisch. Pillow wird nur lazy zum
+**Dekodieren/Transkodieren** der Pixel genutzt (:attr:`Image.pil`/
+:meth:`Image.to_numpy`/:meth:`Image.save` bei Formatwechsel) und ist optional
+(``pip install pillow``).
 """
 import io
 import os
@@ -48,8 +51,9 @@ class Image(Blob):
     def from_file(cls, filepath, project=None, ns_name=None, **kwargs):
         """Create an Image referencing an image file (kept as ``uri`` content).
 
-        Any sdata metadata embedded in the file (PNG/JPEG/JP2/GIF/WebP) is read
-        back and merged — independent of Pillow.
+        Any sdata metadata is read back and merged: natively embedded
+        (PNG/JPEG/JP2/GIF/WebP/TIFF, Pillow-free) and/or from an adjacent
+        ``<filepath>.meta.json`` sidecar (for formats without a native container).
 
         :param filepath: path to the image file.
         :param project: namespace for the deterministic SUUID (alias of ``ns_name``).
@@ -62,6 +66,7 @@ class Image(Blob):
         img = cls(content_type="uri", value=filepath, filetype=suffix,
                   name=os.path.basename(filepath), suuid=suuid, **kwargs)
         img._load_embedded_metadata()
+        img._load_sidecar_metadata(filepath)
         return img
 
     @classmethod
@@ -125,31 +130,71 @@ class Image(Blob):
         if embedded is not None:
             self.metadata.update_from_usermetadata(embedded)
 
-    def save(self, filepath, **kwargs):
-        """Save the image to ``filepath``; sdata metadata is embedded natively.
+    @staticmethod
+    def sidecar_path(filepath) -> str:
+        """Path of the metadata sidecar for ``filepath`` (``<filepath>.meta.json``)."""
+        return str(filepath) + ".meta.json"
 
-        The container is chosen from the file suffix. If the stored bytes already
-        use that container, the metadata is embedded **without** re-encoding
-        (lossless, Pillow-free); otherwise Pillow transcodes to the target format
-        first. Formats without a native handler are written via Pillow without
-        embedded metadata (a warning is logged).
+    def write_sidecar(self, filepath) -> str:
+        """Write the sdata metadata next to ``filepath`` as a lossless JSON sidecar.
+
+        The sidecar carries the **same** payload as the embedded form
+        (``metadata.to_json()``), so a round-trip is lossless regardless of whether
+        the format has a native metadata container.
+
+        :param filepath: the image path the sidecar belongs to.
+        :return: the sidecar path (``<filepath>.meta.json``).
+        """
+        sidecar = self.sidecar_path(filepath)
+        with open(sidecar, "w", encoding="utf-8") as fh:
+            fh.write(self.metadata.to_json())
+        logger.info(f"Image metadata sidecar written to {sidecar}")
+        return sidecar
+
+    def _load_sidecar_metadata(self, filepath) -> None:
+        """Merge metadata from an adjacent ``<filepath>.meta.json`` sidecar, if present."""
+        sidecar = self.sidecar_path(filepath)
+        if not os.path.exists(sidecar):
+            return
+        try:
+            with open(sidecar, "r", encoding="utf-8") as fh:
+                md = Metadata.from_json(fh.read())
+            self.metadata.update_from_usermetadata(md)
+            logger.debug(f"merged sidecar metadata from {sidecar}")
+        except Exception as exp:
+            logger.debug(f"sidecar metadata not loadable: {exp}")
+
+    def save(self, filepath, sidecar=None, **kwargs):
+        """Save the image to ``filepath`` with sdata metadata — one API for all formats.
+
+        The container is chosen from the file suffix. For a format with a native
+        metadata container (PNG/JPEG/JP2/GIF/WebP/TIFF) the metadata is **embedded**:
+        without re-encoding if the stored bytes already use that container (lossless,
+        Pillow-free), otherwise Pillow transcodes first. For **any other** format
+        (e.g. BMP) the image is written via Pillow and the metadata travels in a
+        lossless ``<filepath>.meta.json`` **sidecar** — so metadata is never lost.
 
         :param filepath: destination path (its suffix selects the format).
+        :param sidecar: sidecar policy — ``None`` (default) writes a sidecar only when
+          the format has no native container; ``True`` always writes one (in addition
+          to embedding); ``False`` never writes one.
         :param kwargs: forwarded to ``PIL.Image.save`` when transcoding.
-        :raises ImportError: if Pillow is required (transcode / unsupported format)
-          but not installed.
+        :raises ImportError: if Pillow is required (transcode / non-native format) but
+          not installed.
         :return: the destination ``filepath``.
         """
         suffix = Path(filepath).suffix.lstrip(".").lower()
         target = self._SUFFIX_FORMATS.get(suffix)
 
         if target is None:
-            # Kein nativer Handler: Pillow schreiben lassen, ohne Einbettung.
+            # Kein nativer Metadaten-Träger → Pillow schreiben + verlustfreier Sidecar.
             if PIL is None:
                 raise ImportError("Pillow is required for Image.save (pip install pillow).")
             self.pil.save(filepath, **kwargs)
-            logger.warning("Image.save: no native sdata-metadata handler for "
-                           "'%s'; saved without embedded metadata", filepath)
+            if sidecar is not False:
+                self.write_sidecar(filepath)
+                logger.info("Image.save: '%s' has no native metadata container; "
+                            "metadata written to a sidecar", filepath)
             return filepath
 
         pil_format, meta_fmt = target
@@ -167,5 +212,7 @@ class Image(Blob):
         img_bytes = imagemeta.embed(img_bytes, self.metadata.to_json(), meta_fmt)
         with open(filepath, "wb") as fh:
             fh.write(img_bytes)
+        if sidecar is True:
+            self.write_sidecar(filepath)
         logger.info(f"Image saved to {filepath}")
         return filepath
