@@ -57,3 +57,48 @@ def test_image_from_bytes_and_png_metadata_roundtrip(tmp_path):
     reloaded = Image.from_file(out)
     assert reloaded.metadata.get("exposure").value == 1.5
     assert reloaded.to_numpy().shape == (3, 4, 3)       # (Höhe, Breite, Kanäle)
+
+
+@pytest.mark.parametrize("ext,pil_format,kwargs", [
+    ("png", "PNG", {}),
+    ("jpg", "JPEG", {}),
+    ("jp2", "JPEG2000", {}),
+    ("gif", "GIF", {}),
+    ("webp", "WEBP", {}),
+])
+def test_image_metadata_roundtrip_all_formats(tmp_path, ext, pil_format, kwargs):
+    """Einheitliche API: Metadaten schreiben→lesen über PNG/JPEG/JP2/GIF/WebP."""
+    import io
+    import PIL.Image
+
+    buf = io.BytesIO()
+    PIL.Image.new("RGB", (6, 4), (30, 60, 90)).save(buf, pil_format, **kwargs)
+
+    img = Image.from_bytes(f"pic.{ext}", buf.getvalue())
+    img.metadata.add("operator", "ada", description="who acquired the image")
+
+    out = str(tmp_path / f"out.{ext}")
+    img.save(out)                                       # gleiche API für alle Formate
+
+    reloaded = Image.from_file(out)
+    assert reloaded.metadata.get("operator").value == "ada"
+    assert reloaded.pil.size == (6, 4)                  # Pixel/Dimensionen intakt
+    # Metadaten sind nativ in der Datei (Pillow-frei lesbar)
+    assert reloaded.embedded_metadata() is not None
+
+
+def test_image_save_transcodes_between_formats(tmp_path):
+    """save() in ein anderes Format transkodiert via Pillow und bettet ein."""
+    import io
+    import PIL.Image
+
+    buf = io.BytesIO()
+    PIL.Image.new("RGB", (5, 5), (1, 2, 3)).save(buf, "PNG")
+    img = Image.from_bytes("pic.png", buf.getvalue())   # PNG-Quelle
+    img.metadata.add("note", "transcoded")
+
+    out = str(tmp_path / "out.webp")                    # Ziel: WebP (Formatwechsel)
+    img.save(out)
+    reloaded = Image.from_file(out)
+    assert reloaded.metadata.get("note").value == "transcoded"
+    assert reloaded.filetype == "webp"

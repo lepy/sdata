@@ -16,6 +16,14 @@ omitted.
 
 ::: sdata.sclass.dataframe
 
+## sdata.imagemeta
+
+::: sdata.imagemeta
+
+## sdata.sclass.image
+
+::: sdata.sclass.image
+
 ## sdata.schema
 
 ::: sdata.schema
