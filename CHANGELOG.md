@@ -6,6 +6,8 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-29
+
 A large, strictly **additive** increment: a content/integrity foundation under all
 data containers (`Blob`), a much broader `DataFrame` serialization portfolio, and
 native, format-agnostic metadata embedding for images. Core dependencies remain
@@ -65,5 +67,6 @@ native, format-agnostic metadata embedding for images. Core dependencies remain
   dependencies reduced to `numpy`/`pandas`/`suuid` (stdlib `zoneinfo`); warning-free
   test suite.
 
-[Unreleased]: https://github.com/lepy/sdata/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/lepy/sdata/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/lepy/sdata/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/lepy/sdata/releases/tag/v1.2.0
