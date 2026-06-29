@@ -19,10 +19,12 @@ pip install "sdata[schema]"  # jsonschema -> JSON-Schema validation
 Every [`Attribute`][sdata.metadata.Attribute] carries
 `name, value, unit, dtype, description, label, required, ontology`. Supported
 `dtype` values are `str, int, float, bool, list, timestamp, bytes, json, uri,
-date, time, duration, decimal`. Each maps to an XSD type for JSON-LD (e.g. `date`
-→ `xsd:date`, `duration` → `xsd:duration` as ISO 8601 / `timedelta`, `decimal` →
-`xsd:decimal` for exact numerics). Coercion is lenient by default; pass
-`strict=True` to raise `sdata.dtypes.DtypeError` on invalid values.
+date, time, duration, decimal, complex, floatlist`. Each maps to an XSD type for
+JSON-LD (e.g. `date` → `xsd:date`, `duration` → `xsd:duration` as ISO 8601 /
+`timedelta`, `decimal` → `xsd:decimal` for exact numerics); `complex` and
+`floatlist` (a typed `list[float]`) have no standard XSD type and use the custom
+datatype CURIEs `sdata:complex` / `sdata:floatlist`. Coercion is lenient by
+default; pass `strict=True` to raise `sdata.dtypes.DtypeError` on invalid values.
 
 ```python
 import pandas as pd
