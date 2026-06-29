@@ -41,6 +41,7 @@ class Image(Blob):
         "jpf": ("JPEG2000", "jp2"), "jpx": ("JPEG2000", "jp2"),
         "gif": ("GIF", "gif"),
         "webp": ("WEBP", "webp"),
+        "tif": ("TIFF", "tiff"), "tiff": ("TIFF", "tiff"),
     }
 
     @classmethod

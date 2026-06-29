@@ -271,20 +271,60 @@ def test_webp_extract_none_when_absent():
     assert im.extract(_riff_webp((b"VP8 ", b"pixeldata"))) is None
 
 
+# ====================================================================== TIFF
+def _tiff(e="<", extra_entries=()):
+    """A minimal classic TIFF: header + IFD0 (ImageWidth) + optional entries."""
+    entries = [(256, 3, 1, struct.pack(e + "H", 4) + b"\x00\x00")]  # ImageWidth=4
+    entries = sorted(entries + list(extra_entries), key=lambda en: en[0])
+    hdr = (b"II\x2a\x00" if e == "<" else b"MM\x00\x2a") + struct.pack(e + "I", 8)
+    ifd = struct.pack(e + "H", len(entries))
+    for tag, typ, cnt, vf in entries:
+        ifd += struct.pack(e + "HHI", tag, typ, cnt) + vf
+    ifd += struct.pack(e + "I", 0)
+    return hdr + ifd
+
+
+def test_tiff_detect_both_endians():
+    assert im.detect_format(_tiff("<")) == "tiff"
+    assert im.detect_format(_tiff(">")) == "tiff"
+
+
+def test_tiff_embed_extract_le_and_be():
+    for e in ("<", ">"):
+        out = im.embed(_tiff(e), PAYLOAD)
+        assert im.detect_format(out) == "tiff"
+        assert im.extract(out) == PAYLOAD
+
+
+def test_tiff_replace_existing():
+    once = im.embed(_tiff("<"), PAYLOAD)
+    twice = im.embed(once, "second")
+    assert im.extract(twice) == "second"
+
+
+def test_tiff_tiny_payload_inline():
+    out = im.embed(_tiff("<"), "hi")   # ≤4 Byte → inline-Value (kein Offset)
+    assert im.extract(out) == "hi"
+
+
+def test_tiff_extract_none_when_absent():
+    assert im.extract(_tiff("<")) is None
+
+
 # ================================================================== Fassade
 def test_detect_unknown_returns_none():
     assert im.detect_format(b"not an image") is None
 
 
 def test_supported_formats():
-    assert im.supported_formats() == ("png", "jpeg", "jp2", "gif", "webp")
+    assert im.supported_formats() == ("png", "jpeg", "jp2", "gif", "webp", "tiff")
 
 
 def test_embed_unsupported_format_raises():
     with pytest.raises(im.UnsupportedImageFormatError):
         im.embed(b"not an image", PAYLOAD)
     with pytest.raises(im.UnsupportedImageFormatError):
-        im.embed(b"\x89PNG\r\n\x1a\n...", PAYLOAD, fmt="tiff")
+        im.embed(b"\x89PNG\r\n\x1a\n...", PAYLOAD, fmt="bmp")  # not in the registry
 
 
 def test_extract_unknown_format_is_lenient():
@@ -311,7 +351,7 @@ def _encode(pil, fmt, **kwargs):
 
 @pytest.mark.parametrize("fmt,kwargs", [
     ("PNG", {}), ("JPEG", {}), ("JPEG2000", {}), ("GIF", {}),
-    ("WEBP", {}), ("WEBP", {"lossless": True}),
+    ("WEBP", {}), ("WEBP", {"lossless": True}), ("TIFF", {}),
 ])
 def test_real_image_roundtrip_keeps_pixels(_pil, fmt, kwargs):
     import io

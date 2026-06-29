@@ -2,8 +2,8 @@
 
 [`sdata.sclass.image.Image`][sdata.sclass.image.Image] is a
 [`Blob`][sdata.sclass.blob.Blob] over image content. sdata can write its metadata
-**natively into the image file** — and read it back — across **five containers with
-one API**: PNG, JPEG, JPEG 2000 (`jp2`), GIF and WebP.
+**natively into the image file** — and read it back — across **six containers with
+one API**: PNG, JPEG, JPEG 2000 (`jp2`), GIF, WebP and TIFF.
 
 The embedding layer [`sdata.imagemeta`][sdata.imagemeta] is **pure Python**
 (standard library only): it needs no third-party tool (no `exiftool`) and — crucially
@@ -17,6 +17,7 @@ The embedding layer [`sdata.imagemeta`][sdata.imagemeta] is **pure Python**
 | JP2    | `uuid` box (ISO BMFF) before `jp2c`        | fixed sdata UUID|
 | GIF    | comment extension after the header         | `sdata\0` prefix|
 | WebP   | dedicated RIFF chunk `sdAT`                | FourCC `sdAT`   |
+| TIFF   | private IFD tag (original bytes untouched) | tag `65000`     |
 
 ```bash
 pip install pillow      # optional: only needed to decode/transcode pixels
@@ -93,7 +94,7 @@ from sdata import imagemeta
 imagemeta.detect_format(data)        # 'png' | 'jpeg' | 'jp2' | 'gif' | 'webp' | None
 out = imagemeta.embed(data, '{"k": 1}')   # format auto-detected; replace semantics
 imagemeta.extract(out)               # '{"k": 1}'  (None if absent/unknown format)
-imagemeta.supported_formats()        # ('png', 'jpeg', 'jp2', 'gif', 'webp')
+imagemeta.supported_formats()        # ('png', 'jpeg', 'jp2', 'gif', 'webp', 'tiff')
 ```
 
 * **Replace semantics:** embedding again **replaces** the previous sdata payload
@@ -104,8 +105,8 @@ imagemeta.supported_formats()        # ('png', 'jpeg', 'jp2', 'gif', 'webp')
   unsupported format and
   [`PayloadTooLargeError`][sdata.imagemeta.PayloadTooLargeError] when a JPEG payload
   exceeds the single-`APP1` limit (~64 KiB).
-* **Extensible registry:** further containers (e.g. TIFF) plug in as two small
-  functions plus one registry entry.
+* **Extensible registry:** further containers (e.g. BMP, BigTIFF) plug in as two
+  small functions plus one registry entry.
 
 ## When to use a sidecar instead
 

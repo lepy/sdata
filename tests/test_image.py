@@ -65,6 +65,7 @@ def test_image_from_bytes_and_png_metadata_roundtrip(tmp_path):
     ("jp2", "JPEG2000", {}),
     ("gif", "GIF", {}),
     ("webp", "WEBP", {}),
+    ("tiff", "TIFF", {}),
 ])
 def test_image_metadata_roundtrip_all_formats(tmp_path, ext, pil_format, kwargs):
     """Einheitliche API: Metadaten schreiben→lesen über PNG/JPEG/JP2/GIF/WebP."""
