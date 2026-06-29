@@ -718,6 +718,80 @@ class DataFrame(Base):
         tt._restore_from_attrs(descriptor.get("sdata"))
         return tt
 
+    # ------------------------------------------------------------------ HDF5
+    # Optionales HDF5-Backend (PyTables, Extra ``sdata[hdf]``), siehe RFC 0002.
+    # Bewusst ``# pragma: no cover``: PyTables ist nicht in der kanonischen CI
+    # (das WIP-Modul ``sdata/iolib/hdf.py`` ist bereits ``omit``, und sein Test
+    # bricht mit installiertem PyTables). Verifiziert über die
+    # ``importorskip("tables")``-Tests in ``tests/test_sclass_dataframe_hdf.py``.
+    def to_hdf(self, path=None, filename=None, key=None, sidecar=False, **kwargs):  # pragma: no cover
+        """Serialize the df to HDF5 (PyTables), embedding sdata metadata as a node attr.
+
+        HDF5 has no in-memory bytes form, so a ``path``/``filename`` is required. The
+        sdata metadata (metadata/column_metadata/description) is stored as the node's
+        ``_sdata`` attribute; several DataFrames can share one file via distinct ``key``.
+
+        :param path: directory to write ``<sname>.h5`` into.
+        :param filename: exact output filename (defaults to ``<sname>.h5``).
+        :param key: HDF5 node/key (default: ``self.sname``).
+        :param sidecar: also write a JSON-LD metadata sidecar next to the file.
+        :param kwargs: forwarded to ``pandas.HDFStore.put`` (e.g. ``format``,
+            ``complevel``, ``complib``).
+        :return: the file path.
+        :raises ImportError: if PyTables is not installed (``pip install sdata[hdf]``).
+        :raises ValueError: if neither ``path`` nor ``filename`` is given.
+        """
+        try:
+            import tables  # noqa: F401
+        except ImportError as exp:
+            raise ImportError("HDF5 support requires PyTables. Install it, e.g. "
+                              "`pip install sdata[hdf]`.") from exp
+        if filename is None and path is not None:
+            filename = self.sname + ".h5"
+        if filename is None:
+            raise ValueError("to_hdf requires a path or filename (HDF5 has no bytes form)")
+        filepath = os.path.join(path, filename) if path else filename
+        key = key or self.sname
+        fmt = kwargs.pop("format", "fixed")
+        with pd.HDFStore(filepath, mode="a") as store:
+            store.put(key, self.df, format=fmt, **kwargs)
+            store.get_storer(key).attrs._sdata = json.dumps({
+                "metadata": self.metadata.to_dict(),
+                "column_metadata": self.column_metadata.to_dict(),
+                "description": self.description,
+            })
+        logger.info(f"DataFrame HDF5 saved to {filepath}")
+        if sidecar:
+            self.write_sidecar(path)
+        return filepath
+
+    @classmethod
+    def from_hdf(cls, filepath, key=None):  # pragma: no cover
+        """Load a DataFrame from an HDF5 file written by :meth:`to_hdf`.
+
+        :param filepath: path to the ``.h5`` file.
+        :param key: HDF5 node/key to read (default: the first key in the file).
+        :return: a :class:`DataFrame` instance.
+        :raises FileNotFoundError: if ``filepath`` does not exist.
+        :raises ImportError: if PyTables is not installed.
+        """
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"no HDF5 file {filepath}")
+        try:
+            import tables  # noqa: F401
+        except ImportError as exp:
+            raise ImportError("HDF5 support requires PyTables. Install it, e.g. "
+                              "`pip install sdata[hdf]`.") from exp
+        with pd.HDFStore(filepath, mode="r") as store:
+            if key is None:
+                key = store.keys()[0]
+            df = store.get(key)
+            raw = getattr(store.get_storer(key).attrs, "_sdata", None)
+        tt = cls()
+        tt.df = df
+        tt._restore_from_attrs(json.loads(raw) if raw else None)
+        return tt
+
 
 if __name__ == '__main__':
     # Erstelle einen Pandas DataFrame

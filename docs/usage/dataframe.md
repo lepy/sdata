@@ -109,6 +109,7 @@ the interop you need:
 | pandas `df.attrs` | `to_dataframe` | `_sdata` in `df.attrs` | — |
 | JSON-LD / RDF | `to_jsonld` / `to_turtle` / `write_sidecar` | the metadata itself | rdflib (optional) |
 | Data Package `.zip` | `to_datapackage` / `from_datapackage` | `datapackage.json` (Frictionless) + lossless `sdata` block | — (csv) / pyarrow (parquet) |
+| HDF5 `.h5` | `to_hdf` / `from_hdf` | `_sdata` node attribute (PyTables) | tables (`sdata[hdf]`) |
 
 All file writers share the same shape: an optional `path` (writes
 `<sname>.<ext>`), an optional exact `filename`, and a `sidecar` flag; without a
@@ -180,6 +181,25 @@ DataFrame.from_datapackage("out/<sname>.zip")    # restores data + metadata loss
 Column annotations map to Frictionless field properties (`title`←label, `unit`,
 `rdfType`←ontology, `description`), and the dtype to a Table Schema `type`
 (`integer`/`number`/`boolean`/`datetime`/`string`).
+
+### HDF5
+
+For large/scientific data, `to_hdf()` writes an HDF5 file (PyTables) with the sdata
+metadata stored as the node's `_sdata` attribute; `from_hdf()` reads it back.
+Several DataFrames can share one file via distinct `key`s (HDF5 has no in-memory
+bytes form, so a `path`/`filename` is required). Needs `pip install "sdata[hdf]"`.
+
+```python
+sdf.to_hdf(path="out")                           # -> out/<sname>.h5  (key = sname)
+DataFrame.from_hdf("out/<sname>.h5")             # default: first key in the file
+
+# several tables in one file
+sdf.to_hdf(filename="bundle.h5", key="run1")
+other.to_hdf(filename="bundle.h5", key="run2")
+DataFrame.from_hdf("bundle.h5", key="run2")
+```
+
+See [RFC 0002](../rfc/0002-hdf5-dataframe-serialization.md) for the design rationale.
 
 ## Table schema validation
 
