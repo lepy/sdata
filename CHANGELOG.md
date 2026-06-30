@@ -6,6 +6,23 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **Unit conversion (`sdata.units`).** A pure-Python conversion layer over the
+  curated unit table — `convert`/`convert_factor`/`quantity_of` and a `UnitSystem`
+  helper (consistent unit systems such as `["kN", "mm", "ms"]`). It covers the common
+  engineering quantities (length, force, time, mass, pressure, strain-rate,
+  temperature incl. offset units), works on scalars/lists/NumPy arrays/pandas Series,
+  and raises a clear `UnitConversionError` on incompatible quantities.
+- **`DataFrame.convert_units(units, inplace=False)`.** Rescale a table's columns into
+  a target unit system (a unit list, a `UnitSystem`, or an explicit `{column: unit}`
+  mapping) and update the per-column `unit` annotations in one step — returning a
+  converted copy by default. Columns without a unit or whose quantity the system does
+  not cover are left unchanged.
+- **Docs.** A worked tensile-test example (`force [N]` / `time [s]` /
+  `displacement [mm]`, fully semantically described, converted to `[kN, mm, ms]`) and
+  a unit-conversion reference in `usage/dataframe.md`.
+
 ## [1.3.0] - 2026-06-29
 
 A large, strictly **additive** increment: a content/integrity foundation under all
