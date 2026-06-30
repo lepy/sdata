@@ -81,6 +81,60 @@ def test_convert_dict_mapping():
     conv = sdf.convert({"stress": "GPa"})
     assert conv.column_units["stress"] == "GPa"
     assert list(conv.df["stress"]) == [1.0]          # 1000 MPa -> 1 GPa
+    assert conv.unit_system is None                   # dict path records no system
+
+
+# ---------------------------------------------------------- settable unit_system
+def test_unit_system_default_none():
+    assert DataFrame(df=pd.DataFrame({"a": [1]}), name="d").unit_system is None
+
+
+def test_set_unit_system_object_and_convert_without_args():
+    sdf = _tensile()
+    sdf.unit_system = units.UnitSystem(["kN", "mm", "ms"])
+    assert isinstance(sdf.unit_system, units.UnitSystem)
+
+    si = sdf.convert()                               # uses the recorded system
+    assert si.column_units == {"force": "kN", "time": "ms", "displacement": "mm"}
+    assert list(si.df["force"]) == [0.0, 2.5, 5.0]
+    assert repr(si.unit_system) == "UnitSystem(['kN', 'mm', 'ms'])"
+    # setting only records intent — the data is untouched until convert()
+    assert sdf.column_units["force"] == "N"
+
+
+def test_set_unit_system_from_list_is_wrapped():
+    sdf = _tensile()
+    sdf.unit_system = ["kN", "mm", "ms"]             # list -> UnitSystem
+    assert isinstance(sdf.unit_system, units.UnitSystem)
+    assert sdf.unit_system.unit_for("force") == "kN"
+
+
+def test_unit_system_constructor_kwarg():
+    sdf = DataFrame(df=pd.DataFrame({"force": [1000.0]}), name="d",
+                    unit_system=["kN", "mm", "ms"])
+    sdf.set_column("force", unit="N")
+    assert isinstance(sdf.unit_system, units.UnitSystem)
+    assert list(sdf.convert().df["force"]) == [1.0]
+
+
+def test_unit_system_clear():
+    sdf = _tensile()
+    sdf.unit_system = ["kN", "mm", "ms"]
+    sdf.unit_system = None
+    assert sdf.unit_system is None
+
+
+def test_convert_without_units_or_system_raises():
+    sdf = _tensile()
+    with pytest.raises(ValueError, match="no unit system"):
+        sdf.convert()
+
+
+def test_convert_copy_preserves_unit_system():
+    sdf = _tensile()
+    sdf.unit_system = ["kN", "mm", "ms"]
+    copy = sdf.convert(inplace=False)               # converted copy keeps the system
+    assert isinstance(copy.unit_system, units.UnitSystem)
 
 
 def test_convert_dict_column_without_unit_warns(caplog):

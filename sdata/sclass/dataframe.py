@@ -49,6 +49,7 @@ class DataFrame(ContentIntegrityMixin, Base):
             column_metadata: Optional[
                 Union[Dict[str, Dict[str, str]], Metadata]
             ] = None,
+            unit_system=None,
             **kwargs: Any
     ) -> None:
         """
@@ -62,6 +63,9 @@ class DataFrame(ContentIntegrityMixin, Base):
         :param column_metadata: Optional per-column metadata, either a dict
           ``{colname: {'label': ..., 'unit': ...}}`` or a :class:`Metadata`. Keys
           that do not match a df column are kept but a warning is logged.
+        :param unit_system: optional target :class:`~sdata.units.UnitSystem` (or a
+          unit list like ``["kN", "mm", "ms"]``) recorded on the table; see
+          :attr:`unit_system` and :meth:`convert`.
         :param kwargs: forwarded to :class:`~sdata.base.Base` (e.g. ``name``,
           ``description``, ``project``).
         """
@@ -78,6 +82,9 @@ class DataFrame(ContentIntegrityMixin, Base):
             self._column_metadata = Metadata(name="column_metadata")
 
         self._df = pd.DataFrame()
+        self._unit_system = None
+        if unit_system is not None:
+            self.unit_system = unit_system
         if df is not None:
             # Bei der Konstruktion vom Nutzer gelieferte column_metadata bewahren
             # (kein Prune); Waisen werden nur gemeldet.
@@ -214,12 +221,36 @@ class DataFrame(ContentIntegrityMixin, Base):
                 units[str(col)] = attr.unit
         return units
 
+    @property
+    def unit_system(self):
+        """The table's target :class:`~sdata.units.UnitSystem` (or ``None``).
+
+        Assign a :class:`~sdata.units.UnitSystem` **or** a unit list (e.g.
+        ``["kN", "mm", "ms"]``, wrapped automatically) to record the unit system
+        this table should be expressed in; :meth:`convert` with no argument then
+        rescales the data into it. Setting only records the target — it does **not**
+        mutate the data (call :meth:`convert` to apply), which keeps it robust when
+        the system is set before the column units. Assign ``None`` to clear.
+
+        :return: the recorded :class:`~sdata.units.UnitSystem`, or ``None``.
+        """
+        return self._unit_system
+
+    @unit_system.setter
+    def unit_system(self, value):
+        from sdata import units as U
+        if value is None or isinstance(value, U.UnitSystem):
+            self._unit_system = value
+        else:
+            self._unit_system = U.UnitSystem(value)
+
     def _converted_copy(self):
         """Tiefe Kopie dieses DataFrame (Daten + Metadaten) für nicht-mutierende Ops."""
         new = self.__class__(df=self._df.copy(deep=True))
         new.metadata = self.metadata.copy()
         new._column_metadata = self._column_metadata.copy()
         new.description = self.description
+        new._unit_system = self._unit_system
         return new
 
     def _resolve_unit_targets(self, units, U):
@@ -239,11 +270,12 @@ class DataFrame(ContentIntegrityMixin, Base):
                 targets[str(col)] = system.target_for(attr.unit)
         return targets
 
-    def convert(self, units, inplace=False):
+    def convert(self, units=None, inplace=False):
         """Convert numeric columns into a target unit system (or explicit units).
 
         ``units`` may be
 
+        * ``None`` (the default) — use this table's :attr:`unit_system`,
         * a :class:`~sdata.units.UnitSystem`,
         * a list/tuple of unit symbols, e.g. ``["kN", "mm", "ms"]`` — wrapped into a
           :class:`~sdata.units.UnitSystem` (one unit per physical quantity), or
@@ -254,15 +286,23 @@ class DataFrame(ContentIntegrityMixin, Base):
         its ``unit`` annotation updated. Columns without a unit, dimensionless
         columns, and quantities the system does not cover are left untouched. By
         default a converted **copy** is returned (data + metadata); pass
-        ``inplace=True`` to mutate this DataFrame.
+        ``inplace=True`` to mutate this DataFrame. When a full unit system (not a
+        per-column dict) is applied, the result's :attr:`unit_system` is set to it.
 
-        :param units: target unit system, unit list, or ``{column: unit}`` mapping.
+        :param units: target unit system, unit list, or ``{column: unit}`` mapping;
+          ``None`` uses :attr:`unit_system`.
         :param inplace: mutate this DataFrame instead of returning a converted copy.
         :return: the converted :class:`DataFrame` (``self`` if ``inplace``).
+        :raises ValueError: if ``units`` is ``None`` and no :attr:`unit_system` is set.
         :raises sdata.units.UnitConversionError: on incompatible units (e.g. an
           explicit mapping that converts a length column to a force unit).
         """
         from sdata import units as U
+        if units is None:
+            units = self._unit_system
+        if units is None:
+            raise ValueError(
+                "no unit system: pass units to convert() or set .unit_system")
         targets = self._resolve_unit_targets(units, U)
         sdf = self if inplace else self._converted_copy()
         for col, target in targets.items():
@@ -278,6 +318,9 @@ class DataFrame(ContentIntegrityMixin, Base):
             sdf._df[col] = U.convert(sdf._df[col], current, target)
             sdf.set_column(col, unit=str(target))
             logger.info("convert: %s %s -> %s", col, current, target)
+        if not isinstance(units, dict):
+            sdf._unit_system = units if isinstance(units, U.UnitSystem) \
+                else U.UnitSystem(units)
         return sdf
 
     def validate_table(self, schema=None):
