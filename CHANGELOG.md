@@ -26,6 +26,9 @@ All notable changes to **sdata** are documented here. The format is based on
 - **Docs.** A worked tensile-test example (`force [N]` / `time [s]` /
   `displacement [mm]`, fully semantically described, converted to `[kN, mm, ms]`) and
   a unit-conversion reference in `usage/dataframe.md`.
+- **RFC 0006 (proposed).** Design for executing the conversion when the unit system is
+  set (`set_unit_system`) and for relabeling mislabeled units without rescaling the
+  values (`convert(..., rescale=False)`); proposal only, not yet implemented.
 
 ## [1.3.0] - 2026-06-29
 

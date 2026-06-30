@@ -73,5 +73,6 @@ nav:
       - "0003 — Blob as data foundation": rfc/0003-blob-as-data-foundation.md
       - "0004 — DataFrame and Blob": rfc/0004-dataframe-and-blob.md
       - "0005 — Native image metadata": rfc/0005-native-image-metadata.md
+      - "0006 — Unit-system conversion on set (proposed)": rfc/0006-unit-system-conversion-on-set.md
   - Releasing: releasing.md
   - Changelog: changelog.md
