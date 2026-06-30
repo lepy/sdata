@@ -181,6 +181,25 @@ sdf.convert(["kN", "mm", "ms"], inplace=True)        # mutate in place
 sdf.convert({"stress": "GPa", "strain": "%"})
 ```
 
+The target system can also be **set on the DataFrame** — as a
+[`UnitSystem`][sdata.units.UnitSystem] or a unit list — and reused by `convert()`
+without arguments (also settable via the `unit_system=` constructor keyword):
+
+```python
+from sdata.units import UnitSystem
+
+sdf.unit_system = UnitSystem(["kN", "mm", "ms"])   # or just ["kN", "mm", "ms"]
+si = sdf.convert()                                 # converts into sdf.unit_system
+
+DataFrame(df=raw, name="run", unit_system=["kN", "mm", "ms"])
+```
+
+Setting `unit_system` only *records* the target — it does not rescale the data (call
+`convert()` to apply), which keeps it robust when the system is set before the column
+units. A converted copy carries the system over, and applying a full system sets the
+result's `unit_system`; `convert()` raises `ValueError` if neither an argument nor a
+`unit_system` is set.
+
 Only columns whose physical quantity the system addresses are touched; columns
 without a unit, dimensionless columns, and quantities the system does not cover are
 left unchanged. Converting across incompatible quantities (e.g. a length column to a

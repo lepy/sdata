@@ -14,11 +14,15 @@ All notable changes to **sdata** are documented here. The format is based on
   engineering quantities (length, force, time, mass, pressure, strain-rate,
   temperature incl. offset units), works on scalars/lists/NumPy arrays/pandas Series,
   and raises a clear `UnitConversionError` on incompatible quantities.
-- **`DataFrame.convert(units, inplace=False)`.** Rescale a table's columns into
+- **`DataFrame.convert(units=None, inplace=False)`.** Rescale a table's columns into
   a target unit system (a unit list, a `UnitSystem`, or an explicit `{column: unit}`
   mapping) and update the per-column `unit` annotations in one step — returning a
   converted copy by default. Columns without a unit or whose quantity the system does
   not cover are left unchanged.
+- **`DataFrame.unit_system`.** A settable target unit system on the table (a
+  `UnitSystem` or unit list, also via the `unit_system=` constructor keyword);
+  `convert()` with no argument rescales into it. Setting only records the target
+  (the data is rescaled by `convert()`), and a converted copy carries it over.
 - **Docs.** A worked tensile-test example (`force [N]` / `time [s]` /
   `displacement [mm]`, fully semantically described, converted to `[kN, mm, ms]`) and
   a unit-conversion reference in `usage/dataframe.md`.
