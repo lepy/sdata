@@ -164,12 +164,15 @@ keys that match no column — are only logged as a warning, never dropped).
 ### Unit conversion
 
 `convert` rescales column data into a target **unit system** and updates the
-`unit` annotations in one step (pure Python, no extra dependency — the curated table
-in [`sdata.units`][sdata.units] covers the common engineering units: length, force,
-time, mass, pressure, strain-rate and temperature). The argument may be
+`unit` annotations in one step (pure Python, no extra dependency). A
+[`UnitSystem`][sdata.units.UnitSystem] is a **consistent** system: it is solved from
+its base units by *dimensional algebra*, so **derived** units follow automatically —
+`["kN", "mm", "ms"]` converts a stress column `MPa → GPa` (= kN/mm²), energy `J`
+(= kN·mm), velocity `m/s` (= mm/ms) and mass `kg`, not just force/length/time
+(see [RFC 0006](../rfc/0006-unit-system-conversion-on-set.md)). The argument may be
 
-* a list/tuple of unit symbols — e.g. `["kN", "mm", "ms"]` — wrapped into a
-  [`UnitSystem`][sdata.units.UnitSystem] (one unit per physical quantity),
+* a list/tuple of **base-unit** symbols — e.g. `["kN", "mm", "ms"]` — wrapped into a
+  [`UnitSystem`][sdata.units.UnitSystem],
 * a [`UnitSystem`][sdata.units.UnitSystem] instance, or
 * a dict `{column: target_unit}` for explicit, per-column targets.
 
@@ -200,10 +203,21 @@ units. A converted copy carries the system over, and applying a full system sets
 result's `unit_system`; `convert()` raises `ValueError` if neither an argument nor a
 `unit_system` is set.
 
-Only columns whose physical quantity the system addresses are touched; columns
-without a unit, dimensionless columns, and quantities the system does not cover are
-left unchanged. Converting across incompatible quantities (e.g. a length column to a
-force unit) raises [`UnitConversionError`][sdata.units.UnitConversionError].
+Only columns whose **dimension** the system spans are touched; columns without a
+unit, dimensionless columns, and dimensions the system does not span (e.g. temperature
+in a `[kN, mm, ms]` system) are left unchanged. Converting across incompatible
+dimensions in a `{column: unit}` mapping (e.g. a length column to a force unit) raises
+[`UnitConversionError`][sdata.units.UnitConversionError].
+
+**Fixing mislabeled units.** When a column's numbers are already in the intended unit
+but its annotation is wrong, use `relabel_units` to set the `unit` **without** rescaling
+the values (mutates in place, returns a report). A same-dimension relabel is logged; a
+dimension change requires `force=True`:
+
+```python
+sdf.relabel_units({"force": "kN"})            # data was already kN, just fix the label
+sdf.relabel_units({"x": "mm"}, force=True)    # override across dimensions (logged)
+```
 
 The same machinery is available standalone for scalars, lists, NumPy arrays and
 pandas Series:

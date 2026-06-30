@@ -8,29 +8,29 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Added
 
-- **Unit conversion (`sdata.units`).** A pure-Python conversion layer over the
-  curated unit table — `convert`/`convert_factor`/`quantity_of` and a `UnitSystem`
-  helper (consistent unit systems such as `["kN", "mm", "ms"]`). It covers the common
-  engineering quantities (length, force, time, mass, pressure, strain-rate,
-  temperature incl. offset units), works on scalars/lists/NumPy arrays/pandas Series,
-  and raises a clear `UnitConversionError` on incompatible quantities.
-- **`DataFrame.convert(units=None, inplace=False)`.** Rescale a table's columns into
-  a target unit system (a unit list, a `UnitSystem`, or an explicit `{column: unit}`
-  mapping) and update the per-column `unit` annotations in one step — returning a
-  converted copy by default. Columns without a unit or whose quantity the system does
-  not cover are left unchanged.
+- **Unit conversion via dimensional algebra (`sdata.units`, RFC 0006).** A pure-Python
+  conversion layer: `convert`/`convert_factor`/`quantity_of`/`dimension_of` and a
+  `UnitSystem` that is **solved from its base units** — so a *consistent* system such as
+  `["kN", "mm", "ms"]` derives **all** units (stress→`GPa`, energy→`J`, velocity→`m/s`,
+  mass→`kg`) from the base set via an exact `fractions`-based solver. Covers length,
+  mass, time, temperature (offset units), force, pressure, energy, power, velocity,
+  area/volume and rate; works on scalars/lists/NumPy arrays/pandas Series; raises a clear
+  `UnitConversionError` on incompatible dimensions or inconsistent systems.
+- **`DataFrame.convert(units=None, inplace=False)`.** Convert a table's columns into a
+  target unit system (a unit list, a `UnitSystem`, or an explicit `{column: unit}`
+  mapping) — **including derived units** — and update the per-column `unit` annotations,
+  returning a converted copy by default. Columns without a unit or whose dimension the
+  system does not span are left unchanged.
+- **`DataFrame.relabel_units(mapping, *, force=False)`.** Fix mislabeled units: set the
+  `unit` of named columns **without rescaling** the values; same-dimension relabels are
+  logged, a dimension change requires `force=True`. Returns a report.
 - **`DataFrame.unit_system`.** A settable target unit system on the table (a
   `UnitSystem` or unit list, also via the `unit_system=` constructor keyword);
-  `convert()` with no argument rescales into it. Setting only records the target
+  `convert()` with no argument converts into it. Setting only records the target
   (the data is rescaled by `convert()`), and a converted copy carries it over.
 - **Docs.** A worked tensile-test example (`force [N]` / `time [s]` /
-  `displacement [mm]`, fully semantically described, converted to `[kN, mm, ms]`) and
-  a unit-conversion reference in `usage/dataframe.md`.
-- **RFC 0006 (proposed, v2).** Design for **consistent unit systems via dimensional
-  algebra**: a `UnitSystem` is solved from its base units, so *all* derived units
-  (stress→`GPa`, energy→`J`, velocity→`m/s`) are rescaled when converting into it
-  (`convert(system, inplace=True)`); plus a safe `relabel_units({col: unit})` for
-  fixing mislabeled units without rescaling. Proposal only, not yet implemented.
+  `displacement [mm]`, fully semantically described, converted to `[kN, mm, ms]`) and a
+  unit-conversion reference in `usage/dataframe.md`; RFC 0006 v2 (dimensional algebra).
 
 ## [1.3.0] - 2026-06-29
 
