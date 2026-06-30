@@ -26,9 +26,11 @@ All notable changes to **sdata** are documented here. The format is based on
 - **Docs.** A worked tensile-test example (`force [N]` / `time [s]` /
   `displacement [mm]`, fully semantically described, converted to `[kN, mm, ms]`) and
   a unit-conversion reference in `usage/dataframe.md`.
-- **RFC 0006 (proposed).** Design for executing the conversion when the unit system is
-  set (`set_unit_system`) and for relabeling mislabeled units without rescaling the
-  values (`convert(..., rescale=False)`); proposal only, not yet implemented.
+- **RFC 0006 (proposed, v2).** Design for **consistent unit systems via dimensional
+  algebra**: a `UnitSystem` is solved from its base units, so *all* derived units
+  (stress→`GPa`, energy→`J`, velocity→`m/s`) are rescaled when converting into it
+  (`convert(system, inplace=True)`); plus a safe `relabel_units({col: unit})` for
+  fixing mislabeled units without rescaling. Proposal only, not yet implemented.
 
 ## [1.3.0] - 2026-06-29
 
