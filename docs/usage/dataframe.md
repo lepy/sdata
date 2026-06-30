@@ -19,6 +19,74 @@ sdf = DataFrame(df=df, name="specimen_01", description="a tension test")
 [`Metadata`][sdata.metadata.Metadata]) and any `Base` keyword (`name`,
 `description`, `project`, …). Passing no `df` yields an empty table.
 
+## Worked example: a tensile test
+
+A short, end-to-end example: a quasi-static tensile test with three measured
+channels — **force [N]**, **time [s]** and **displacement [mm]**. Each column is
+described *semantically completely* (unit, human label, free-text description and an
+ontology class), and the whole table is then converted into the consistent unit
+system **[kN, mm, ms]** for downstream FE/explicit-dynamics tooling.
+
+```python
+import pandas as pd
+from sdata.sclass.dataframe import DataFrame
+
+raw = pd.DataFrame({
+    "time":         [0.0, 0.25, 0.50],     # s
+    "force":        [0.0, 2500.0, 5000.0],  # N
+    "displacement": [0.0, 1.2, 2.4],        # mm
+})
+
+sdf = DataFrame(df=raw, name="tensile_specimen_01",
+                description="quasi-static tensile test, specimen 01")
+
+# describe every column completely: unit, label, description, ontology class
+sdf.set_column("time", unit="s", label="Time",
+               description="elapsed test time", ontology="bfo:Quality")
+sdf.set_column("force", unit="N", label="Force",
+               description="measured load-cell force", ontology="bfo:Quality")
+sdf.set_column("displacement", unit="mm", label="Displacement",
+               description="crosshead displacement", ontology="bfo:Quality")
+
+sdf.column_units            # {'time': 's', 'force': 'N', 'displacement': 'mm'}
+```
+
+Because the columns are fully qualified, every channel becomes a self-describing,
+unit-bearing node in the JSON-LD (`sdf.to_jsonld()["columns"]`) — units carry their
+QUDT IRI, the pandas dtype maps to an XSD datatype:
+
+```json
+[
+  {"name": "time", "datatype": "xsd:double",
+   "unitRef": "unit:SEC", "symbol": "s",
+   "label": "Time", "description": "elapsed test time"},
+  {"name": "force", "datatype": "xsd:double",
+   "unitRef": "unit:N", "symbol": "N",
+   "label": "Force", "description": "measured load-cell force"},
+  {"name": "displacement", "datatype": "xsd:double",
+   "unitRef": "unit:MilliM", "symbol": "mm",
+   "label": "Displacement", "description": "crosshead displacement"}
+]
+```
+
+Now convert the whole table into the **[kN, mm, ms]** unit system. `convert_units`
+rescales the data of every column whose physical quantity the system addresses and
+updates its `unit` annotation — by default returning a converted copy, so the
+original stays in SI:
+
+```python
+si = sdf.convert_units(["kN", "mm", "ms"])
+
+si.column_units              # {'time': 'ms', 'force': 'kN', 'displacement': 'mm'}
+list(si.df["force"])         # [0.0, 2.5, 5.0]     N  -> kN  (÷ 1000)
+list(si.df["time"])          # [0.0, 250.0, 500.0] s  -> ms  (× 1000)
+list(si.df["displacement"])  # [0.0, 1.2, 2.4]     mm -> mm  (unchanged)
+
+list(sdf.df["force"])        # [0.0, 2500.0, 5000.0]  — original untouched
+```
+
+See [Unit conversion](#unit-conversion) for the full conversion API.
+
 ## The pandas frame
 
 The wrapped frame is always available via `sdf.df` (settable). Thin convenience
@@ -92,6 +160,47 @@ sdf.col["weight"].unit = "kg"        # mutate a field in place
 removed columns are pruned, while surviving columns keep their `unit`/`label`.
 Column metadata supplied at construction time is preserved as-is (orphan keys —
 keys that match no column — are only logged as a warning, never dropped).
+
+### Unit conversion
+
+`convert_units` rescales column data into a target **unit system** and updates the
+`unit` annotations in one step (pure Python, no extra dependency — the curated table
+in [`sdata.units`][sdata.units] covers the common engineering units: length, force,
+time, mass, pressure, strain-rate and temperature). The argument may be
+
+* a list/tuple of unit symbols — e.g. `["kN", "mm", "ms"]` — wrapped into a
+  [`UnitSystem`][sdata.units.UnitSystem] (one unit per physical quantity),
+* a [`UnitSystem`][sdata.units.UnitSystem] instance, or
+* a dict `{column: target_unit}` for explicit, per-column targets.
+
+```python
+si = sdf.convert_units(["kN", "mm", "ms"])      # -> converted copy (original kept)
+sdf.convert_units(["kN", "mm", "ms"], inplace=True)   # mutate in place
+
+# explicit per-column targets
+sdf.convert_units({"stress": "GPa", "strain": "%"})
+```
+
+Only columns whose physical quantity the system addresses are touched; columns
+without a unit, dimensionless columns, and quantities the system does not cover are
+left unchanged. Converting across incompatible quantities (e.g. a length column to a
+force unit) raises [`UnitConversionError`][sdata.units.UnitConversionError].
+
+The same machinery is available standalone for scalars, lists, NumPy arrays and
+pandas Series:
+
+```python
+from sdata.units import convert, convert_factor, UnitSystem
+
+convert(5000, "N", "kN")        # 5.0
+convert([0.1, 0.2], "s", "ms")  # [100.0, 200.0]
+convert(25, "degC", "K")        # 298.15   (offset units handled)
+convert_factor("N", "kN")       # 0.001    (pure scale factor)
+
+system = UnitSystem(["kN", "mm", "ms"])
+system.target_for("N")          # 'kN'  (same quantity as the system's force unit)
+system.target_for("MPa")        # None  (pressure not in this system)
+```
 
 ## Serialization
 

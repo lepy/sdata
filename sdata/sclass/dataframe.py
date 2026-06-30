@@ -214,6 +214,72 @@ class DataFrame(ContentIntegrityMixin, Base):
                 units[str(col)] = attr.unit
         return units
 
+    def _converted_copy(self):
+        """Tiefe Kopie dieses DataFrame (Daten + Metadaten) für nicht-mutierende Ops."""
+        new = self.__class__(df=self._df.copy(deep=True))
+        new.metadata = self.metadata.copy()
+        new._column_metadata = self._column_metadata.copy()
+        new.description = self.description
+        return new
+
+    def _resolve_unit_targets(self, units, U):
+        """Bestimme je Spalte die Ziel-Einheit für :meth:`convert_units`.
+
+        :param units: ``UnitSystem`` / Einheiten-Liste / ``{Spalte: Einheit}``-dict.
+        :param U: das :mod:`sdata.units`-Modul (injiziert, spart Re-Import).
+        :return: ``{Spalte: Ziel-Einheit-oder-None}``.
+        """
+        if isinstance(units, dict):
+            return {str(col): unit for col, unit in units.items()}
+        system = units if isinstance(units, U.UnitSystem) else U.UnitSystem(units)
+        targets = {}
+        for col in self._df.columns:
+            attr = self._column_metadata.get(str(col))
+            if attr is not None:
+                targets[str(col)] = system.target_for(attr.unit)
+        return targets
+
+    def convert_units(self, units, inplace=False):
+        """Convert numeric columns into a target unit system (or explicit units).
+
+        ``units`` may be
+
+        * a :class:`~sdata.units.UnitSystem`,
+        * a list/tuple of unit symbols, e.g. ``["kN", "mm", "ms"]`` — wrapped into a
+          :class:`~sdata.units.UnitSystem` (one unit per physical quantity), or
+        * a dict ``{column: target_unit}`` for explicit per-column targets.
+
+        Every column that carries a unit in :attr:`column_metadata` and whose
+        physical quantity is addressed by ``units`` has its **values rescaled** and
+        its ``unit`` annotation updated. Columns without a unit, dimensionless
+        columns, and quantities the system does not cover are left untouched. By
+        default a converted **copy** is returned (data + metadata); pass
+        ``inplace=True`` to mutate this DataFrame.
+
+        :param units: target unit system, unit list, or ``{column: unit}`` mapping.
+        :param inplace: mutate this DataFrame instead of returning a converted copy.
+        :return: the converted :class:`DataFrame` (``self`` if ``inplace``).
+        :raises sdata.units.UnitConversionError: on incompatible units (e.g. an
+          explicit mapping that converts a length column to a force unit).
+        """
+        from sdata import units as U
+        targets = self._resolve_unit_targets(units, U)
+        sdf = self if inplace else self._converted_copy()
+        for col, target in targets.items():
+            if target is None:
+                continue
+            attr = sdf._column_metadata.get(str(col))
+            current = attr.unit if attr is not None else None
+            if not current or current in ("-", ""):
+                logger.warning("convert_units: column %r has no unit; skipped", col)
+                continue
+            if str(target) == str(current):
+                continue
+            sdf._df[col] = U.convert(sdf._df[col], current, target)
+            sdf.set_column(col, unit=str(target))
+            logger.info("convert_units: %s %s -> %s", col, current, target)
+        return sdf
+
     def validate_table(self, schema=None):
         """Validate the df/column_metadata against a :class:`~sdata.schema.TableSchema`.
 
