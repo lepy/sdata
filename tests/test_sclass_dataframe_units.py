@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Tests für DataFrame.convert_units (Umrechnung in ein Einheitensystem)."""
+"""Tests für DataFrame.convert (Umrechnung in ein Einheitensystem)."""
 import logging
 
 import pandas as pd
@@ -26,7 +26,7 @@ def _tensile():
 
 def test_convert_to_unit_system_copy():
     sdf = _tensile()
-    conv = sdf.convert_units(["kN", "mm", "ms"])
+    conv = sdf.convert(["kN", "mm", "ms"])
 
     # umgerechnete Kopie
     assert conv.column_units == {"force": "kN", "time": "ms", "displacement": "mm"}
@@ -42,7 +42,7 @@ def test_convert_to_unit_system_copy():
 
 def test_convert_preserves_other_column_metadata():
     sdf = _tensile()
-    conv = sdf.convert_units(["kN", "mm", "ms"])
+    conv = sdf.convert(["kN", "mm", "ms"])
     assert conv.get_column("force").label == "Force"
     assert conv.get_column("force").ontology == "bfo:Quality"
     assert conv.description == "a tension test"
@@ -50,7 +50,7 @@ def test_convert_preserves_other_column_metadata():
 
 def test_convert_inplace():
     sdf = _tensile()
-    ret = sdf.convert_units(["kN", "mm", "ms"], inplace=True)
+    ret = sdf.convert(["kN", "mm", "ms"], inplace=True)
     assert ret is sdf
     assert list(sdf.df["force"]) == [0.0, 2.5, 5.0]
     assert sdf.column_units["time"] == "ms"
@@ -59,7 +59,7 @@ def test_convert_inplace():
 def test_convert_accepts_unit_system_object():
     sdf = _tensile()
     system = units.UnitSystem(["kN", "mm", "ms"])
-    conv = sdf.convert_units(system)
+    conv = sdf.convert(system)
     assert conv.column_units["force"] == "kN"
 
 
@@ -68,7 +68,7 @@ def test_convert_leaves_unaddressed_quantity_unchanged():
     sdf = DataFrame(df=df, name="mix")
     sdf.set_column("force", unit="N")
     sdf.set_column("stress", unit="MPa")
-    conv = sdf.convert_units(["kN", "mm", "ms"])   # kein Druck im System
+    conv = sdf.convert(["kN", "mm", "ms"])   # kein Druck im System
     assert conv.column_units["force"] == "kN"
     assert conv.column_units["stress"] == "MPa"     # unverändert
     assert list(conv.df["stress"]) == [200.0]
@@ -78,7 +78,7 @@ def test_convert_dict_mapping():
     df = pd.DataFrame({"stress": [1000.0]})
     sdf = DataFrame(df=df, name="d")
     sdf.set_column("stress", unit="MPa")
-    conv = sdf.convert_units({"stress": "GPa"})
+    conv = sdf.convert({"stress": "GPa"})
     assert conv.column_units["stress"] == "GPa"
     assert list(conv.df["stress"]) == [1.0]          # 1000 MPa -> 1 GPa
 
@@ -87,7 +87,7 @@ def test_convert_dict_column_without_unit_warns(caplog):
     df = pd.DataFrame({"x": [1.0, 2.0]})
     sdf = DataFrame(df=df, name="d")                 # x hat keine Einheit ("-")
     with caplog.at_level(logging.WARNING):
-        conv = sdf.convert_units({"x": "kN"})
+        conv = sdf.convert({"x": "kN"})
     assert "has no unit" in caplog.text
     assert list(conv.df["x"]) == [1.0, 2.0]          # unverändert
 
@@ -95,11 +95,11 @@ def test_convert_dict_column_without_unit_warns(caplog):
 def test_convert_dict_unknown_column_warns(caplog):
     sdf = _tensile()
     with caplog.at_level(logging.WARNING):
-        sdf.convert_units({"ghost": "kN"})           # Spalte existiert nicht
+        sdf.convert({"ghost": "kN"})           # Spalte existiert nicht
     assert "has no unit" in caplog.text
 
 
 def test_convert_dict_incompatible_raises():
     sdf = _tensile()
     with pytest.raises(units.UnitConversionError, match="incompatible"):
-        sdf.convert_units({"force": "mm"})           # Kraft -> Länge
+        sdf.convert({"force": "mm"})           # Kraft -> Länge

@@ -69,13 +69,13 @@ QUDT IRI, the pandas dtype maps to an XSD datatype:
 ]
 ```
 
-Now convert the whole table into the **[kN, mm, ms]** unit system. `convert_units`
+Now convert the whole table into the **[kN, mm, ms]** unit system. `convert`
 rescales the data of every column whose physical quantity the system addresses and
 updates its `unit` annotation — by default returning a converted copy, so the
 original stays in SI:
 
 ```python
-si = sdf.convert_units(["kN", "mm", "ms"])
+si = sdf.convert(["kN", "mm", "ms"])
 
 si.column_units              # {'time': 'ms', 'force': 'kN', 'displacement': 'mm'}
 list(si.df["force"])         # [0.0, 2.5, 5.0]     N  -> kN  (÷ 1000)
@@ -163,7 +163,7 @@ keys that match no column — are only logged as a warning, never dropped).
 
 ### Unit conversion
 
-`convert_units` rescales column data into a target **unit system** and updates the
+`convert` rescales column data into a target **unit system** and updates the
 `unit` annotations in one step (pure Python, no extra dependency — the curated table
 in [`sdata.units`][sdata.units] covers the common engineering units: length, force,
 time, mass, pressure, strain-rate and temperature). The argument may be
@@ -174,11 +174,11 @@ time, mass, pressure, strain-rate and temperature). The argument may be
 * a dict `{column: target_unit}` for explicit, per-column targets.
 
 ```python
-si = sdf.convert_units(["kN", "mm", "ms"])      # -> converted copy (original kept)
-sdf.convert_units(["kN", "mm", "ms"], inplace=True)   # mutate in place
+si = sdf.convert(["kN", "mm", "ms"])            # -> converted copy (original kept)
+sdf.convert(["kN", "mm", "ms"], inplace=True)        # mutate in place
 
 # explicit per-column targets
-sdf.convert_units({"stress": "GPa", "strain": "%"})
+sdf.convert({"stress": "GPa", "strain": "%"})
 ```
 
 Only columns whose physical quantity the system addresses are touched; columns

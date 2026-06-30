@@ -223,7 +223,7 @@ class DataFrame(ContentIntegrityMixin, Base):
         return new
 
     def _resolve_unit_targets(self, units, U):
-        """Bestimme je Spalte die Ziel-Einheit für :meth:`convert_units`.
+        """Bestimme je Spalte die Ziel-Einheit für :meth:`convert`.
 
         :param units: ``UnitSystem`` / Einheiten-Liste / ``{Spalte: Einheit}``-dict.
         :param U: das :mod:`sdata.units`-Modul (injiziert, spart Re-Import).
@@ -239,7 +239,7 @@ class DataFrame(ContentIntegrityMixin, Base):
                 targets[str(col)] = system.target_for(attr.unit)
         return targets
 
-    def convert_units(self, units, inplace=False):
+    def convert(self, units, inplace=False):
         """Convert numeric columns into a target unit system (or explicit units).
 
         ``units`` may be
@@ -271,13 +271,13 @@ class DataFrame(ContentIntegrityMixin, Base):
             attr = sdf._column_metadata.get(str(col))
             current = attr.unit if attr is not None else None
             if not current or current in ("-", ""):
-                logger.warning("convert_units: column %r has no unit; skipped", col)
+                logger.warning("convert: column %r has no unit; skipped", col)
                 continue
             if str(target) == str(current):
                 continue
             sdf._df[col] = U.convert(sdf._df[col], current, target)
             sdf.set_column(col, unit=str(target))
-            logger.info("convert_units: %s %s -> %s", col, current, target)
+            logger.info("convert: %s %s -> %s", col, current, target)
         return sdf
 
     def validate_table(self, schema=None):
