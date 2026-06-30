@@ -253,23 +253,6 @@ class DataFrame(ContentIntegrityMixin, Base):
         new._unit_system = self._unit_system
         return new
 
-    def _resolve_unit_targets(self, units, U):
-        """Bestimme je Spalte die Ziel-Einheit für :meth:`convert`.
-
-        :param units: ``UnitSystem`` / Einheiten-Liste / ``{Spalte: Einheit}``-dict.
-        :param U: das :mod:`sdata.units`-Modul (injiziert, spart Re-Import).
-        :return: ``{Spalte: Ziel-Einheit-oder-None}``.
-        """
-        if isinstance(units, dict):
-            return {str(col): unit for col, unit in units.items()}
-        system = units if isinstance(units, U.UnitSystem) else U.UnitSystem(units)
-        targets = {}
-        for col in self._df.columns:
-            attr = self._column_metadata.get(str(col))
-            if attr is not None:
-                targets[str(col)] = system.target_for(attr.unit)
-        return targets
-
     def convert(self, units=None, inplace=False):
         """Convert numeric columns into a target unit system (or explicit units).
 
@@ -277,25 +260,27 @@ class DataFrame(ContentIntegrityMixin, Base):
 
         * ``None`` (the default) — use this table's :attr:`unit_system`,
         * a :class:`~sdata.units.UnitSystem`,
-        * a list/tuple of unit symbols, e.g. ``["kN", "mm", "ms"]`` — wrapped into a
-          :class:`~sdata.units.UnitSystem` (one unit per physical quantity), or
+        * a list/tuple of base-unit symbols, e.g. ``["kN", "mm", "ms"]`` — wrapped into
+          a :class:`~sdata.units.UnitSystem` (a *consistent* system: **derived** units
+          such as stress→``GPa``, energy→``J``, velocity→``m/s`` follow from the base
+          units via dimensional algebra), or
         * a dict ``{column: target_unit}`` for explicit per-column targets.
 
         Every column that carries a unit in :attr:`column_metadata` and whose
-        physical quantity is addressed by ``units`` has its **values rescaled** and
-        its ``unit`` annotation updated. Columns without a unit, dimensionless
-        columns, and quantities the system does not cover are left untouched. By
-        default a converted **copy** is returned (data + metadata); pass
-        ``inplace=True`` to mutate this DataFrame. When a full unit system (not a
-        per-column dict) is applied, the result's :attr:`unit_system` is set to it.
+        **dimension** the system spans has its values rescaled and its ``unit``
+        annotation updated to the system's (derived) unit. Columns without a unit,
+        dimensionless columns, and dimensions the system does not span are left
+        untouched. By default a converted **copy** is returned (data + metadata);
+        pass ``inplace=True`` to mutate this DataFrame. When a full unit system (not
+        a per-column dict) is applied, the result's :attr:`unit_system` is set to it.
 
         :param units: target unit system, unit list, or ``{column: unit}`` mapping;
           ``None`` uses :attr:`unit_system`.
         :param inplace: mutate this DataFrame instead of returning a converted copy.
         :return: the converted :class:`DataFrame` (``self`` if ``inplace``).
         :raises ValueError: if ``units`` is ``None`` and no :attr:`unit_system` is set.
-        :raises sdata.units.UnitConversionError: on incompatible units (e.g. an
-          explicit mapping that converts a length column to a force unit).
+        :raises sdata.units.UnitConversionError: on incompatible units in a
+          ``{column: unit}`` mapping (e.g. a length column to a force unit).
         """
         from sdata import units as U
         if units is None:
@@ -303,25 +288,90 @@ class DataFrame(ContentIntegrityMixin, Base):
         if units is None:
             raise ValueError(
                 "no unit system: pass units to convert() or set .unit_system")
-        targets = self._resolve_unit_targets(units, U)
         sdf = self if inplace else self._converted_copy()
-        for col, target in targets.items():
-            if target is None:
+        if isinstance(units, dict):
+            sdf._convert_by_mapping(units, U)
+        else:
+            system = units if isinstance(units, U.UnitSystem) else U.UnitSystem(units)
+            sdf._convert_by_system(system)
+            sdf._unit_system = system
+        return sdf
+
+    def _convert_by_system(self, system):
+        """Rechne jede abgedeckte Spalte in die (hergeleitete) System-Einheit um."""
+        for col in self._df.columns:
+            attr = self._column_metadata.get(str(col))
+            current = attr.unit if attr is not None else None
+            if not current or current in ("-", ""):
                 continue
-            attr = sdf._column_metadata.get(str(col))
+            result = system.convert_value(self._df[col], current)
+            if result is None:                       # Dimension nicht aufgespannt
+                continue
+            converted, label = result
+            if str(label) == str(current):           # bereits in System-Einheit
+                continue
+            self._df[col] = converted
+            self.set_column(str(col), unit=str(label))
+            logger.info("convert: %s %s -> %s", col, current, label)
+
+    def _convert_by_mapping(self, mapping, U):
+        """Rechne genau die genannten Spalten in die jeweils angegebene Einheit um."""
+        for col, target in mapping.items():
+            col = str(col)
+            attr = self._column_metadata.get(col)
             current = attr.unit if attr is not None else None
             if not current or current in ("-", ""):
                 logger.warning("convert: column %r has no unit; skipped", col)
                 continue
             if str(target) == str(current):
                 continue
-            sdf._df[col] = U.convert(sdf._df[col], current, target)
-            sdf.set_column(col, unit=str(target))
+            self._df[col] = U.convert(self._df[col], current, target)
+            self.set_column(col, unit=str(target))
             logger.info("convert: %s %s -> %s", col, current, target)
-        if not isinstance(units, dict):
-            sdf._unit_system = units if isinstance(units, U.UnitSystem) \
-                else U.UnitSystem(units)
-        return sdf
+
+    def relabel_units(self, mapping, *, force=False):
+        """Set column units **without** rescaling the values (fix mislabeled units).
+
+        Use this when a column's numbers are already in the intended unit but its
+        ``unit`` annotation is wrong. Unlike :meth:`convert`, the data is left
+        untouched; only the ``unit`` field is overwritten. Mutates **in place** and
+        returns a report.
+
+        Relabeling within the same dimension (e.g. ``"N"`` → ``"kN"`` on data already
+        in kN) is allowed and logged. A **dimension change** (e.g. force → length) is
+        refused unless ``force=True`` — overwriting then logs a warning and is flagged
+        in the report.
+
+        :param mapping: ``{column: new_unit}``; columns may have a missing/unknown
+          current unit (the pure mislabel-fix case).
+        :param force: allow overwriting with a unit of a different dimension.
+        :return: a list of records ``{"column", "old", "new", "dimension_changed"}``.
+        :raises sdata.units.UnitConversionError: on a dimension change without
+          ``force=True``.
+        """
+        from sdata import units as U
+        report = []
+        for col, new_unit in mapping.items():
+            col = str(col)
+            new_unit = str(new_unit)
+            attr = self._column_metadata.get(col)
+            old = attr.unit if attr is not None else None
+            # "-"/"" zählen wie "keine Einheit": ein Label-Set, kein Dimensionswechsel
+            old_real = old if old and old not in ("-", "") else None
+            old_dim = U.dimension_of(old_real) if old_real else None
+            new_dim = U.dimension_of(new_unit)
+            dim_changed = (old_dim is not None and new_dim is not None
+                           and old_dim != new_dim)
+            if dim_changed and not force:
+                raise U.UnitConversionError(
+                    f"relabel_units: {col!r} {old!r} -> {new_unit!r} changes dimension; "
+                    f"pass force=True to override")
+            self.set_column(col, unit=new_unit)
+            logger.warning("relabel_units: %s %s -> %s%s", col, old, new_unit,
+                           " (dimension changed)" if dim_changed else "")
+            report.append({"column": col, "old": old, "new": new_unit,
+                           "dimension_changed": dim_changed})
+        return report
 
     def validate_table(self, schema=None):
         """Validate the df/column_metadata against a :class:`~sdata.schema.TableSchema`.

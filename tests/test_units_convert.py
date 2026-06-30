@@ -79,25 +79,108 @@ def test_convert_factor_offset_raises():
         units.convert_factor("degC", "K")
 
 
-def test_unit_system():
+def test_unit_system_base_units():
     sys = units.UnitSystem(["kN", "mm", "ms"])
     assert sys.unit_for("force") == "kN"
     assert sys.unit_for("length") == "mm"
     assert sys.unit_for("time") == "ms"
-    assert sys.unit_for("pressure") is None
     assert sys.target_for("N") == "kN"
     assert sys.target_for("s") == "ms"
     assert sys.target_for("mm") == "mm"
-    assert sys.target_for("MPa") is None              # Größe nicht im System
     assert sys.target_for("-") is None                # dimensionslos
+    assert sys.target_for("furlong") is None          # unbekannt
     assert repr(sys) == "UnitSystem(['kN', 'mm', 'ms'])"
 
 
-def test_unit_system_last_unit_wins():
-    sys = units.UnitSystem(["N", "kN"])               # beide force
-    assert sys.unit_for("force") == "kN"
+def test_unit_system_derives_units():
+    """v2: abgeleitete Einheiten werden aus der Dimensions-Algebra hergeleitet."""
+    sys = units.UnitSystem(["kN", "mm", "ms"])
+    # Spannung kN/mm² = GPa, Energie kN·mm = J, Geschwindigkeit mm/ms = m/s, Masse kg
+    assert sys.unit_for("pressure") == "GPa"
+    assert sys.unit_for("energy") == "J"
+    assert sys.unit_for("velocity") == "m/s"
+    assert sys.target_for("MPa") == "GPa"
+    assert sys.target_for("kg") == "kg"
+    assert sys.target_for("g") == "kg"
+    assert sys.target_for("1/s") == "1/ms"
+    # exakte numerische Umrechnung der abgeleiteten Größen
+    assert sys.convert_value(200.0, "MPa") == (0.2, "GPa")
+    assert sys.convert_value(12.0, "J") == (12.0, "J")
+    assert sys.convert_value(5000.0, "N") == (5.0, "kN")
+    assert sys.convert_value([1000.0, 2000.0], "N") == ([1.0, 2.0], "kN")
+
+
+def test_unit_system_factor_for():
+    sys = units.UnitSystem(["kN", "mm", "ms"])
+    assert sys.factor_for((1, 1, -2, 0)) == 1000.0    # Kraft -> kN
+    assert sys.factor_for((-1, 1, -2, 0)) == 1e9      # Druck -> GPa
+
+
+def test_unit_system_uncovered_and_unknown():
+    sys = units.UnitSystem(["kN", "mm", "ms"])        # keine Temperatur-Dimension
+    assert sys.target_for("degC") is None             # Dimension nicht aufgespannt
+    assert sys.convert_value(25.0, "degC") is None
+    assert sys.convert_value(1.0, "furlong") is None  # unbekannte Quell-Einheit
+    assert sys.unit_for("nonsense") is None            # unbekannte Größe
+
+
+def test_unit_system_mlt_and_temperature():
+    mlt = units.UnitSystem(["t", "mm", "s"])          # Masse-Länge-Zeit
+    assert mlt.target_for("N") == "N"                  # t·mm/s² = N
+    assert mlt.target_for("kg") == "t"
+    withT = units.UnitSystem(["mm", "kg", "s", "K"])
+    assert withT.convert_value(25.0, "degC") == (298.15, "K")   # Offset
+
+
+def test_unit_system_redundant_consistent_and_inconsistent():
+    ok = units.UnitSystem(["kN", "mm", "ms", "GPa"])  # GPa folgt bereits -> konsistent
+    assert ok.unit_for("pressure") == "GPa"
+    with pytest.raises(units.UnitConversionError, match="inconsistent"):
+        units.UnitSystem(["N", "kN"])                  # beide Kraft, widersprüchlich
+
+
+def test_unit_system_fractional_exponent():
+    """Solver liefert rationale Exponenten (Fläche-Basis -> Länge über 1/2)."""
+    sys = units.UnitSystem(["mm2", "s"])
+    assert sys.target_for("m") == "mm"
+    assert sys.convert_value(1.0, "m") == (1000.0, "mm")
+
+
+def test_unit_system_offset_base_rejected():
+    with pytest.raises(units.UnitConversionError, match="offset unit not allowed"):
+        units.UnitSystem(["degC", "mm"])
 
 
 def test_unit_system_unknown_unit_raises():
     with pytest.raises(units.UnitConversionError, match="unknown unit in system"):
         units.UnitSystem(["kN", "furlong"])
+
+
+def test_compose_and_canonical_helpers():
+    from fractions import Fraction
+    # kanonischer Treffer
+    assert units._canonical((1, 1, -2, 0), 1e3) == "kN"
+    assert units._canonical((-1, 1, -2, 0), 1e9) == "GPa"
+    assert units._canonical((1, 1, -2, 0), 1.234) is None   # kein Faktor-Treffer
+    # Komposition aus Basis-Symbolen
+    assert units._compose(["kN", "mm"], [Fraction(1), Fraction(-2)]) == "kN/mm^2"
+    assert units._compose(["kN", "mm"], [Fraction(1), Fraction(1)]) == "kN*mm"
+    assert units._compose(["mm"], [Fraction(-4)]) == "1/mm^4"          # nur Nenner
+    assert units._compose(["mm"], [Fraction(0)]) == "1"               # leer
+
+
+def test_dimension_of():
+    assert units.dimension_of("MPa") == (-1, 1, -2, 0)
+    assert units.dimension_of("kN") == (1, 1, -2, 0)
+    assert units.dimension_of("furlong") is None
+    assert units.dimension_of(None) == (0, 0, 0, 0)   # -> "-"
+
+
+def test_solve_linear_helper():
+    from fractions import Fraction
+    # eindeutig lösbar
+    assert units._solve_linear([[2, 0], [0, 3]], [4, 9]) == [Fraction(2), Fraction(3)]
+    # freie Variable (Spalte ohne Pivot) -> partikuläre Lösung mit 0
+    assert units._solve_linear([[1, 0], [0, 0]], [5, 0]) == [Fraction(5), Fraction(0)]
+    # widersprüchlich -> None
+    assert units._solve_linear([[1], [0]], [1, 7]) is None

@@ -2,16 +2,18 @@
 
 | Feld        | Wert                                                                 |
 |-------------|----------------------------------------------------------------------|
-| Status      | Proposed (Entwurf), **v2** — ersetzt den v1-Entwurf                  |
+| Status      | Accepted — implementiert (**v2**, ersetzt den v1-Entwurf)           |
 | Datum       | 2026-06-30                                                           |
 | Autor       | lepy <lepy@tuta.io>                                                  |
 | Komponente  | `sdata/units.py`, `sdata/sclass/dataframe.py`                       |
-| Betrifft    | `UnitSystem`, `DataFrame.convert`, `DataFrame.unit_system`, neu `relabel_units` |
-| Validierung | (geplant) 100 % Branch-Coverage; Solver- und Round-Trip-Tests        |
+| Betrifft    | `UnitSystem`, `DataFrame.convert`, `DataFrame.unit_system`, `DataFrame.relabel_units` |
+| Validierung | `units.py` 100 %, `sclass/dataframe.py` 100 %; Solver- und Round-Trip-Tests |
 
-> **Umsetzungsstand.** Vorschlag (v2). Baut auf dem in PR #86–#88 ausgelieferten
-> `units.convert`/`convert_factor`, `DataFrame.convert` und der record-only-Property
-> `DataFrame.unit_system` auf. v2 **ersetzt** den v1-Entwurf nach dem Review.
+> **Umsetzungsstand.** Implementiert. `sdata/units.py` trägt die Dimensions-Algebra
+> (Dimvektoren, exakter `Fraction`-Solver, `UnitSystem` aus Basis-Einheiten,
+> `dimension_of`/`convert_value`); `DataFrame.convert` rechnet abgeleitete Einheiten
+> mit, `DataFrame.relabel_units` korrigiert falsche Einheiten ohne Skalierung. v2
+> **ersetzt** den v1-Entwurf nach dem Review.
 
 ## 0. Was sich gegenüber v1 ändert
 
@@ -106,35 +108,41 @@ Dimension** `g` bestimmt: `log(system_factor(g)) = Σ_d g[d]·x_d`. Eigenschafte
 * **FLT oder MLT.** Der Nutzer darf Kraft *oder* Masse als Basis geben (`[kN, mm, ms]` ist
   force-length-time; `[kg, mm, ms]` mass-length-time) — der Solver löst beide; bei `[kN,
   mm, ms]` ergibt sich die Masse-Einheit zu `kg`.
-* **Temperatur** ist standardmäßig `K`, sofern keine Temperatur-Einheit angegeben ist.
+* **Temperatur** wird nur abgedeckt, wenn das System eine Temperatur-Einheit (z. B.
+  `K`) enthält; sonst bleiben Temperatur-Spalten unverändert (die Θ-Dimension ist nicht
+  aufgespannt). Offset-Einheiten (`degC`) sind als Basis **nicht** zulässig.
 * **Unter­bestimmt.** Spannen die angegebenen Einheiten eine Dimension nicht auf (z. B.
   `[kN, mm]` ohne Zeit → Geschwindigkeit nicht lösbar), bleiben Spalten dieser Dimension
   **unverändert** (geloggt) — analog „Größe nicht im System".
 * **Über­bestimmt.** Redundante, *konsistente* Angaben sind erlaubt (z. B. zusätzlich
   `GPa`, das aus `[kN, mm, ms]` bereits folgt); *widersprüchliche* Angaben sind ein Fehler
   (`UnitConversionError`).
-* **Exaktheit.** Der Solver arbeitet über `fractions.Fraction`-Exponenten (die Dimvektor-
-  Komponenten sind kleine ganze/rationale Zahlen), sodass die hergeleiteten Exponenten
-  driftfrei sind; nur der numerische Faktor ist `float`.
+* **Exaktheit.** Der Solver bestimmt die Koeffizienten exakt über `fractions.Fraction`;
+  der System-Faktor wird als exaktes rationales **Potenzprodukt** der Basis-Faktoren
+  berechnet (kein `log`/`exp`), sodass z. B. `5000 N → 5.0 kN` und `200 MPa → 0.2 GPa`
+  exakt herauskommen. Nur bei (seltenen) nicht-ganzzahligen Exponenten — etwa Länge aus
+  einem Flächen-Basis `[mm2, s]` über den Exponenten ½ — wird auf `float` zurückgefallen.
 
 ### 3.3 Hergeleitete Einheit: Faktor **und** Label
 
 Für eine Spalte mit Einheit `u` (Dimvektor `g`, `factor_u`) ist der Zielwert
 `wert · factor_u / system_factor(g)`. Das **Label** der Zieleinheit wird so gewählt:
 
-1. **Kanonischer Registry-Treffer:** gibt es eine bekannte Einheit mit exakt `(g,
-   system_factor(g))`, wird deren Symbol verwendet (`GPa`, `J`, `m/s`, `N`). Bevorzugt,
-   weil lesbar und interoperabel.
-2. **Sonst komponiert** aus den **Basis-Symbolen des Systems**, indem `g` in der Basis der
-   angegebenen System-Einheiten ausgedrückt wird (z. B. Dichte → `kg/mm³`,
-   Beschleunigung → `mm/ms²`).
+1. **Kanonischer Registry-Treffer:** gibt es ein Vorzugs-Symbol mit exakt `(g,
+   system_factor(g))`, wird es verwendet (`GPa`, `J`, `m/s`, `kN`, `1/ms`, `kg`).
+   Bevorzugt, weil lesbar und interoperabel.
+2. **Sonst komponiert** aus den **angegebenen Basis-Symbolen** des Systems (den
+   Koeffizienten der Lösung), Format `*` (mal), `/` (geteilt), `^n` (Exponent) — z. B.
+   Beschleunigung → `mm/ms^2`, Dichte → `kN*ms^2/mm^4` (force-basiert).
 
 Bei `[kN, mm, ms]` liefert das u. a. Spannung→`GPa`, Energie→`J`, Geschwindigkeit→`m/s`,
-Dehnrate→`1/ms`, Masse→`kg`, Dichte→`kg/mm³` — alle numerisch konsistent.
+Dehnrate→`1/ms`, Masse→`kg` (alle **kanonisch**); unbenannte Composites wie
+Beschleunigung→`mm/ms^2` werden aus den Basis-Symbolen komponiert — alle numerisch
+konsistent.
 
 > **Wrinkle.** Manche Dimvektoren sind mehrdeutig benannt (`1/s` vs. `Hz` vs. `Bq`,
-> Drehmoment `N·m` vs. Energie `J`). Schritt 1 nutzt eine **eindeutige** Vorzugs-Symbol-
-> Tabelle pro Dimvektor; bei Ambiguität wird Schritt 2 (komponiert) gewählt. Siehe §7.
+> Drehmoment `N·m` vs. Energie `J`). Schritt 1 nutzt eine **geordnete** Vorzugs-Symbol-
+> Liste (`_CANON_SYMBOLS`); ohne eindeutigen Treffer greift Schritt 2 (komponiert). Siehe §7.
 
 ### 3.4 API
 
@@ -148,21 +156,24 @@ DataFrame.convert(units=None, inplace=False)
 # Ziel-System nur MERKEN (kein Daten-Seiteneffekt) — unverändert
 sdf.unit_system = ["kN", "mm", "ms"]
 
-# falsche Einheiten KORRIGIEREN, Werte NICHT ändern (explizit pro Spalte)
-DataFrame.relabel_units(mapping, *, force=False) -> RelabelReport
+# falsche Einheiten KORRIGIEREN, Werte NICHT ändern (explizit pro Spalte, in place)
+DataFrame.relabel_units(mapping, *, force=False) -> list[dict]
 #   setzt unit der genannten Spalten ohne Skalierung; gleiche Dimension: ok + geloggt;
-#   andere Dimension: nur mit force=True, sonst UnitConversionError; Report listet alt→neu
+#   andere Dimension: nur mit force=True, sonst UnitConversionError.
+#   Report: Liste von {"column", "old", "new", "dimension_changed"}
 
 # units-Modul
-units.dimension_of(unit) -> DimVector
-units.UnitSystem(base_units)          # löst Basis-Dimensionen (§3.2)
-system.factor_for(dimvector) -> float
-system.unit_for(dimvector) -> (factor, label)   # §3.3
+units.dimension_of(unit) -> (L, M, T, Θ) | None
+units.UnitSystem(base_units)                    # löst die Basis-Dimensionen (§3.2)
+system.target_for(unit) -> label | None         # System-Einheit derselben Dimension
+system.convert_value(value, unit) -> (value, label) | None
+system.factor_for(dimvector) -> float | None
+system.unit_for(quantity_name) -> label | None  # z. B. "force" -> "kN"
 units.convert / units.convert_factor            # unverändert (zwei Einheiten gleicher Dim)
 ```
 
-`convert` verliert das v1-`rescale`-Flag; reines Umlabeln ist jetzt `relabel_units`
-(ehrlich benannt, mit Report und `force`).
+`convert` führt **kein** Relabeling-Flag; reines Umlabeln ist `relabel_units` (ehrlich
+benannt, mutiert in place, mit Report und `force`).
 
 ### 3.5 Semantik je Spalte
 
@@ -224,27 +235,29 @@ jetzt korrekt mitgeführt.
 ## 6. Sicherheit & semantische Schicht
 
 * **Audit-Spur.** `convert` loggt jede umgerechnete Spalte (`alt → neu`); `relabel_units`
-  gibt zusätzlich einen `RelabelReport` (Liste `{column, old, new, dimension_changed}`)
-  zurück.
-* **JSON-LD/QUDT bleibt konsistent.** Eine geänderte Einheit aktualisiert konsequent den
+  loggt jedes Umlabeln (Warnung) und gibt zusätzlich einen Report (Liste von
+  `{column, old, new, dimension_changed}`) zurück.
+* **JSON-LD/QUDT bleibt konsistent.** Eine geänderte Einheit fließt direkt in den
   `qudt:Quantity`/`unitRef`-Knoten der Spalte (das `to_jsonld`-Spalten-Mapping liest die
-  `unit` der Spalte). Bei `relabel_units` mit `dimension_changed` wird zusätzlich gewarnt,
-  falls die hinterlegte `ontology`/Größenklasse der Spalte nicht mehr zur neuen Einheit
-  passt (kein Auto-Override der Ontologie).
+  `unit` der Spalte). Die hinterlegte `ontology`/Größenklasse wird **nicht** automatisch
+  überschrieben; bei `relabel_units` mit Dimensionswechsel (`force=True`) macht die
+  geloggte Warnung auf eine mögliche Inkonsistenz aufmerksam.
 
-## 7. Tests / Coverage (geplant)
+## 7. Tests / Coverage (umgesetzt)
 
-* **Solver:** FLT (`[kN, mm, ms]`→ Masse `kg`), MLT (`[t, mm, s]`), unterbestimmt
-  (`[kN, mm]` → Geschwindigkeit unverändert), überbestimmt-konsistent (`[kN, mm, ms, GPa]`),
-  überbestimmt-widersprüchlich (Fehler).
+`units.py` **100 %**, `sclass/dataframe.py` **100 %** Line-Coverage; alle bestehenden
+`convert`/`unit_system`-Tests bleiben grün. Abgedeckt:
+
+* **Solver:** FLT (`[kN, mm, ms]` → Masse `kg`), MLT (`[t, mm, s]`), unterbestimmt
+  (`[kN, mm, ms]` → Temperatur/`degC` unverändert), überbestimmt-konsistent
+  (`[kN, mm, ms, GPa]`), überbestimmt-widersprüchlich (`["N","kN"]` → Fehler), rationaler
+  Exponent (`[mm2, s]` → Länge über ½); plus White-Box-Test des `_solve_linear`-Pfads.
 * **Abgeleitete Umrechnung:** Spannung `MPa→GPa`, Energie `J→J`, Geschwindigkeit `m/s`,
-  Dehnrate `1/s→1/ms`, Dichte (komponiertes Label `kg/mm³`).
-* **Relabel:** gleiche Dimension (ok+Report), einheitenlose Spalte labeln, inkompatibel
-  ohne/mit `force` (Fehler / Override+Warnung+Report).
-* **Temperatur:** `degC↔K` (offset), Verbot von Offset in zusammengesetzten Dimensionen.
+  Dehnrate `1/s→1/ms`, Masse `g→kg`; Komposition (`_compose`) aus Basis-Symbolen.
+* **Relabel:** gleiche Dimension (ok + Report), einheitenlose Spalte labeln, inkompatibel
+  ohne/mit `force` (Fehler / Override + Warnung + Report).
+* **Temperatur:** `degC→K` (Offset, System mit `K`); Offset-Einheit als Basis abgelehnt.
 * **Property** bleibt nachweislich record-only.
-* **Branch-Coverage** (nicht nur Line) für die neuen Verzweigungen; bestehende
-  `convert`/`unit_system`-Tests bleiben grün.
 
 ## 8. Kompatibilität / Migration
 
