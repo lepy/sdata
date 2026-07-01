@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Protocol, Tuple, runtime_checkable, TYPE_CHECKING
@@ -43,6 +44,30 @@ __all__ = [
     "ensure_sdata",
     "write_with_provenance",
 ]
+
+#: Feste Metadatentabelle des :class:`SqlWriter` — als **Literal** in statischem SQL
+#: verwendet (keine Identifier-Interpolation → keine SQL-Injection-Fläche). Welche
+#: Datentabelle eine Zeile beschreibt, steht in der Spalte ``target_table``.
+_SQL_META_TABLE = "sdata_dataframe_meta"
+_SQL_META_DDL = (
+    "CREATE TABLE IF NOT EXISTS sdata_dataframe_meta "
+    "(suuid TEXT, sname TEXT, target_table TEXT, sdata TEXT)"
+)
+_SQL_META_INSERT = (
+    "INSERT INTO sdata_dataframe_meta(suuid, sname, target_table, sdata) "
+    "VALUES (?, ?, ?, ?)"
+)
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _safe_identifier(name: str) -> str:
+    """Validate a SQL table identifier (allowlist) and return it unchanged.
+
+    :raises ValueError: if ``name`` is not a plain ``[A-Za-z_][A-Za-z0-9_]*`` token.
+    """
+    if not isinstance(name, str) or not _IDENTIFIER_RE.match(name):
+        raise ValueError(f"invalid SQL table identifier: {name!r}")
+    return name
 
 
 @dataclass
@@ -67,9 +92,14 @@ class WriteReceipt:
 class DataFrameWriter(Protocol):
     """Struktureller Vertrag jeder Senke."""
 
-    def write(self, sdf: "DataFrame") -> WriteReceipt: ...
-    def flush(self) -> None: ...
-    def close(self) -> None: ...
+    def write(self, sdf: "DataFrame") -> WriteReceipt:
+        ...
+
+    def flush(self) -> None:
+        ...
+
+    def close(self) -> None:
+        ...
 
 
 def ensure_sdata(obj: Any) -> "DataFrame":
@@ -112,6 +142,7 @@ class BaseDataFrameWriter(ABC):
                  require_metadata: Tuple[str, ...] = (),
                  require_columns: Tuple[str, ...] = (),
                  require_units: Tuple[str, ...] = ()):
+        """Store the require_* contract (Pflichtschlüssel/-spalten/-einheiten)."""
         self.require_metadata = tuple(require_metadata)
         self.require_columns = tuple(require_columns)
         self.require_units = tuple(require_units)
@@ -130,30 +161,43 @@ class BaseDataFrameWriter(ABC):
         logger.info("%s wrote %r -> %s", type(self).__name__, sdf.sname, receipt.target)
         return receipt
 
+    @staticmethod
+    def _absent(required: Tuple[str, ...], present) -> list:
+        """Return the required keys for which ``present(key)`` is falsy."""
+        return [key for key in required if not present(key)]
+
     def _check_contract(self, sdf: "DataFrame") -> None:
-        miss_m = [k for k in self.require_metadata if sdf.metadata.get(k) is None]
-        miss_c = [c for c in self.require_columns if c not in sdf.df.columns]
+        """Raise ``ValueError`` if the require_* contract is not met."""
         units = sdf.column_units
-        miss_u = [c for c in self.require_units if not units.get(c)]
-        if miss_m or miss_c or miss_u:
-            raise ValueError(
-                f"writer contract violated: metadata={miss_m}, "
-                f"columns={miss_c}, units={miss_u}")
+        missing = {
+            "metadata": self._absent(self.require_metadata,
+                                     lambda k: sdf.metadata.get(k) is not None),
+            "columns": self._absent(self.require_columns,
+                                    lambda c: c in sdf.df.columns),
+            "units": self._absent(self.require_units,
+                                  lambda c: bool(units.get(c))),
+        }
+        if any(missing.values()):
+            detail = ", ".join(f"{k}={v}" for k, v in missing.items())
+            raise ValueError(f"writer contract violated: {detail}")
 
     @abstractmethod
     def _write_impl(self, sdf: "DataFrame", meta: Dict[str, Any]) -> WriteReceipt:
         ...
 
     def flush(self) -> None:
-        pass
+        """No-op by default; stateful sinks override to commit."""
 
     def close(self) -> None:
+        """Flush and release resources (default: flush only)."""
         self.flush()
 
     def __enter__(self) -> "BaseDataFrameWriter":
+        """Enter the context manager (returns self)."""
         return self
 
     def __exit__(self, *exc: Any) -> None:
+        """Exit the context manager, closing the writer."""
         self.close()
 
 
@@ -164,6 +208,7 @@ class ParquetWriter(BaseDataFrameWriter):
     """
 
     def __init__(self, uri: str, **contract: Any):
+        """Bind the destination fsspec ``uri`` and the require_* contract."""
         super().__init__(**contract)
         self.uri = uri
 
@@ -185,6 +230,7 @@ class StoreWriter(BaseDataFrameWriter):
     """
 
     def __init__(self, target: Any, **contract: Any):
+        """Bind a store: an existing ``JSON1SQLiteStore`` (not owned) or a DB path (owned)."""
         super().__init__(**contract)
         from sdata.iolib.json1sqlitestore import JSON1SQLiteStore
 
@@ -218,30 +264,38 @@ class StoreWriter(BaseDataFrameWriter):
                             {"record_id": rid})
 
     def close(self) -> None:
+        """Flush and, if this writer owns the store, close its connection."""
         self.flush()
         if self._owns:
             self._store.conn.close()
 
 
 class SqlWriter(BaseDataFrameWriter):
-    """Flache Daten in eine relationale Tabelle + Sidecar-Metadatentabelle, atomar.
+    """Flache Daten in eine relationale Tabelle + gemeinsame Metadatentabelle, atomar.
 
-    Beide Schreibvorgänge (Datentabelle + ``<table>__sdata``) liegen in **einer**
-    Transaktion; ``flush``/``close`` committen. Der Provenienz-Schlüssel ist
-    ``str(sdf.suuid)`` (eindeutig), nicht ein Metadaten-Hash (RFC 0007 §6.2, F3/F4).
+    Die Metadaten gehen in die **feste** Tabelle ``sdata_dataframe_meta``
+    (:data:`_SQL_META_TABLE`), deren Spalte ``target_table`` die zugehörige Datentabelle
+    benennt. Das SQL der Metatabelle ist ein **Literal** (keine Identifier-Interpolation
+    → keine SQL-Injection-Fläche); der Datentabellenname wird gegen eine Allowlist
+    validiert und über ``pandas.to_sql`` (parametrisiert/gequotet) geschrieben. Meta-Insert
+    und ``to_sql`` liegen in **einer** Transaktion; bei Fehler verwirft ``rollback`` die
+    pending Metazeile (RFC 0007 §6.2, F3/F4).
     """
 
     def __init__(self, conn: Any, table: str = "dataframe", *,
-                 meta_table: Optional[str] = None, if_exists: str = "append",
-                 **contract: Any):
+                 if_exists: str = "append", **contract: Any):
+        """Bind a DBAPI/PEP-249 connection and ensure the shared meta table exists.
+
+        :param conn: sqlite3-/DBAPI-Verbindung (oder ``engine.raw_connection()``).
+        :param table: Zieltabelle für die flachen Daten (Allowlist-validiert).
+        :param if_exists: an ``pandas.to_sql`` durchgereicht (``append``/``replace``/``fail``).
+        """
         super().__init__(**contract)
         self._conn = conn
-        self.table = table
-        self.meta_table = meta_table or f"{table}__sdata"
+        self.table = _safe_identifier(table)
+        self.meta_table = _SQL_META_TABLE
         self.if_exists = if_exists
-        self._conn.execute(
-            f"CREATE TABLE IF NOT EXISTS {self.meta_table} "
-            f"(suuid TEXT, sname TEXT, target_table TEXT, sdata TEXT)")
+        self._conn.execute(_SQL_META_DDL)
 
     def _write_impl(self, sdf: "DataFrame", meta: Dict[str, Any]) -> WriteReceipt:
         suuid = str(sdf.suuid)
@@ -250,8 +304,7 @@ class SqlWriter(BaseDataFrameWriter):
         # das ``rollback`` die noch nicht committete Metadatenzeile (kein Waise, F3).
         try:
             self._conn.execute(
-                f"INSERT INTO {self.meta_table}(suuid, sname, target_table, sdata) "
-                f"VALUES (?, ?, ?, ?)",
+                _SQL_META_INSERT,
                 (suuid, sdf.sname, self.table, json.dumps(sdf.to_dict(), default=str)))
             sdf.df.to_sql(self.table, self._conn, if_exists=self.if_exists, index=False)
         except Exception:
@@ -261,6 +314,7 @@ class SqlWriter(BaseDataFrameWriter):
                             {"meta_table": self.meta_table})
 
     def flush(self) -> None:
+        """Commit the connection (transaction boundary for data + meta)."""
         self._conn.commit()
 
 
@@ -274,6 +328,7 @@ class GraphWriter(BaseDataFrameWriter):
 
     def __init__(self, target: Optional[str] = None, *, fmt: str = "turtle",
                  named_graphs: bool = False, **contract: Any):
+        """Configure the RDF target file, serialization ``fmt`` and named-graph mode."""
         super().__init__(**contract)
         self.target = target
         self.fmt = fmt
@@ -306,5 +361,6 @@ class GraphWriter(BaseDataFrameWriter):
                             {"text": text})
 
     def close(self) -> None:
+        """Serialize the accumulated named-graph dataset to ``target`` (if any)."""
         if self._dataset is not None and self.target:  # pragma: no cover
             self._dataset.serialize(destination=self.target, format="nquads")

@@ -8,7 +8,7 @@
 | Komponente  | **neu:** `sdata/iolib/writer.py`; nutzt `sdata/sclass/dataframe.py`, `sdata/semantic.py`, `sdata/iolib/json1sqlitestore.py` |
 | Betrifft    | `DataFrameWriter` (Protocol), `BaseDataFrameWriter` (ABC), `WriteReceipt`, `ParquetWriter`, `StoreWriter`, `SqlWriter`, `GraphWriter`, `ensure_sdata`, `write_with_provenance` |
 | Vorgeschichte | Folge von RFC 0002 (HDF5), RFC 0003 (Blob), RFC 0004 (DataFrame/Blob), RFC 0006 (Units) |
-| Validierung | `sdata/iolib/writer.py` **100 %**; 17 Tests (`tests/iolib/test_dataframe_writer.py`); Gesamtsuite 682 grün |
+| Validierung | `sdata/iolib/writer.py` **100 %**; 19 Tests (`tests/iolib/test_dataframe_writer.py`); Gesamtsuite grün |
 
 > **Umsetzungsstand.** Implementiert und getestet. Ein adversarieller Review des
 > v1-Entwurfs deckte zwei **belastbare Fehler** und mehrere Designschwächen auf; v2
@@ -23,6 +23,7 @@
 > | F6 | `write() -> Any` (Pfad/ID/IRI/Str) untergrub die Polymorphie. | Einheitliches **`WriteReceipt`** (`backend`/`sname`/`suuid`/`target`/`detail`) aus **jedem** `write`. |
 > | F7 | „SqlWriter mit Dokumentmodus" vermischte Objekt-Persistenz und relationale Tabellen. | Sauber getrennt: **`StoreWriter`** (Objekt) vs. **`SqlWriter`** (relational). |
 > | F8 | `for k,v in contract.items(): setattr(self,k,v)` schluckte Tippfehler still. | Explizite `require_metadata`/`require_columns`/`require_units`-Parameter am ABC-Konstruktor. |
+> | C1 | Statische Analyse (Codacy/Bandit) meldete den interpolierten Metatabellennamen im `SqlWriter`-SQL als **SQL-Injection (critical)**. | Feste Metatabelle `sdata_dataframe_meta` über **statisches SQL-Literal**; Datentabellenname per Allowlist (`_safe_identifier`) validiert; `_check_contract` unter die Komplexitätsgrenze refaktoriert. |
 >
 > Bestätigt und übernommen: `as_blob("parquet")` bettet `_sdata` ein (nutzt `to_parquet()`);
 > die Wahrheitsquelle bleibt `metadata`/`column_metadata`, nicht `df.attrs`.
@@ -273,28 +274,35 @@ Damit ist das Objekt per `store.get_id_by_key("_sdata_suuid", str(sdf.suuid))` b
 `"_sdata_sname"` wieder auffindbar (Test beweist es) und `DataFrame.from_dict(row["sdata"])`
 stellt es verlustfrei her.
 
-**`SqlWriter` — flache Daten in eine relationale Tabelle + Sidecar-Metadatentabelle,
+**`SqlWriter` — flache Daten in eine relationale Tabelle + gemeinsame Metadatentabelle,
 atomar (F3/F4).** pandas `to_sql` **committet intern** — der v1-Entwurf (Daten zuerst,
 Metadaten danach, ohne Transaktionsgrenze) konnte also verwaiste Datenzeilen ohne
-Metadaten hinterlassen. v2 kehrt die Reihenfolge um und macht es atomar:
+Metadaten hinterlassen. v2 kehrt die Reihenfolge um und macht es atomar. Die Metatabelle
+ist **fest** (`sdata_dataframe_meta`) und wird über **statisches SQL-Literal** angelegt/befüllt
+(keine Identifier-Interpolation → keine SQL-Injection-Fläche, C1); der Datentabellenname
+wird gegen eine Allowlist validiert:
 
 ```python
+_SQL_META_DDL = ("CREATE TABLE IF NOT EXISTS sdata_dataframe_meta "
+                 "(suuid TEXT, sname TEXT, target_table TEXT, sdata TEXT)")
+_SQL_META_INSERT = ("INSERT INTO sdata_dataframe_meta(suuid, sname, target_table, sdata) "
+                    "VALUES (?, ?, ?, ?)")
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
 class SqlWriter(BaseDataFrameWriter):
-    def __init__(self, conn, table="dataframe", *, meta_table=None,
-                 if_exists="append", **contract):
+    def __init__(self, conn, table="dataframe", *, if_exists="append", **contract):
         super().__init__(**contract)
-        self._conn, self.table = conn, table
-        self.meta_table = meta_table or f"{table}__sdata"
+        self._conn = conn
+        self.table = _safe_identifier(table)         # Allowlist statt Interpolation von Fremd-IDs
+        self.meta_table = _SQL_META_TABLE
         self.if_exists = if_exists
-        self._conn.execute(f"CREATE TABLE IF NOT EXISTS {self.meta_table} "
-                           f"(suuid TEXT, sname TEXT, target_table TEXT, sdata TEXT)")
+        self._conn.execute(_SQL_META_DDL)            # Literal
 
     def _write_impl(self, sdf, meta):
         suuid = str(sdf.suuid)                       # F4: SUUID -> str für Bind-Parameter
         try:
-            self._conn.execute(                      # Metazeile ZUERST (pending)
-                f"INSERT INTO {self.meta_table}(suuid, sname, target_table, sdata) "
-                f"VALUES (?,?,?,?)",
+            self._conn.execute(                      # Metazeile ZUERST (pending), Literal + Params
+                _SQL_META_INSERT,
                 (suuid, sdf.sname, self.table, json.dumps(sdf.to_dict(), default=str)))
             sdf.df.to_sql(self.table, self._conn,    # dessen finaler commit schreibt BEIDE fest
                           if_exists=self.if_exists, index=False)
@@ -307,6 +315,9 @@ class SqlWriter(BaseDataFrameWriter):
     def flush(self):
         self._conn.commit()
 ```
+
+Die zugehörige Datentabelle einer Metazeile steht in der Spalte `target_table`
+(`… WHERE target_table = ?`); die feste Metatabelle ersetzt den v1-`<table>__sdata`-Namen.
 
 **Provenienz-Schlüssel `str(sdf.suuid)`** statt eines SHA-256-Hashs der Metadaten: der
 `suuid` ist per Konstruktion eindeutig (der Hash kollidiert bei identischen Metadaten) und
@@ -443,8 +454,8 @@ with StoreWriter("runs.db") as w:
 
 ## 9. Tests / Coverage (umgesetzt)
 
-`sdata/iolib/writer.py` **100 %** Line-Coverage; **17** Tests in
-`tests/iolib/test_dataframe_writer.py`; die Gesamtsuite (682) bleibt grün. Abgedeckt:
+`sdata/iolib/writer.py` **100 %** Line-Coverage; **19** Tests in
+`tests/iolib/test_dataframe_writer.py`; die Gesamtsuite bleibt grün. Abgedeckt:
 
 * **`ensure_sdata`**: sdata-`DataFrame` → identisch; pandas-`df` mit/ohne `df.attrs["_sdata"]`
   → Metadaten restauriert bzw. leer; Fremdtyp → `TypeError`.
@@ -458,9 +469,10 @@ with StoreWriter("runs.db") as w:
   gesetzt, `from_dict(row["sdata"])` ≡ `sdf`, und `get_id_by_key("_sdata_suuid"/"_sdata_sname", …)`
   **findet** den Record; Pfad-Ziel wird bei `close` geschlossen und über eine **neue**
   Verbindung wieder gelesen (Persistenz).
-* **SqlWriter**: relationaler Roundtrip (`read_sql` ≡ `df`), Sidecar `runs__sdata` unter
-  `str(suuid)`/`sname`; **Atomarität (F3)**: bei `to_sql`-Fehler mit bereits pending Metazeile
-  wird diese durch `rollback` verworfen (keine Waise).
+* **SqlWriter**: relationaler Roundtrip (`read_sql` ≡ `df`), Metatabelle `sdata_dataframe_meta`
+  (`target_table='runs'`) unter `str(suuid)`/`sname`; **Atomarität (F3)**: bei `to_sql`-Fehler
+  mit bereits pending Metazeile wird diese durch `rollback` verworfen (keine Waise);
+  Interop über `engine.raw_connection()`; unsicherer Tabellenname → `ValueError` (Allowlist).
 * **GraphWriter** (F2): `fmt="json-ld"` schreibt die Datei **tatsächlich** (parsebar);
   `fmt="turtle"` ohne Ziel liefert die Turtle im `WriteReceipt.detail`; `named_graphs=True`
   ohne `rdflib` wirft die geführte `ImportError`.

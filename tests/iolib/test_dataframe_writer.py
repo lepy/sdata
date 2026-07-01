@@ -92,8 +92,10 @@ def test_contract_ok_and_violations():
 
 
 def test_base_is_abstract():
+    # dynamische Subklasse ohne _write_impl -> Instanziierung wirft TypeError
+    incomplete = type("Incomplete", (BaseDataFrameWriter,), {})
     with pytest.raises(TypeError):
-        BaseDataFrameWriter()  # abstrakte _write_impl
+        incomplete()
 
 
 # ------------------------------------------------------------------- Parquet
@@ -165,7 +167,8 @@ def test_sql_writer_relational_roundtrip_and_meta():
     pd.testing.assert_frame_equal(data.reset_index(drop=True), sdf.df.reset_index(drop=True))
 
     row = conn.execute(
-        "SELECT suuid, sname, sdata FROM runs__sdata").fetchone()
+        "SELECT suuid, sname, sdata FROM sdata_dataframe_meta WHERE target_table = ?",
+        ("runs",)).fetchone()
     assert row[0] == str(sdf.suuid) and row[1] == sdf.sname
     back = DataFrame.from_dict(json.loads(row[2]))
     pd.testing.assert_frame_equal(back.df, sdf.df)
@@ -186,7 +189,9 @@ def test_sql_writer_via_sqlalchemy_raw_connection():
             rcpt = w.write(sdf)
     assert rcpt.backend == "sql"
     assert raw.execute("SELECT count(*) FROM runs").fetchone()[0] == len(sdf.df)
-    row = raw.execute("SELECT suuid, sname FROM runs__sdata").fetchone()
+    row = raw.execute(
+        "SELECT suuid, sname FROM sdata_dataframe_meta WHERE target_table = ?",
+        ("runs",)).fetchone()
     assert row[0] == str(sdf.suuid) and row[1] == sdf.sname
     raw.close()
 
@@ -201,7 +206,15 @@ def test_sql_writer_atomicity_rolls_back_pending_meta():
     with pytest.raises(ValueError):
         w.write(sdf)                                   # Metazeile pending, dann to_sql-Fehler
     # das rollback im Writer hat die pending Metazeile verworfen
-    assert conn.execute("SELECT count(*) FROM runs__sdata").fetchone()[0] == 0
+    assert conn.execute(
+        "SELECT count(*) FROM sdata_dataframe_meta").fetchone()[0] == 0
+
+
+def test_sql_writer_rejects_unsafe_table_name():
+    conn = sqlite3.connect(":memory:")
+    with pytest.raises(ValueError, match="invalid SQL table identifier"):
+        SqlWriter(conn, table="runs; DROP TABLE x")     # Identifier-Allowlist greift
+    conn.close()
     conn.close()
 
 
