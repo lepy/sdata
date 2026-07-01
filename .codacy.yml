@@ -1,0 +1,10 @@
+---
+# Codacy-Konfiguration.
+#
+# Testdateien werden von der statischen Analyse ausgenommen: Werkzeuge wie Bandit
+# melden dort jedes `assert` (B101 "Use of assert detected") und pylint die bewusste
+# Instanziierung abstrakter Klassen in Negativ-Tests — beides ist in einer pytest-Suite
+# idiomatisch und kein Defekt. Die Coverage-Messung ist davon unberührt (separate
+# Pipeline; die Testsuite bleibt Pflicht, siehe ci/local-ci.sh).
+exclude_paths:
+  - 'tests/**'
