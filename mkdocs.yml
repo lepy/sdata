@@ -64,6 +64,7 @@ nav:
   - Usage:
       - Cookbook (end to end): usage/cookbook.md
       - Tabular data (DataFrame): usage/dataframe.md
+      - Writing DataFrames (writers): usage/writer.md
       - Image metadata: usage/image-metadata.md
       - Machine-readable metadata: usage/metadata-jsonld.md
   - API reference: api.md
@@ -74,5 +75,8 @@ nav:
       - "0004 — DataFrame and Blob": rfc/0004-dataframe-and-blob.md
       - "0005 — Native image metadata": rfc/0005-native-image-metadata.md
       - "0006 — Consistent unit systems (dimensional algebra)": rfc/0006-unit-system-conversion-on-set.md
+      - "0007 — DataFrame writer interface": rfc/0007-dataframe-writer-interface.md
+      - "0008 — Bestandsaufnahme und Roadmap": rfc/0008-bestandsaufnahme-roadmap.md
+      - "0008 — Umsetzungsstand": rfc/0008-umsetzung.md
   - Releasing: releasing.md
   - Changelog: changelog.md

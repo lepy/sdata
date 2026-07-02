@@ -258,6 +258,12 @@ All file writers share the same shape: an optional `path` (writes
 `<sname>.<ext>`), an optional exact `filename`, and a `sidecar` flag; without a
 path they return bytes (or, for CSV, a string).
 
+!!! tip "Pluggable sinks"
+    For a **uniform** `write()` contract across interchangeable backends (Parquet
+    file/object store, SQLite store, relational SQL, RDF graph) — with resource
+    lifecycle and a metadata contract — see the
+    [Writer interface](writer.md) ([`sdata.iolib.writer`][sdata.iolib.writer], RFC 0007).
+
 ```python
 # Parquet (.spq) — metadata embedded in the schema; zstd-compressed
 sdf.to_parquet(path="out", sidecar=True)        # -> out/<sname>.spq + sidecar

@@ -20,6 +20,14 @@ omitted.
 
 ::: sdata.sclass.blob
 
+## sdata.iolib.writer
+
+::: sdata.iolib.writer
+
+## sdata.iolib.json1sqlitestore
+
+::: sdata.iolib.json1sqlitestore
+
 ## sdata.imagemeta
 
 ::: sdata.imagemeta
