@@ -60,8 +60,10 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
   test_vault.py entfernt, beide `omit`-Einträge weg)
 - [x] **B4a** RFC 0012 Ablösung `deprecated.Data` schreiben (Migrationstabelle,
   Deprecation-Stufen) — PR #108
-- [ ] **B4b** RFC 0012 umsetzen Stufe 1: `DeprecationWarning` + interne Abhängigkeiten
-  portieren (`doe.py`, `iolib/hdf.py`, `iolib/pud.py`)
+- [x] **B4b** RFC 0012 umsetzen Stufe 1: `DeprecationWarning` + interne Abhängigkeiten
+  portieren (`doe.py`, `iolib/hdf.py`, `iolib/pud.py`) — PR #109 (Warnung nur bei
+  **direkter** `Data()`-Instanziierung via `type(self) is Data`; Subklassen-Port
+  = Stufe 2/2.0; `DataFrame` als Default-Export)
 - [ ] **B5a** RFC 0013 Packaging-Modernisierung schreiben (PEP 621, Extras,
   `contrib/`-Triage)
 - [ ] **B5b** RFC 0013 implementieren (`[project]`-Tabelle, `requirements.txt`-Rolle,
@@ -98,3 +100,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | B3b-1 | `feat/persistence-consolidation` (PR #106) | `JSONSQLiteStore.__init__` → `DeprecationWarning` (zlib bleibt Option B/Nicht-Ziel); `DataFrameGroup` hält jetzt `sclass.DataFrame`-Mitglieder (volle Spaltensemantik), `from_dict` liest neues `{sdata}`- **und** Legacy-`{parquet,column_metadata}`-Layout, API abwärtskompatibel; `write_group`/`read_group` (eine Senke/Quelle, Store-Transaktion); alle vier Module 100 %; `make ci` grün (100 %) |
 | 2026-07-02 | B3b-2 | `chore/remove-vault` (PR #107) | `sdata/iolib/vault.py` (an deprecated `Data`, doppelte `reindex`), `sdata/node.py` (einziger Vault-Nutzer, von nichts importiert) und `tests/test_vault.py` entfernt; beide `omit`-Einträge (`node.py`/`vault.py`) raus → weniger ungemessener Code; `StoreWriter`/`StoreReader` ersetzen den Vault funktional; `make ci` grün (100 %) |
 | 2026-07-02 | B4a | `docs/rfc-0012-data-deprecation` (PR #108) | RFC 0012 Draft: Migrationstabelle Data→sclass (1:1 / ersetzt / streichen), Deprecation-Treppe (Stufe 1 = Warnung + `DataFrame` als Default-Export + interne Nutzer portieren; Stufe 2 = 2.0-Entfernung), Deserialisierung alter `Data`-Objekte via RFC-0010-Format-Migration; Implementierung = B4b |
+| 2026-07-02 | B4b | `feat/data-deprecation-stage1` (PR #109) | `Data.__init__` warnt bei **direkter** Instanziierung (`type(self) is Data`; Subklassen `Pud`/`experiments` ungestört — Port = Stufe 2); `DataFrame` an erste Stelle in `__all__`/`SDATACLS`, `Data` bleibt auflösbar (Deserialisierung); 5 Tests; Import bleibt warnungsfrei; `make ci` grün (100 %) |
