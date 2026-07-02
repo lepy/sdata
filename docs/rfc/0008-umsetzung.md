@@ -49,7 +49,7 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
   zu `WriteReceipt`) — PR #102
 - [x] **B2a** RFC 0010 Format-Versionierung schreiben (`_sdata_format_version`,
   Toleranz-/Migrationsregeln) — PR #103
-- [ ] **B2b** RFC 0010 implementieren (Feld + Prüfung in allen `from_*`, Migrations-Hook)
+- [x] **B2b** RFC 0010 implementieren (Feld + Prüfung in allen `from_*`, Migrations-Hook) — PR #104
 - [ ] **B3a** RFC 0011 Persistenz-Konsolidierung schreiben (Store-Zwilling, Vault,
   `DataFrameGroup`/`write_group`)
 - [ ] **B3b** RFC 0011 implementieren (inkl. `omit`-Liste: portierte Module in die
@@ -89,3 +89,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | B1a | `docs/rfc-0009-dataframe-reader` (PR #101) | RFC 0009 Draft: `DataFrameReader`-Protocol + `BaseDataFrameReader`-ABC (Eingangsvertrag via gemeinsamer `check_contract`-Funktion), `ParquetReader`/`StoreReader`/`SqlReader` (Snapshot vs. `fresh`), Roundtrip-Gesetze §6; kein `GraphReader` (Senke ist metadaten-only); Implementierung = B1b |
 | 2026-07-02 | B1b | `feat/dataframe-reader-interface` (PR #102) | `sdata/iolib/reader.py` (83 Stmts, 100 %): Protocol/ABC + `ParquetReader`/`StoreReader` (Selektor suuid→sname→int-ID, `iter()` überspringt Fremd-Records)/`SqlReader` (Snapshot ≡; `fresh=True` kumulativ); `check_contract` aus dem Writer extrahiert (Delegation, kein API-Bruch); 14 neue Tests decken alle §6-Roundtrip-Gesetze; `make ci` grün (100 %) |
 | 2026-07-02 | B2a | `docs/rfc-0010-format-versioning` (PR #103) | RFC 0010 Draft: `_sdata_format_version` (int, getrennt von Paket-`_sdata_version`), Toleranzregeln (fehlend=v1 / gleich / älter→migrieren / neuer→Warnung bzw. `strict`→Fehler), ein Choke-Point in `from_dict`/`_restore_from_attrs`, Migrations-Treppe (Vorbild `PRAGMA user_version`); Implementierung = B2b |
+| 2026-07-02 | B2b | `feat/format-versioning` (PR #104) | `sdata/format.py` (49 Stmts, 100 %): `read_format_version`/`ensure_compatible`/`register_migration` + `FormatVersionWarning`/`IncompatibleFormatError`; `Base` setzt `_sdata_format_version=1` (int), Choke-Point in `Base.from_dict`(+`strict`)/`DataFrame.from_dict`/`_restore_from_attrs`; fehlend=v1 rückwärtskompatibel; 13 Tests inkl. Migrations-Treppe; `make ci` grün (100 %) |
