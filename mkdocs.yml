@@ -4,7 +4,7 @@ site_url: https://lepy.github.io/sdata/
 repo_url: https://github.com/lepy/sdata
 repo_name: lepy/sdata
 edit_uri: edit/master/docs/
-copyright: MIT / Apache-2.0
+copyright: MIT License
 
 theme:
   name: material
