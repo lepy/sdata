@@ -225,7 +225,7 @@ class Attribute(object):
 
     ontology = property(fget=_get_ontology, fset=_set_ontology, doc="Attribute ontology")
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """Return a dict of the attribute's items (name/value/unit/dtype/...)."""
         return {'name': self.name,
                 'value': self.value,
@@ -349,11 +349,11 @@ class Metadata(object):
             attr.value = value
         self._attributes[prefix + attr.name] = attr
 
-    def get_attr(self, name):
+    def get_attr(self, name: str) -> Optional["Attribute"]:
         """get Attribute by name"""
         return self._attributes.get(name, None)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict[str, Any]:
         """serialize attributes to dict"""
         d = {}
         for attr in self.attributes.values():
@@ -726,14 +726,14 @@ class Metadata(object):
         attr.name = newname
         self._attributes[newname] = attr
 
-    def get(self, name, default=None):
+    def get(self, name: str, default: Any = None) -> Any:
         #default = default or Attribute(name=name, value=None)
         if self._attributes.get(name) is not None:
             return self._attributes.get(name)
         else:
             return default
 
-    def keys(self):
+    def keys(self) -> List[str]:
         """
 
         :return: list of Attribute names
