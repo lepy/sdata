@@ -5,7 +5,7 @@
 | Status      | Draft                                                                                     |
 | Datum       | 2026-07-02                                                                                |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
-| Komponente  | `sdata/deprecated/data.py`, `sdata/__init__.py` (Export), interne Nutzer `sdata/iolib/pud.py`, `sdata/iolib/hdf.py`, `sdata/experiments/*` |
+| Komponente  | `sdata/deprecated/data.py`, `sdata/__init__.py` (Export), interne Nutzer `sdata/iolib/pud.py`, `sdata/experiments/*` (`sdata/iolib/hdf.py` 2026-07-02 entfernt statt portiert) |
 | Betrifft    | `Data` (Alt-Generation), `SDATACLS`/`__all__`, `Pud`, `TestProgram`/`Workbook`/`Image(alt)` |
 | Vorgeschichte | RFC 0008 (Roadmap, B1); parallel zu RFC 0009–0011 (die die `sclass`-Ersatz-APIs liefern) |
 | Validierung | geplant: `DeprecationWarning`-Tests, portierte interne Nutzer, Migrationstabelle in den Docs |
