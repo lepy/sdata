@@ -48,6 +48,55 @@ def test_from_csv_missing_file_raises(tmp_path):
         DataFrame.from_csv(str(tmp_path / "nope.csv"))
 
 
+# ------------------------------------- CSV-Sidecar-Roundtrip (RFC 0008, A3/B6)
+def test_csv_sidecar_roundtrip(tmp_path):
+    sdf = DataFrame(df=_df(), name="specimen", description="d")
+    sdf.metadata.add("max_force", 12.5, unit="kN", dtype="float",
+                     ontology="bfo:Quality")
+    sdf.set_column("weight", unit="kg", label="Gewicht", description="w")
+    fp = sdf.to_csv(path=str(tmp_path), sidecar=True)
+    back = DataFrame.from_csv(fp)                    # Sidecar-Konsum ist Default
+    assert back.name == "specimen"
+    assert back.sname == sdf.sname
+    assert str(back.suuid) == str(sdf.suuid)
+    attr = back.metadata.get("max_force")
+    assert attr.value == 12.5 and attr.unit == "kN"
+    assert back.column_units["weight"] == "kg"
+    assert back.col["weight"].label == "Gewicht"
+    assert back.col["weight"].description == "w"
+    pd.testing.assert_frame_equal(back.df, sdf.df)
+
+
+def test_csv_sidecar_opt_out(tmp_path):
+    sdf = DataFrame(df=_df(), name="specimen")
+    sdf.metadata.add("max_force", 12.5, unit="kN", dtype="float")
+    fp = sdf.to_csv(path=str(tmp_path), sidecar=True)
+    back = DataFrame.from_csv(fp, sidecar=False)     # Schalter: nur Daten
+    assert back.metadata.get("max_force") is None
+    assert back.name != "specimen"
+
+
+def test_csv_sidecar_custom_filename_next_to_file(tmp_path):
+    sdf = DataFrame(df=_df(), name="specimen")
+    sdf.metadata.add("license", "CC-BY-4.0", dtype="str")
+    target = str(tmp_path / "explicit.csv")
+    sdf.to_csv(filename=target, sidecar=True)
+    # Sidecar liegt neben der CSV (<stem>.meta.jsonld), nicht im CWD
+    assert os.path.exists(str(tmp_path / "explicit.meta.jsonld"))
+    back = DataFrame.from_csv(target)
+    assert back.metadata.get("license").value == "CC-BY-4.0"
+
+
+def test_csv_sidecar_broken_is_ignored(tmp_path):
+    sdf = DataFrame(df=_df(), name="specimen")
+    fp = sdf.to_csv(path=str(tmp_path), sidecar=True)
+    sidecar = os.path.splitext(fp)[0] + ".meta.jsonld"
+    with open(sidecar, "w") as fh:
+        fh.write("{ kaputt")                          # unparsebar -> nur Daten
+    back = DataFrame.from_csv(fp)
+    assert list(back.df.columns) == ["weight", "height"]
+
+
 # ------------------------------------------------------------ Arrow (pyarrow)
 def test_to_arrow_embeds_metadata():
     pytest.importorskip("pyarrow")
