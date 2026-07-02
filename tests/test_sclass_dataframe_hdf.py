@@ -118,3 +118,29 @@ def test_from_hdf_empty_file_raises(tmp_path):
         pass
     with pytest.raises(ValueError):
         DataFrame.from_hdf(fp)
+
+
+def test_hdf_native_column_attrs_readable_via_h5py(tmp_path):
+    # unit/label/ontology liegen zusätzlich nativ als Dataset-Attribute (RFC 0002)
+    fp = _annotated().to_hdf(path=str(tmp_path))
+    with h5py.File(fp, "r") as f:
+        grp = f[list(f.keys())[0]]
+        import json
+        cols = json.loads(grp.attrs["_columns"])
+        i = cols.index("weight")
+        a = grp["col_{}".format(i)].attrs
+        assert a["unit"] == "kg"
+        assert a["label"] == "Gewicht"
+        assert a["ontology"] == "bfo:Quality"
+        # nicht-annotierte Spalte trägt keine unit
+        assert "unit" not in grp["col_{}".format(cols.index("height"))].attrs
+
+
+def test_hdf_merges_native_attrs_without_sdata_blob(tmp_path):
+    # _sdata-Blob entfernen -> die nativen Dataset-Attribute rekonstruieren die Einheiten
+    fp = _annotated().to_hdf(path=str(tmp_path))
+    with h5py.File(fp, "a") as f:
+        del f[list(f.keys())[0]].attrs["_sdata"]
+    back = DataFrame.from_hdf(fp)
+    assert back.get_column("weight").unit == "kg"
+    assert back.get_column("weight").ontology == "bfo:Quality"

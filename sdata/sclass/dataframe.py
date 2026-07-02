@@ -1131,6 +1131,14 @@ class DataFrame(ContentIntegrityMixin, Base):
                     dtype=_h5_string_dtype() if kind == "str" else None,
                     compression=compression)
                 ds.attrs["kind"] = kind
+                # Per-Spalten-Annotationen zusätzlich nativ als Dataset-Attribute
+                # (tool-agnostisch lesbar via h5py/HDFView/h5ls), neben dem _sdata-Blob.
+                col_attr = self._column_metadata.get(str(col))
+                if col_attr is not None:
+                    for fkey in _COL_FIELD_KEYS:
+                        val = getattr(col_attr, fkey, "")
+                        if val not in (None, "", "-"):
+                            ds.attrs[fkey] = str(val)
         logger.info(f"DataFrame HDF5 saved to {filepath}")
         if sidecar:
             self.write_sidecar(path)
@@ -1161,10 +1169,21 @@ class DataFrame(ContentIntegrityMixin, Base):
                     raise ValueError(f"no DataFrame group in {filepath}")
                 key = groups[0]
             grp = f[key]
+            native = {}
             if "_columns" in grp.attrs:
                 columns = json.loads(grp.attrs["_columns"])
-                data = {col: _h5_decode(grp["col_{}".format(i)])
-                        for i, col in enumerate(columns)}
+                data = {}
+                for i, col in enumerate(columns):
+                    ds = grp["col_{}".format(i)]
+                    data[col] = _h5_decode(ds)
+                    ann = {}
+                    for fkey in _COL_FIELD_KEYS:
+                        if fkey in ds.attrs:
+                            raw_val = ds.attrs[fkey]
+                            ann[fkey] = (raw_val.decode("utf-8")
+                                         if isinstance(raw_val, bytes) else str(raw_val))
+                    if ann:
+                        native[col] = ann
                 df = pd.DataFrame(data, columns=columns)
                 if grp.attrs.get("_has_index"):
                     name = grp.attrs.get("_index_name") or None
@@ -1175,6 +1194,10 @@ class DataFrame(ContentIntegrityMixin, Base):
         tt = cls()
         tt.df = df
         tt._restore_from_attrs(json.loads(raw) if raw else None)
+        # native Per-Spalten-Attribute mergen (auch für fremd geschriebene Dateien
+        # ohne _sdata-Blob), symmetrisch zu from_arrow._merge_field_metadata
+        for col, ann in native.items():
+            tt.set_column(col, **ann)
         return tt
 
 
