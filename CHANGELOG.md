@@ -8,6 +8,17 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Added
 
+- **Writer interface for DataFrames (`sdata.iolib.writer`, RFC 0007).** A unifying sink
+  abstraction over the existing serializers: a `DataFrameWriter` protocol +
+  `BaseDataFrameWriter` template method with a `require_metadata`/`require_columns`/
+  `require_units` contract, a uniform `WriteReceipt` return, and the `ensure_sdata` /
+  `write_with_provenance` bridge (metadata truth source stays `metadata`/`column_metadata`,
+  not `df.attrs`). Four sinks: `ParquetWriter` (fsspec URI, embedded `_sdata`),
+  `StoreWriter` (object persistence into a `JSON1SQLiteStore`, findable by `suuid`/`sname`
+  via a flattening adapter), `SqlWriter` (relational table + shared `sdata_dataframe_meta`
+  table, atomic data+metadata write, allowlisted identifiers) and `GraphWriter`
+  (RDF/Turtle or JSON-LD, optional named-graph accumulation via `sdata[rdf]`). Runs on the
+  stdlib `sqlite3`; a `usage/writer.md` guide and RFC 0007 document it.
 - **Unit conversion via dimensional algebra (`sdata.units`, RFC 0006).** A pure-Python
   conversion layer: `convert`/`convert_factor`/`quantity_of`/`dimension_of` and a
   `UnitSystem` that is **solved from its base units** — so a *consistent* system such as
