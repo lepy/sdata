@@ -629,17 +629,30 @@ class DataFrame(ContentIntegrityMixin, Base):
             self.df.to_csv(filepath, **kwargs)
             logger.info(f"DataFrame CSV saved to {filepath}")
             if sidecar:
-                self.write_sidecar(path)
+                # neben die CSV (<stem>.meta.jsonld), damit from_csv ihn findet;
+                # beim Default-Dateinamen identisch zu <sname>.meta.jsonld
+                self.write_sidecar(self._csv_sidecar_path(filepath))
             return filepath
         return self.df.to_csv(**kwargs)
 
+    @staticmethod
+    def _csv_sidecar_path(filepath):
+        """Sidecar-Pfad zu einer CSV-Datei: ``<stem>.meta.jsonld`` daneben."""
+        return os.path.splitext(filepath)[0] + ".meta.jsonld"
+
     @classmethod
-    def from_csv(cls, filepath, **kwargs):
+    def from_csv(cls, filepath, sidecar=True, **kwargs):
         """Load a DataFrame from a CSV file (pure pandas).
 
+        If a ``<stem>.meta.jsonld`` sidecar (written by ``to_csv(sidecar=True)``)
+        exists next to the file, its dataset metadata and column annotations
+        (unit/label/description) are merged back automatically — pass
+        ``sidecar=False`` to load the data only.
+
         :param filepath: path to the CSV file.
+        :param sidecar: consume an adjacent metadata sidecar if present (default True).
         :param kwargs: forwarded to :func:`pandas.read_csv`.
-        :return: a :class:`DataFrame` instance (data only; use a sidecar for metadata).
+        :return: a :class:`DataFrame` instance.
         :raises FileNotFoundError: if ``filepath`` does not exist.
         """
         if not os.path.exists(filepath):
@@ -647,7 +660,46 @@ class DataFrame(ContentIntegrityMixin, Base):
         df = pd.read_csv(filepath, **kwargs)
         tt = cls(name=filepath)
         tt.df = df
+        if sidecar:
+            tt._load_csv_sidecar(cls._csv_sidecar_path(filepath))
         return tt
+
+    def _load_csv_sidecar(self, sidecar_path):
+        """Merge metadata from an adjacent ``<stem>.meta.jsonld`` sidecar, if present.
+
+        Dataset-Metadaten kommen über :func:`sdata.semantic.from_jsonld`;
+        die ``csvw:column``-Knoten (von :func:`sdata.semantic.column_node`)
+        werden hier invertiert (unit aus ``symbol``, label, description).
+        ``_sdata_class`` bleibt unangetastet (JSON-LD trägt nur den lokalen
+        Klassennamen, nicht die importierbare Spec).
+        """
+        if not os.path.exists(sidecar_path):
+            return
+        from sdata import semantic
+        try:
+            with open(sidecar_path, "r") as fh:
+                doc = json.load(fh)
+            meta = semantic.from_jsonld(doc)
+        except Exception as exp:
+            logger.warning(f"CSV sidecar not loadable: {sidecar_path}: {exp}")
+            return
+        for attr in meta.attributes.values():
+            if attr.name == self.SDATA_CLASS:
+                continue
+            self.metadata.set_attr(
+                attr.name, attr.value, dtype=attr.dtype, unit=attr.unit,
+                description=attr.description, label=attr.label,
+                ontology=attr.ontology, required=attr.required)
+        for node in doc.get("columns", []):
+            name = node.get("name")
+            if not name:
+                continue
+            self.set_column(
+                name,
+                unit=node.get("symbol"),
+                label=node.get("label"),
+                description=node.get("description"))
+        logger.debug(f"merged CSV sidecar metadata from {sidecar_path}")
 
     # ---------------------------------------------------------------- Arrow
     def _field_metadata_for(self, colname):
