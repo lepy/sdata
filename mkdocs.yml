@@ -68,6 +68,7 @@ nav:
       - Image metadata: usage/image-metadata.md
       - Machine-readable metadata: usage/metadata-jsonld.md
   - API reference: api.md
+  - Conventions: conventions.md
   - RFCs:
       - "0001 — json1sqlitestore index naming": rfc/0001-json1sqlitestore-index-naming.md
       - "0002 — HDF5 DataFrame serialization": rfc/0002-hdf5-dataframe-serialization.md
