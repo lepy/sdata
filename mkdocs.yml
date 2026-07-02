@@ -80,5 +80,6 @@ nav:
       - "0008 — Umsetzungsstand": rfc/0008-umsetzung.md
       - "0009 — DataFrame reader interface": rfc/0009-dataframe-reader-interface.md
       - "0010 — Format versioning": rfc/0010-format-versioning.md
+      - "0011 — Persistence consolidation": rfc/0011-persistence-consolidation.md
   - Releasing: releasing.md
   - Changelog: changelog.md
