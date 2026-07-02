@@ -78,10 +78,11 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 - [x] **C2** Sprach-Leitlinie Docstrings/Kommentare festlegen und dokumentieren
   — PR #113 (`docs/conventions.md`: Code/Docstrings/User-Docs englisch, RFCs/Commits
   deutsch erlaubt; Migration nur bei Berührung)
-- [ ] **C3** Typisierungs-Leitlinie dokumentieren; `metadata.py` und `dtypes.py`
-  annotieren
-- [ ] **C4** Fehler-Politik (lenient/strict) in README/Docs verankern; strict-Default
-  als 2.0-Kandidat notieren
+- [x] **C3** Typisierungs-Leitlinie dokumentieren; `metadata.py` und `dtypes.py`
+  annotieren — PR #114 (dtypes-Public-API + `DtypeSpec`/`LangString` annotiert;
+  `Metadata`-High-Traffic-Methoden annotiert; Rest per On-Touch)
+- [x] **C4** Fehler-Politik (lenient/strict) in README/Docs verankern; strict-Default
+  als 2.0-Kandidat notieren — PR #114 (Abschnitt in `docs/conventions.md`)
 - [ ] **C5** Offene Punkte aus RFC 0001–0007 als Issues/Roadmap-Liste erfassen
 
 ## Protokoll
@@ -109,3 +110,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | B5b | `feat/packaging-pep621` (PR #111) | PEP-621-`[project]` in `pyproject.toml` (Extras/Metadaten/Classifiers, `dynamic=["version"]` via `[tool.setuptools.dynamic]`); `setup.py` + `requirements.txt` entfernt; verwaiste contrib `attrdict`/`semver.py`/`simple_graph_db` raus (0 Importer, keine Tests), MANIFEST bereinigt; **`timeflake` behalten** (RFC nannte 0-Importer, aber `test_timeflake.py` deckt es); RELEASING/docs auf `dynamic`-Version aktualisiert; Editable-Install + Version verifiziert; `make ci` grün (100 %) |
 | 2026-07-02 | C1 | `docs/readme-goal-triage` (PR #112) | README „Design goals" → ehrliche Status-Tabelle (implemented/partial/roadmap/non-goal) gemäß RFC 0008 §4; netCDF/datacubes = roadmap, gpg/swmr/posix-paths/tensor-libs/change-management = explizite Nicht-Ziele; reine Doku |
 | 2026-07-02 | C2 | `docs/conventions-language` (PR #113) | `docs/conventions.md` (+ mkdocs-Nav): Sprach-Leitlinie — Identifier/Docstrings/User-Docs/Kommentare **englisch**, RFCs/Commits **deutsch** erlaubt; Migration nur bei Berührung, kein Big-Bang; reine Doku |
+| 2026-07-02 | C3+C4 | `docs/conventions-typing-errors` (PR #114) | `conventions.md` um Typing- und Fehler-Politik-Abschnitt ergänzt; `dtypes.py` Public-API + `DtypeSpec`/`LangString` typannotiert, `Metadata`-High-Traffic-Methoden (`to_dict`/`get`/`get_attr`/`keys`) annotiert; Fehler-Politik lenient/strict verankert, strict-Default als 2.0-Kandidat; `make ci` grün |

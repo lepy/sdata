@@ -28,6 +28,7 @@ import datetime
 import json as _json
 import re
 from decimal import Decimal, InvalidOperation
+from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import urlsplit
 
 import numpy as np
@@ -54,21 +55,21 @@ class LangString:
 
     __slots__ = ("text", "lang")
 
-    def __init__(self, text, lang=""):
+    def __init__(self, text: Any, lang: str = "") -> None:
         self.text = str(text)
         self.lang = str(lang or "")
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return (isinstance(other, LangString)
                 and self.text == other.text and self.lang == other.lang)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.text, self.lang))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{}@{}".format(self.text, self.lang) if self.lang else self.text
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "LangString({!r}, {!r})".format(self.text, self.lang)
 
 
@@ -373,24 +374,26 @@ def _langstring_to_json(value):
 class DtypeSpec:
     """Beschreibt einen dtype: Coercion, JSON-Repräsentation, Klasse, XSD-Typ."""
 
-    def __init__(self, name, pytype, coerce, xsd, to_json=None):
+    def __init__(self, name: str, pytype: type,
+                 coerce: Callable[[Any, bool], Any], xsd: str,
+                 to_json: Optional[Callable[[Any], Any]] = None) -> None:
         self.name = name
         self.pytype = pytype
         self._coerce = coerce
         self.xsd = xsd
         self._to_json = to_json or (lambda v: v)
 
-    def coerce(self, value, strict=False):
+    def coerce(self, value: Any, strict: bool = False) -> Any:
         return self._coerce(value, strict)
 
-    def to_json(self, value):
+    def to_json(self, value: Any) -> Any:
         return self._to_json(value)
 
 
-_REGISTRY = {}
+_REGISTRY: Dict[str, "DtypeSpec"] = {}
 
 
-def register(spec):
+def register(spec: "DtypeSpec") -> None:
     _REGISTRY[spec.name] = spec
 
 
@@ -418,12 +421,12 @@ for _spec in [
     register(_spec)
 
 
-def get(name):
+def get(name: str) -> Optional["DtypeSpec"]:
     """DtypeSpec zum kanonischen Namen oder ``None``."""
     return _REGISTRY.get(name)
 
 
-def names():
+def names() -> List[str]:
     """Liste aller kanonischen dtype-Namen."""
     return list(_REGISTRY.keys())
 
@@ -442,12 +445,12 @@ DTYPES_INV = {
 XSD = {name: spec.xsd for name, spec in _REGISTRY.items()}
 
 
-def xsd_map():
+def xsd_map() -> Dict[str, str]:
     """Kopie der ``{dtype_name: xsd_iri}``-Tabelle (für die JSON-LD-Schicht)."""
     return dict(XSD)
 
 
-def resolve(dtype):
+def resolve(dtype: Any) -> Optional[str]:
     """Normalisiere einen dtype-Input (String ODER Klasse) auf einen Registry-Key.
 
     Spiegelt die bisherigen ``_set_dtype``-Regeln: Klassen via ``DTYPES_INV``,
@@ -474,13 +477,13 @@ def resolve(dtype):
     return "str"
 
 
-def coerce(value, dtype, strict=False):
+def coerce(value: Any, dtype: Any, strict: bool = False) -> Any:
     """Überführe ``value`` in ``dtype`` (String oder Klasse)."""
     spec = _REGISTRY[resolve(dtype) or "str"]
     return spec.coerce(value, strict=strict)
 
 
-def json_default(obj):
+def json_default(obj: Any) -> Any:
     """``default=`` für ``json.dumps``: serialisiert die nicht-nativen dtype-Werte
     (TimeStamp/bytes/Decimal/timedelta/date/time) JSON-sicher."""
     if isinstance(obj, TimeStamp):
