@@ -66,8 +66,10 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
   = Stufe 2/2.0; `DataFrame` als Default-Export)
 - [x] **B5a** RFC 0013 Packaging-Modernisierung schreiben (PEP 621, Extras,
   `contrib/`-Triage) — PR #110
-- [ ] **B5b** RFC 0013 implementieren (`[project]`-Tabelle, `requirements.txt`-Rolle,
-  contrib-Entflechtung mit Deprecation-Stufe)
+- [x] **B5b** RFC 0013 implementieren (`[project]`-Tabelle, `requirements.txt`-Rolle,
+  contrib-Entflechtung mit Deprecation-Stufe) — PR #111 (PEP-621-`[project]` +
+  `dynamic` version; `setup.py`/`requirements.txt` weg; verwaiste contrib
+  `attrdict`/`semver`/`simple_graph_db` entfernt; `timeflake` bleibt — hat Test)
 
 ## Paket C — Deklarationen/Doku (je 1 Iteration)
 
@@ -102,3 +104,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | B4a | `docs/rfc-0012-data-deprecation` (PR #108) | RFC 0012 Draft: Migrationstabelle Data→sclass (1:1 / ersetzt / streichen), Deprecation-Treppe (Stufe 1 = Warnung + `DataFrame` als Default-Export + interne Nutzer portieren; Stufe 2 = 2.0-Entfernung), Deserialisierung alter `Data`-Objekte via RFC-0010-Format-Migration; Implementierung = B4b |
 | 2026-07-02 | B4b | `feat/data-deprecation-stage1` (PR #109) | `Data.__init__` warnt bei **direkter** Instanziierung (`type(self) is Data`; Subklassen `Pud`/`experiments` ungestört — Port = Stufe 2); `DataFrame` an erste Stelle in `__all__`/`SDATACLS`, `Data` bleibt auflösbar (Deserialisierung); 5 Tests; Import bleibt warnungsfrei; `make ci` grün (100 %) |
 | 2026-07-02 | B5a | `docs/rfc-0013-packaging` (PR #110) | RFC 0013 Draft: PEP-621-`[project]` in `pyproject.toml` (Extras/Metadaten an einem Ort, `dynamic=["version"]` hält Single Source), `requirements.txt` entfernen (Extras sind die Wahrheit), `contrib`-Triage (0-Importer `attrdict`/`semver`/`timeflake`/`simple_graph_db` raus; 1-Importer je Fall entscheiden); Implementierung = B5b |
+| 2026-07-02 | B5b | `feat/packaging-pep621` (PR #111) | PEP-621-`[project]` in `pyproject.toml` (Extras/Metadaten/Classifiers, `dynamic=["version"]` via `[tool.setuptools.dynamic]`); `setup.py` + `requirements.txt` entfernt; verwaiste contrib `attrdict`/`semver.py`/`simple_graph_db` raus (0 Importer, keine Tests), MANIFEST bereinigt; **`timeflake` behalten** (RFC nannte 0-Importer, aber `test_timeflake.py` deckt es); RELEASING/docs auf `dynamic`-Version aktualisiert; Editable-Install + Version verifiziert; `make ci` läuft |

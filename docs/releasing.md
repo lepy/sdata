@@ -13,7 +13,9 @@ job (`uv build` + `uvx twine check`) and a `publish` job
 ## Version source
 
 The version lives in **one** place: `sdata/__init__.py` → `__version__`.
-`setup.py` reads it from there; `pyproject.toml` carries no version.
+`pyproject.toml` resolves it via `dynamic = ["version"]` +
+`[tool.setuptools.dynamic] version = { attr = "sdata.__version__" }` (PEP 621,
+RFC 0013) — no second version source.
 
 ## Dry run (TestPyPI)
 
