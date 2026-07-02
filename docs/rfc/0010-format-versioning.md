@@ -2,13 +2,13 @@
 
 | Feld        | Wert                                                                                     |
 |-------------|------------------------------------------------------------------------------------------|
-| Status      | Draft                                                                                     |
+| Status      | Accepted — implementiert (RFC 0008 Paket B, gemergt)                                                                                     |
 | Datum       | 2026-07-02                                                                                |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
 | Komponente  | `sdata/base.py` (`Base`, `to_dict`/`from_dict`), `sdata/sclass/dataframe.py` (`_restore_from_attrs`), neu: `sdata/format.py` (Konstanten + Migrations-Registry) |
 | Betrifft    | `_sdata_format_version` (neues reserviertes Feld), `read_format_version`, `migrate_payload`, `FormatVersionWarning`, `IncompatibleFormatError` |
 | Vorgeschichte | RFC 0008 (Roadmap, B5); Vorbild: `PRAGMA user_version` + `migrate()` in `json1sqlitestore.py:391–406` |
-| Validierung | geplant: Toleranz-/Migrations-Tests; 100 % Line-Coverage für `format.py` |
+| Validierung | verifiziert: Toleranz-/Migrations-Tests; 100 % Line-Coverage für `format.py` |
 
 ## 1. Zusammenfassung
 

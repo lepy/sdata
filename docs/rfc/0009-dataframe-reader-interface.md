@@ -2,13 +2,13 @@
 
 | Feld        | Wert                                                                                     |
 |-------------|------------------------------------------------------------------------------------------|
-| Status      | Draft                                                                                     |
+| Status      | Accepted — implementiert (RFC 0008 Paket B, gemergt)                                                                                     |
 | Datum       | 2026-07-02                                                                                |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
 | Komponente  | **neu:** `sdata/iolib/reader.py`; nutzt `sdata/iolib/writer.py`, `sdata/iolib/json1sqlitestore.py`, `sdata/sclass/dataframe.py` |
 | Betrifft    | `DataFrameReader` (Protocol), `BaseDataFrameReader` (ABC), `ParquetReader`, `StoreReader`, `SqlReader`, gemeinsame `check_contract`-Funktion |
 | Vorgeschichte | RFC 0007 (§11: „Ein `DataFrameReader`-Protocol … ist der natürliche Folge-RFC"); RFC 0001 (Store), RFC 0004 (Blob), RFC 0008 (Roadmap, B4) |
-| Validierung | geplant: Roundtrip-Tests je Writer/Reader-Paar, 100 % Line-Coverage für `reader.py` |
+| Validierung | verifiziert: Roundtrip-Tests je Writer/Reader-Paar, 100 % Line-Coverage für `reader.py` |
 
 ## 1. Zusammenfassung
 
