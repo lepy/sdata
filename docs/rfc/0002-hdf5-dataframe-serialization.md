@@ -21,6 +21,13 @@
 > werden akzeptiert und ignoriert. Der Rest des RFC (Abschnitte 1–8) beschreibt die
 > ursprüngliche Option-A-Entscheidung und bleibt als Kontext erhalten.
 >
+> **Native Per-Spalten-Attribute (2026-07-02).** Zusätzlich zum `_sdata`-Blob werden
+> `unit`/`label`/`description`/`ontology` jeder Spalte **nativ** als HDF5-Dataset-
+> Attribute abgelegt (tool-agnostisch lesbar via h5py/HDFView/`h5ls`) — analog zu
+> Arrow-`field.metadata`. `from_hdf` merged sie in `column_metadata` zurück, auch für
+> fremd geschriebene Dateien **ohne** `_sdata`-Blob (symmetrisch zu
+> `from_arrow._merge_field_metadata`).
+>
 > **CI-Frage (Abschnitt 8) unverändert:** das Backend ist **nicht** in der kanonischen
 > CI (installiert nur `[did,parquet,blob,sql]`); `to_hdf`/`from_hdf` und die `_h5_*`-
 > Helfer sind `# pragma: no cover` und werden über `importorskip("h5py")`-Tests in

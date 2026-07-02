@@ -8,6 +8,11 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Added
 
+- **Native per-column HDF5 attributes (RFC 0002).** `to_hdf` now attaches each
+  column's `unit`/`label`/`description`/`ontology` **natively** as HDF5 dataset
+  attributes (readable by any HDF5 tool — h5py/HDFView/`h5ls`), alongside the `_sdata`
+  blob; `from_hdf` merges them back into `column_metadata`, even for foreign files
+  without the blob (symmetric to the Arrow field-metadata path).
 - **Persistent target unit system (`DataFrame.unit_system`, RFC 0014).** The table's
   target unit system (RFC 0006) now survives serialization: it is stored as a reserved
   `_sdata_unit_system` metadata field (the base-unit list), so it round-trips through
