@@ -45,8 +45,8 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 ## Paket B — Folge-RFCs (je Punkt: RFC-Iteration, dann Implementierungs-Iteration(en))
 
 - [x] **B1a** RFC 0009 `DataFrameReader`-Protocol schreiben (Draft) — PR #101
-- [ ] **B1b** RFC 0009 implementieren + Tests (Backends: Parquet/Store/SQL, Symmetrie
-  zu `WriteReceipt`)
+- [x] **B1b** RFC 0009 implementieren + Tests (Backends: Parquet/Store/SQL, Symmetrie
+  zu `WriteReceipt`) — PR #102
 - [ ] **B2a** RFC 0010 Format-Versionierung schreiben (`_sdata_format_version`,
   Toleranz-/Migrationsregeln)
 - [ ] **B2b** RFC 0010 implementieren (Feld + Prüfung in allen `from_*`, Migrations-Hook)
@@ -87,3 +87,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | A6 | `fix/process-topology` (PR #99) | `"sdata.sclass:Prozess"` → `"…:Process"` (`bfo_iri` liefert jetzt `bfo:BFO_0000015` statt `None`); `create_process_class`: mutable defaults (`{}`/`[]`) → `None`-Idiom; manuell verifiziert (Modul in Coverage-`omit`); `make ci` grün (100 %) |
 | 2026-07-02 | A7 | `chore/license-consolidation` (PR #100) | `setup.py` `license='MIT'` (statt `MIT/Apache-2.0`), `mkdocs.yml` `copyright: MIT License`; nur `LICENSE-MIT` liegt bei, Classifier war schon MIT-only; falls Dual-Lizenz gewollt: `LICENSE-APACHE` beilegen und revertieren |
 | 2026-07-02 | B1a | `docs/rfc-0009-dataframe-reader` (PR #101) | RFC 0009 Draft: `DataFrameReader`-Protocol + `BaseDataFrameReader`-ABC (Eingangsvertrag via gemeinsamer `check_contract`-Funktion), `ParquetReader`/`StoreReader`/`SqlReader` (Snapshot vs. `fresh`), Roundtrip-Gesetze §6; kein `GraphReader` (Senke ist metadaten-only); Implementierung = B1b |
+| 2026-07-02 | B1b | `feat/dataframe-reader-interface` (PR #102) | `sdata/iolib/reader.py` (83 Stmts, 100 %): Protocol/ABC + `ParquetReader`/`StoreReader` (Selektor suuid→sname→int-ID, `iter()` überspringt Fremd-Records)/`SqlReader` (Snapshot ≡; `fresh=True` kumulativ); `check_contract` aus dem Writer extrahiert (Delegation, kein API-Bruch); 14 neue Tests decken alle §6-Roundtrip-Gesetze; `make ci` grün (100 %) |

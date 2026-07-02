@@ -43,6 +43,7 @@ __all__ = [
     "GraphWriter",
     "ensure_sdata",
     "write_with_provenance",
+    "check_contract",
 ]
 
 #: Feste Metadatentabelle des :class:`SqlWriter` — als **Literal** in statischem SQL
@@ -100,6 +101,30 @@ class DataFrameWriter(Protocol):
 
     def close(self) -> None:
         ...
+
+
+def check_contract(sdf: "DataFrame",
+                   require_metadata: Tuple[str, ...] = (),
+                   require_columns: Tuple[str, ...] = (),
+                   require_units: Tuple[str, ...] = (),
+                   role: str = "writer") -> None:
+    """Prüfe den ``require_*``-Metadaten-Vertrag (gemeinsam für Writer **und** Reader).
+
+    RFC 0009: dieselbe Vertragssemantik dient beim Writer als Ausgangs- und beim
+    Reader als **Eingangs**-Validierung einer Pipeline.
+
+    :param role: erscheint in der Fehlermeldung (``"writer"``/``"reader"``).
+    :raises ValueError: nennt die fehlenden Schlüssel/Spalten/Einheiten.
+    """
+    units = sdf.column_units
+    missing = {
+        "metadata": [k for k in require_metadata if sdf.metadata.get(k) is None],
+        "columns": [c for c in require_columns if c not in sdf.df.columns],
+        "units": [c for c in require_units if not units.get(c)],
+    }
+    if any(missing.values()):
+        detail = ", ".join(f"{k}={v}" for k, v in missing.items())
+        raise ValueError(f"{role} contract violated: {detail}")
 
 
 def ensure_sdata(obj: Any) -> "DataFrame":
@@ -161,25 +186,10 @@ class BaseDataFrameWriter(ABC):
         logger.info("%s wrote %r -> %s", type(self).__name__, sdf.sname, receipt.target)
         return receipt
 
-    @staticmethod
-    def _absent(required: Tuple[str, ...], present) -> list:
-        """Return the required keys for which ``present(key)`` is falsy."""
-        return [key for key in required if not present(key)]
-
     def _check_contract(self, sdf: "DataFrame") -> None:
-        """Raise ``ValueError`` if the require_* contract is not met."""
-        units = sdf.column_units
-        missing = {
-            "metadata": self._absent(self.require_metadata,
-                                     lambda k: sdf.metadata.get(k) is not None),
-            "columns": self._absent(self.require_columns,
-                                    lambda c: c in sdf.df.columns),
-            "units": self._absent(self.require_units,
-                                  lambda c: bool(units.get(c))),
-        }
-        if any(missing.values()):
-            detail = ", ".join(f"{k}={v}" for k, v in missing.items())
-            raise ValueError(f"writer contract violated: {detail}")
+        """Raise ``ValueError`` if the require_* contract is not met (delegiert)."""
+        check_contract(sdf, self.require_metadata, self.require_columns,
+                       self.require_units, role="writer")
 
     @abstractmethod
     def _write_impl(self, sdf: "DataFrame", meta: Dict[str, Any]) -> WriteReceipt:
