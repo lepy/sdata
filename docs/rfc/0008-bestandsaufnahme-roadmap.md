@@ -2,7 +2,7 @@
 
 | Feld        | Wert                                                                                     |
 |-------------|------------------------------------------------------------------------------------------|
-| Status      | Draft                                                                                     |
+| Status      | Accepted — Roadmap umgesetzt (Paket A/B/C, PRs #94–#115); Backlog s. [Open points](open-points.md) |
 | Datum       | 2026-07-02                                                                                |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
 | Komponente  | paketweit: `sdata/` (Kern, `sclass/`, `iolib/`), Packaging, Docs, CI, Repo-Hygiene        |
