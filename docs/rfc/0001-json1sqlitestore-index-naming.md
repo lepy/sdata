@@ -2,7 +2,7 @@
 
 | Feld        | Wert                                                        |
 |-------------|-------------------------------------------------------------|
-| Status      | Proposed                                                    |
+| Status      | Accepted — implementiert (`GENERATED_COLUMNS` als SSOT; Store instanziierbar)                                                    |
 | Datum       | 2026-06-24                                                  |
 | Autor       | lepy <lepy@tuta.io>                                          |
 | Komponente  | `sdata/iolib/json1sqlitestore.py`                           |

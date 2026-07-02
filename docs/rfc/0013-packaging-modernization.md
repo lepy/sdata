@@ -2,13 +2,13 @@
 
 | Feld        | Wert                                                                                     |
 |-------------|------------------------------------------------------------------------------------------|
-| Status      | Draft                                                                                     |
+| Status      | Accepted — implementiert (RFC 0008 Paket B, gemergt)                                                                                     |
 | Datum       | 2026-07-02                                                                                |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
 | Komponente  | `pyproject.toml` (`[project]`), `setup.py` (auflösen), `requirements.txt` (Rolle klären), `sdata/contrib/*` (Triage) |
 | Betrifft    | Metadaten/Extras-Deklaration, Versions-Single-Source, gebündelte Fremdpakete |
 | Vorgeschichte | RFC 0008 (Roadmap, B13/B14); RFC 0011 (entfernte `node.py` → `simple_graph_db` verwaist) |
-| Validierung | geplant: `python -m build` erzeugt identische Wheel-Metadaten; `pip install .[extra]` je Extra; Import-Rauchtests |
+| Validierung | verifiziert: `python -m build` erzeugt identische Wheel-Metadaten; `pip install .[extra]` je Extra; Import-Rauchtests |
 
 ## 1. Zusammenfassung
 

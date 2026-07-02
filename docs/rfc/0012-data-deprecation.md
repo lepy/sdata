@@ -2,13 +2,13 @@
 
 | Feld        | Wert                                                                                     |
 |-------------|------------------------------------------------------------------------------------------|
-| Status      | Draft                                                                                     |
+| Status      | Accepted — Stufe 1 implementiert (RFC 0008 Paket B, gemergt); Stufe 2 = 2.0                                                                                     |
 | Datum       | 2026-07-02                                                                                |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
 | Komponente  | `sdata/deprecated/data.py`, `sdata/__init__.py` (Export), interne Nutzer `sdata/iolib/pud.py`, `sdata/experiments/*` (`sdata/iolib/hdf.py` 2026-07-02 entfernt statt portiert) |
 | Betrifft    | `Data` (Alt-Generation), `SDATACLS`/`__all__`, `Pud`, `TestProgram`/`Workbook`/`Image(alt)` |
 | Vorgeschichte | RFC 0008 (Roadmap, B1); parallel zu RFC 0009–0011 (die die `sclass`-Ersatz-APIs liefern) |
-| Validierung | geplant: `DeprecationWarning`-Tests, portierte interne Nutzer, Migrationstabelle in den Docs |
+| Validierung | verifiziert: `DeprecationWarning`-Tests, portierte interne Nutzer, Migrationstabelle in den Docs |
 
 ## 1. Zusammenfassung
 

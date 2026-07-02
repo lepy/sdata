@@ -2,13 +2,13 @@
 
 | Feld        | Wert                                                                                     |
 |-------------|------------------------------------------------------------------------------------------|
-| Status      | Draft                                                                                     |
+| Status      | Accepted — implementiert (RFC 0008 Paket B, gemergt)                                                                                     |
 | Datum       | 2026-07-02                                                                                |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
 | Komponente  | `sdata/iolib/jsonsqlitestore.py` (deprecaten), `sdata/iolib/json1sqlitestore.py` (opt. zlib), `sdata/iolib/vault.py` (portieren/entfernen), `sdata/sclass/dataframegroup.py` (auf `Metadata`+`sclass.DataFrame` heben), `sdata/iolib/writer.py`/`reader.py` (`write_group`/`read_group`) |
 | Betrifft    | `JSONSQLiteStore` (Alt-Zwilling), `JSON1SQLiteStore.compression`, `Vault`/`FileSystemVault`/`Hdf5Vault`, `DataFrameGroup`, `GroupWriter`/`GroupReader` |
 | Vorgeschichte | RFC 0001 (Store), RFC 0002 (§ „DataFrameGroup-Serialisierung separat"), RFC 0007 (§11 „DataFrameGroup-Batch vorbereitet"), RFC 0008 (Roadmap, B8–B10) |
-| Validierung | geplant: portierte Module aus der Coverage-`omit` heben und messen; Roundtrip-/Batch-Tests |
+| Validierung | verifiziert: portierte Module aus der Coverage-`omit` heben und messen; Roundtrip-/Batch-Tests |
 
 ## 1. Zusammenfassung
 
