@@ -44,6 +44,7 @@ _RESERVED_TERMS = {
     "_sdata_ctime": "generatedAtTime",
     "_sdata_topology_class": "topologyClass",
     "_sdata_version": "sdata:version",
+    "_sdata_unit_system": "sdata:unitSystem",
 }
 _TERMS_RESERVED = {v: k for k, v in _RESERVED_TERMS.items()}
 

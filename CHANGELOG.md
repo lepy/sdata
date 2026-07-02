@@ -6,6 +6,14 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **Persistent target unit system (`DataFrame.unit_system`, RFC 0014).** The table's
+  target unit system (RFC 0006) now survives serialization: it is stored as a reserved
+  `_sdata_unit_system` metadata field (the base-unit list), so it round-trips through
+  dict, Parquet, HDF5 and JSON-LD (`sdata:unitSystem`) automatically. A DataFrame loaded
+  from Parquet keeps its `convert()` target; `UnitSystem` gains `__eq__`/`__hash__`.
+
 ## [1.4.0] - 2026-07-02
 
 The **RFC 0008 improvement program** plus the unit-conversion and writer/reader layers:

@@ -32,9 +32,9 @@ Arbeitsrunde nach der RFC-0008-Roadmap.
 
 ## Offen — Semantik / Einheiten
 
-* **RFC 0006 — Persistenz des `unit_system`.** Das Zielsystem einer Tabelle ist
-  aktuell transient (überlebt Parquet/dict/JSON-LD nicht). → eigener Folge-RFC:
-  `_sdata_unit_system` als Metadatenfeld (jetzt über RFC 0010 auch versionierbar).
+* ~~**RFC 0006 — Persistenz des `unit_system`.**~~ **Erledigt (RFC 0014):** das
+  Zielsystem reist jetzt als reserviertes Metadatenfeld `_sdata_unit_system`
+  (Basis-Einheiten-Liste) durch dict/Parquet/HDF5/JSON-LD.
 * **RFC 0006 — mehrdeutige Dimensionsvektoren** (`1/s` vs `Hz`, `N·m` vs `J`):
   Vorzugs-Symbol-Tabelle für die Rück-Benennung.
 * **RFC 0006 — Winkel/logarithmische Einheiten** (rad/deg, dB) bewusst noch ausgeklammert.

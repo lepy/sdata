@@ -94,6 +94,12 @@ class DataFrame(ContentIntegrityMixin, Base):
     #: optionales :class:`~sdata.schema.TableSchema`; beim Init angewandt (Default None)
     TABLE_SCHEMA = None
 
+    #: Reserviertes Metadaten-Feld, das das Ziel-Einheitensystem der Tabelle
+    #: persistiert (RFC 0014): die Basis-Einheiten-Liste eines ``UnitSystem``.
+    #: Da es in ``metadata`` liegt, reist es durch alle Serialisierungspfade
+    #: (dict/parquet/hdf/JSON-LD) automatisch mit.
+    SDATA_UNIT_SYSTEM = "_sdata_unit_system"
+
 
     def __init__(
             self,
@@ -134,7 +140,6 @@ class DataFrame(ContentIntegrityMixin, Base):
             self._column_metadata = Metadata(name="column_metadata")
 
         self._df = pd.DataFrame()
-        self._unit_system = None
         if unit_system is not None:
             self.unit_system = unit_system
         if df is not None:
@@ -286,15 +291,23 @@ class DataFrame(ContentIntegrityMixin, Base):
 
         :return: the recorded :class:`~sdata.units.UnitSystem`, or ``None``.
         """
-        return self._unit_system
+        from sdata import units as U
+        attr = self.metadata.get(self.SDATA_UNIT_SYSTEM)
+        if attr is None or not attr.value:
+            return None
+        return U.UnitSystem(list(attr.value))
 
     @unit_system.setter
     def unit_system(self, value):
         from sdata import units as U
-        if value is None or isinstance(value, U.UnitSystem):
-            self._unit_system = value
-        else:
-            self._unit_system = U.UnitSystem(value)
+        if value is None:
+            if self.SDATA_UNIT_SYSTEM in self.metadata:
+                self.metadata.pop(self.SDATA_UNIT_SYSTEM)
+            return
+        system = value if isinstance(value, U.UnitSystem) else U.UnitSystem(value)
+        self.metadata.set_attr(
+            self.SDATA_UNIT_SYSTEM, list(system.units), dtype="list",
+            label="unit system", description="target unit system (base units, RFC 0014)")
 
     def _converted_copy(self):
         """Tiefe Kopie dieses DataFrame (Daten + Metadaten) für nicht-mutierende Ops."""
@@ -302,7 +315,7 @@ class DataFrame(ContentIntegrityMixin, Base):
         new.metadata = self.metadata.copy()
         new._column_metadata = self._column_metadata.copy()
         new.description = self.description
-        new._unit_system = self._unit_system
+        # unit_system reist über die metadata-Kopie mit (_sdata_unit_system, RFC 0014)
         return new
 
     def convert(self, units=None, inplace=False):
@@ -336,7 +349,7 @@ class DataFrame(ContentIntegrityMixin, Base):
         """
         from sdata import units as U
         if units is None:
-            units = self._unit_system
+            units = self.unit_system
         if units is None:
             raise ValueError(
                 "no unit system: pass units to convert() or set .unit_system")
@@ -346,7 +359,7 @@ class DataFrame(ContentIntegrityMixin, Base):
         else:
             system = units if isinstance(units, U.UnitSystem) else U.UnitSystem(units)
             sdf._convert_by_system(system)
-            sdf._unit_system = system
+            sdf.unit_system = system
         return sdf
 
     def _convert_by_system(self, system):

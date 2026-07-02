@@ -84,6 +84,7 @@ nav:
       - "0011 — Persistence consolidation": rfc/0011-persistence-consolidation.md
       - "0012 — Data deprecation": rfc/0012-data-deprecation.md
       - "0013 — Packaging modernization": rfc/0013-packaging-modernization.md
+      - "0014 — Unit system persistence": rfc/0014-unit-system-persistence.md
       - "Open points (backlog)": rfc/open-points.md
   - Releasing: releasing.md
   - Changelog: changelog.md
