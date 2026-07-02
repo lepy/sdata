@@ -179,3 +179,25 @@ def test_sql_reader_fresh_reads_cumulative_table(tmp_path):
     with SqlReader(conn) as r:
         assert len(r.read(str(sdf.suuid)).df) == 2
     conn.close()
+
+
+# ------------------------------------------------ Batch: write_group/read_group
+
+def test_write_group_and_read_group_store(tmp_path):
+    from sdata.sclass.dataframegroup import DataFrameGroup
+    from sdata.iolib.writer import write_group
+    from sdata.iolib.reader import read_group
+
+    a, b = _sdf("A"), _sdf("B")
+    group = DataFrameGroup(name="batch")
+    group.add(a, key="A")
+    group.add(b, key="B")
+
+    db = str(tmp_path / "group.db")
+    receipts = write_group(StoreWriter(db), group)       # eine Senke, eine Transaktion
+    assert len(receipts) == 2
+    assert {r.sname for r in receipts} == {a.sname, b.sname}
+
+    back = read_group(StoreReader(db), [a.sname, b.sname])
+    assert sorted(back.list_dataframes()) == [a.sname, b.sname]
+    assert back.get(a.sname).column_units == a.column_units

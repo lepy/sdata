@@ -52,8 +52,11 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 - [x] **B2b** RFC 0010 implementieren (Feld + Prüfung in allen `from_*`, Migrations-Hook) — PR #104
 - [x] **B3a** RFC 0011 Persistenz-Konsolidierung schreiben (Store-Zwilling, Vault,
   `DataFrameGroup`/`write_group`) — PR #105
-- [ ] **B3b** RFC 0011 implementieren (inkl. `omit`-Liste: portierte Module in die
-  Coverage-Messung aufnehmen)
+- [x] **B3b-1** RFC 0011 Teil 1: Alt-Store `JSONSQLiteStore` deprecaten,
+  `DataFrameGroup` auf `Metadata`+`sclass.DataFrame` heben (abwärtskompatibles
+  `from_dict`), `write_group`/`read_group` — PR #106
+- [ ] **B3b-2** RFC 0011 Teil 2: `vault.py` entfernen (entwirrt `node.py`-`Node`),
+  doppelte `reindex` weg; `omit`-Liste bereinigen
 - [ ] **B4a** RFC 0012 Ablösung `deprecated.Data` schreiben (Migrationstabelle,
   Deprecation-Stufen)
 - [ ] **B4b** RFC 0012 umsetzen Stufe 1: `DeprecationWarning` + interne Abhängigkeiten
@@ -91,3 +94,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | B2a | `docs/rfc-0010-format-versioning` (PR #103) | RFC 0010 Draft: `_sdata_format_version` (int, getrennt von Paket-`_sdata_version`), Toleranzregeln (fehlend=v1 / gleich / älter→migrieren / neuer→Warnung bzw. `strict`→Fehler), ein Choke-Point in `from_dict`/`_restore_from_attrs`, Migrations-Treppe (Vorbild `PRAGMA user_version`); Implementierung = B2b |
 | 2026-07-02 | B2b | `feat/format-versioning` (PR #104) | `sdata/format.py` (49 Stmts, 100 %): `read_format_version`/`ensure_compatible`/`register_migration` + `FormatVersionWarning`/`IncompatibleFormatError`; `Base` setzt `_sdata_format_version=1` (int), Choke-Point in `Base.from_dict`(+`strict`)/`DataFrame.from_dict`/`_restore_from_attrs`; fehlend=v1 rückwärtskompatibel; 13 Tests inkl. Migrations-Treppe; `make ci` grün (100 %) |
 | 2026-07-02 | B3a | `docs/rfc-0011-persistence-consolidation` (PR #105) | RFC 0011 Draft: `JSON1SQLiteStore` kanonisch (Alt-`JSONSQLiteStore` deprecaten; zlib-Frage explizit, Empfehlung Option B), `DataFrameGroup` auf `Metadata`+`sclass.DataFrame` heben (abwärtskompatibel via RFC-0010-Migration), `write_group`/`read_group`-Batch über RFC-0007/0009, `vault.py` entfernen (empfohlen) statt an `Data` weiterzuschleppen; Implementierung = B3b |
+| 2026-07-02 | B3b-1 | `feat/persistence-consolidation` (PR #106) | `JSONSQLiteStore.__init__` → `DeprecationWarning` (zlib bleibt Option B/Nicht-Ziel); `DataFrameGroup` hält jetzt `sclass.DataFrame`-Mitglieder (volle Spaltensemantik), `from_dict` liest neues `{sdata}`- **und** Legacy-`{parquet,column_metadata}`-Layout, API abwärtskompatibel; `write_group`/`read_group` (eine Senke/Quelle, Store-Transaktion); alle vier Module 100 %; `make ci` grün (100 %) |
