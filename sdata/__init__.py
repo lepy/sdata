@@ -120,16 +120,18 @@ def generate_safe_name(original_name: str) -> str:
 
     return name
 
-SDATACLS = {"Data": Data,
+# DataFrame ist die kanonische Klasse (RFC 0012); Data bleibt für die
+# Deserialisierung alter Objekte in SDATACLS auflösbar, führt aber nicht mehr.
+SDATACLS = {"DataFrame": DataFrame,
             "Image": Image,
             "Blob": Blob,
             "SUUID": SUUID,
-            "DataFrame": DataFrame,
+            "Data": Data,
             }
 
-__all__ = ["Data", "Image",
+__all__ = ["DataFrame", "Image",
            "Blob",
-           "SUUID", "DataFrame"]
+           "SUUID", "Data"]
 
 
 def print_classes():

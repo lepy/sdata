@@ -102,6 +102,17 @@ class Data(object):
         :param description: a string to describe the object
         """
 
+        # RFC 0012: Data ist deprecated -> sdata.sclass.dataframe.DataFrame.
+        # Nur bei DIREKTER Instanziierung warnen, damit Domänen-/Experiment-
+        # Subklassen (Pud, TestProgram, …) nicht gestört werden (deren Ablösung
+        # ist Teil von Stufe 2 / 2.0).
+        if type(self) is Data:
+            import warnings
+            warnings.warn(
+                "sdata.Data is deprecated (RFC 0012); use "
+                "sdata.sclass.dataframe.DataFrame. Removal in sdata 2.0.",
+                DeprecationWarning, stacklevel=2)
+
         # self._uuid = None
         # self._name = None
         self._prefix = None
