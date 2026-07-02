@@ -29,3 +29,8 @@ did.json
 *.jws
 *.vc
 *.vp
+
+# Jupyter-Autosaves und lokale Experimente
+.ipynb_checkpoints/
+t/
+db.json
