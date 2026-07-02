@@ -35,8 +35,10 @@ Arbeitsrunde nach der RFC-0008-Roadmap.
 * ~~**RFC 0006 — Persistenz des `unit_system`.**~~ **Erledigt (RFC 0014):** das
   Zielsystem reist jetzt als reserviertes Metadatenfeld `_sdata_unit_system`
   (Basis-Einheiten-Liste) durch dict/Parquet/HDF5/JSON-LD.
-* **RFC 0006 — mehrdeutige Dimensionsvektoren** (`1/s` vs `Hz`, `N·m` vs `J`):
-  Vorzugs-Symbol-Tabelle für die Rück-Benennung.
+* ~~**RFC 0006 — mehrdeutige Dimensionsvektoren** (`1/s` vs `Hz`, `N·m` vs `J`).~~
+  **Erledigt:** `Hz`/`kHz`/`MHz`/`GHz` als benannte Einheiten erkannt (QUDT-gemappt);
+  `_CANON_SYMBOLS` als Vorzugs-Symbol-Tabelle dokumentiert (Energie→`J`, Rate bleibt
+  neutral `1/s`, da = Dehnrate). `N·m`→`J` war bereits korrekt.
 * **RFC 0006 — Winkel/logarithmische Einheiten** (rad/deg, dB) bewusst noch ausgeklammert.
 * **RFC 0006 — `pint`-Interop** außerhalb der kuratierten Tabelle.
 

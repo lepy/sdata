@@ -9,6 +9,13 @@
 | Betrifft    | `UnitSystem`, `DataFrame.convert`, `DataFrame.unit_system`, `DataFrame.relabel_units` |
 | Validierung | `units.py` 100 %, `sclass/dataframe.py` 100 %; Solver- und Round-Trip-Tests |
 
+> **Nachtrag (2026-07-02) — Frequenz & mehrdeutige Dimensionen.** `Hz`/`kHz`/`MHz`/
+> `GHz` sind jetzt als benannte Einheiten erkannt (Eingabe, Konvertierung,
+> QUDT-`unit:HZ`). Die Rate/Frequenz-Dimension `(0,0,-1,0)` wird bewusst **neutral**
+> als `1/s`/`1/ms` zurück-benannt (nicht `Hz`), weil sie auch die Dehnrate bezeichnet —
+> `Hz` würde eine Dehnrate fälschlich als Frequenz ausweisen. `_CANON_SYMBOLS` ist als
+> **Vorzugs-Symbol-Tabelle** dokumentiert (Energie→`J`, Leistung→`W`, Rate→`1/s`).
+>
 > **Umsetzungsstand.** Implementiert. `sdata/units.py` trägt die Dimensions-Algebra
 > (Dimvektoren, exakter `Fraction`-Solver, `UnitSystem` aus Basis-Einheiten,
 > `dimension_of`/`convert_value`); `DataFrame.convert` rechnet abgeleitete Einheiten

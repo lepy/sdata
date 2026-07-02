@@ -8,6 +8,11 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Added
 
+- **Frequency units `Hz`/`kHz`/`MHz`/`GHz` (RFC 0006).** Recognized as named units
+  (input, conversion, QUDT `unit:HZ`), interconvertible with the `1/s` family. The
+  rate/frequency dimension keeps its **neutral** canonical back-name (`1/s`/`1/ms`) —
+  not `Hz` — because the same dimension also denotes strain rate; `_CANON_SYMBOLS` is
+  now documented as the preferred-symbol table (energy→`J`, power→`W`, rate→`1/s`).
 - **Native per-column HDF5 attributes (RFC 0002).** `to_hdf` now attaches each
   column's `unit`/`label`/`description`/`ontology` **natively** as HDF5 dataset
   attributes (readable by any HDF5 tool — h5py/HDFView/`h5ls`), alongside the `_sdata`
