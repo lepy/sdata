@@ -510,9 +510,11 @@ Verbleibend:
   (nur die Sidecar-Tabelle hält sie); `if_exists="append"` deckt **Schema-Drift** zwischen
   Tabellen nicht ab. Für semantiktreue Persistenz ist `StoreWriter` verlustfrei.
 * **`ParquetWriter` = eine Datei pro `write` (F5).** Mehrere `write` auf **dieselbe** URI
-  überschreiben; ein append-/partitionierter Modus (`run/part-*.spq`) ist bewusst nicht
-  Teil dieses RFC. `flush`/`close` sind für Parquet No-ops — der Lebenszyklus trägt nur bei
-  `Store`/`Sql`/`Graph`.
+  überschreiben. `flush`/`close` sind für Parquet No-ops — der Lebenszyklus trägt nur bei
+  `Store`/`Sql`/`Graph`. **Nachtrag (2026-07-02):** der Verzeichnis-Modus
+  `ParquetWriter(uri, directory=True)` ist umgesetzt (RFC 0011 §5.3) — je Mitglied eine
+  `<sname>.spq`; `ParquetReader(uri, directory=True)` + `keys()` + `read_group` sind die
+  symmetrische Gegenseite.
 * **Named-Graph-Persistenz.** N-Quads-Ausgabe an `close` hängt an `rdflib`; ohne Backend
   nur Einzeldatei-Turtle/JSON-LD (`# pragma: no cover`).
 * **Reader-Symmetrie.** Ein `DataFrameReader`-Protocol (Round-Trip pro Backend) ist der

@@ -47,9 +47,10 @@ Arbeitsrunde nach der RFC-0008-Roadmap.
 * **RFC 0007 — relationaler `SqlWriter` & Typabbildung.** `df.to_sql` verliert
   Einheiten/Ontologie (nur die Sidecar-Tabelle hält sie); `if_exists="append"` deckt
   Schema-Drift nicht ab. Für semantiktreue Persistenz → `StoreWriter`.
-* **RFC 0007 / RFC 0011 — `ParquetWriter`-Verzeichnis-/Append-Modus (F5).** Ein
-  partitionierter Modus (`run/part-*.spq`) ist skizziert (RFC 0011 §5.3), aber nicht
-  umgesetzt.
+* ~~**RFC 0007 / RFC 0011 — `ParquetWriter`-Verzeichnis-/Append-Modus (F5).**~~
+  **Erledigt:** `ParquetWriter(uri, directory=True)` schreibt je Mitglied eine
+  `<sname>.spq`; `ParquetReader(uri, directory=True)` + `keys()` + `read_group` lesen
+  symmetrisch zurück.
 * **RFC 0007 — Named-Graph-Persistenz** hängt an `rdflib`; ohne Backend nur
   Einzeldatei-Turtle/JSON-LD.
 * **RFC 0003 — fsspec-Fehlerbilder vereinheitlichen** (`content_bytes`/`exists()`).

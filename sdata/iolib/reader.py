@@ -124,22 +124,53 @@ class ParquetReader(BaseDataFrameReader):
     ``description``.
     """
 
-    def __init__(self, uri: str, **contract: Any):
-        """Bind the source fsspec ``uri`` and the require_* contract."""
+    def __init__(self, uri: str, *, directory: bool = False, **contract: Any):
+        """Bind the source fsspec ``uri`` and the require_* contract.
+
+        :param uri: Quell-URI (Einzeldatei) bzw. Quell-Verzeichnis (``directory=True``).
+        :param directory: Verzeichnis-Modus — ``read(sname)`` liest ``<uri>/<sname>.spq``;
+          :meth:`keys` listet die Mitglieder (Gegenseite zu ``ParquetWriter(directory=True)``).
+        """
         super().__init__(**contract)
         self.uri = uri
+        self.directory = directory
 
     def _read_impl(self, selector: Any) -> "DataFrame":
-        if selector is not None:
-            raise ValueError(
-                "ParquetReader reads exactly one URI; selector is not supported")
         from sdata.sclass.blob import fsspec
         from sdata.sclass.dataframe import DataFrame
 
         if fsspec is None:  # pragma: no cover - optionale Abhängigkeit
             raise ImportError("ParquetReader requires: pip install sdata[blob]")
-        with fsspec.open(self.uri, "rb") as fh:
+        if self.directory:
+            if selector is None:
+                raise ValueError(
+                    "directory ParquetReader needs a key (sname); use keys()/read_group")
+            src = "{}/{}.spq".format(self.uri.rstrip("/"), selector)
+        else:
+            if selector is not None:
+                raise ValueError(
+                    "ParquetReader reads exactly one URI; selector is not supported")
+            src = self.uri
+        with fsspec.open(src, "rb") as fh:
             return DataFrame.from_parquet_bytes(fh.read())
+
+    def keys(self) -> list:
+        """Mitglied-``sname``s eines Verzeichnisses (globt ``<uri>/*.spq``).
+
+        :return: sortierte Liste der ``sname``s; mit ``read_group(reader, reader.keys())``
+          liest man das ganze Verzeichnis in eine :class:`DataFrameGroup`.
+        :raises ValueError: außerhalb des Verzeichnis-Modus.
+        """
+        if not self.directory:
+            raise ValueError("keys() requires directory mode")
+        from sdata.sclass.blob import fsspec
+
+        if fsspec is None:  # pragma: no cover - optionale Abhängigkeit
+            raise ImportError("ParquetReader requires: pip install sdata[blob]")
+        base = self.uri.rstrip("/")
+        fs, _, _ = fsspec.get_fs_token_paths(base)
+        paths = fs.glob("{}/*.spq".format(base))
+        return sorted(p.rsplit("/", 1)[-1][:-4] for p in paths)
 
 
 class StoreReader(BaseDataFrameReader):
