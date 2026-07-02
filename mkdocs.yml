@@ -76,5 +76,7 @@ nav:
       - "0005 — Native image metadata": rfc/0005-native-image-metadata.md
       - "0006 — Consistent unit systems (dimensional algebra)": rfc/0006-unit-system-conversion-on-set.md
       - "0007 — DataFrame writer interface": rfc/0007-dataframe-writer-interface.md
+      - "0008 — Bestandsaufnahme und Roadmap": rfc/0008-bestandsaufnahme-roadmap.md
+      - "0008 — Umsetzungsstand": rfc/0008-umsetzung.md
   - Releasing: releasing.md
   - Changelog: changelog.md
