@@ -467,6 +467,8 @@ class DataFrame(ContentIntegrityMixin, Base):
         :return: a :class:`DataFrame` instance.
         """
         _require_parquet(engine)
+        from sdata.format import ensure_compatible
+        d = ensure_compatible(d)                     # RFC 0010: Version prüfen/migrieren
         metadata = Metadata.from_dict(d.get("metadata", {}))
         column_metadata_dict = d['data'].get('column_metadata', {})
         column_metadata = Metadata.from_dict(column_metadata_dict)
@@ -562,6 +564,8 @@ class DataFrame(ContentIntegrityMixin, Base):
         """
         if not attrs:
             return
+        from sdata.format import ensure_compatible
+        attrs = ensure_compatible(attrs)             # RFC 0010: deckt Parquet/Arrow/Feather ab
         if "metadata" in attrs:
             self.metadata = Metadata.from_dict(attrs["metadata"])
         if "column_metadata" in attrs:

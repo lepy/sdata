@@ -8,6 +8,7 @@ from typing import List, Dict, Any, Optional, Type, Literal, Union, Tuple, Binar
 
 import pandas
 from sdata import __version__
+from sdata.format import CURRENT_FORMAT_VERSION, ensure_compatible
 from sdata.sclass import register
 from sdata.suuid import SUUID
 from sdata.metadata import Metadata, Attribute, extract_name_unit
@@ -33,6 +34,7 @@ class Base:
     SDATA_CLS = "sdata.base.Base"
 
     SDATA_VERSION = "_sdata_version"
+    SDATA_FORMAT_VERSION = "_sdata_format_version"
     SDATA_CLASS = "_sdata_class"
     SDATA_NAME = "_sdata_name"
     SDATA_SNAME = "_sdata_sname"
@@ -43,7 +45,7 @@ class Base:
     SDATA_CTIME = "_sdata_ctime"
 
     SDATA_ATTRIBUTES: List[str] = [
-        SDATA_VERSION, SDATA_NAME, SDATA_CLASS, SDATA_CTIME,
+        SDATA_VERSION, SDATA_FORMAT_VERSION, SDATA_NAME, SDATA_CLASS, SDATA_CTIME,
         SDATA_PARENT_SNAME, SDATA_PROJECT_SNAME, SDATA_TOPOLOGY_CLASS
     ]
 
@@ -97,6 +99,10 @@ class Base:
         self.metadata.add(
             self.SDATA_VERSION, __version__, dtype="str",
             description="sdata package version", required=True
+        )
+        self.metadata.add(
+            self.SDATA_FORMAT_VERSION, CURRENT_FORMAT_VERSION, dtype="int",
+            description="sdata serialization format version", required=True
         )
         self.metadata.add(
             self.SDATA_TOPOLOGY_CLASS, "sdata.sclass:IndependentContinuant", dtype="str",
@@ -398,13 +404,16 @@ class Base:
             return spec
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> 'Base':
+    def from_dict(cls, d: Dict[str, Any], *, strict: bool = False) -> 'Base':
         """
         Create an instance from a dictionary.
 
         :param d: Dictionary with metadata, data, and description.
+        :param strict: bei einer **neueren** Formatversion hart scheitern statt zu
+            warnen (RFC 0010).
         :return: Instance of Base or subclass.
         """
+        d = ensure_compatible(d, strict=strict)      # RFC 0010: Version prüfen/migrieren
         metadata = Metadata.from_dict(d.get("metadata", {}))
         class_spec = metadata.get(cls.SDATA_CLASS).value or "sdata.base:Base"
         class_name = cls.classname_from_classspec(class_spec)
