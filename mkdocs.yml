@@ -78,5 +78,6 @@ nav:
       - "0007 — DataFrame writer interface": rfc/0007-dataframe-writer-interface.md
       - "0008 — Bestandsaufnahme und Roadmap": rfc/0008-bestandsaufnahme-roadmap.md
       - "0008 — Umsetzungsstand": rfc/0008-umsetzung.md
+      - "0009 — DataFrame reader interface": rfc/0009-dataframe-reader-interface.md
   - Releasing: releasing.md
   - Changelog: changelog.md
