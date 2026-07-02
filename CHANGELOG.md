@@ -6,8 +6,23 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-02
+
+The **RFC 0008 improvement program** plus the unit-conversion and writer/reader layers:
+a symmetric reader interface, explicit format versioning, persistence consolidation and
+a PEP 621 packaging modernization. Strictly additive; core dependencies stay
+`numpy`, `pandas`, `suuid`.
+
 ### Added
 
+- **DataFrame reader interface (`sdata.iolib.reader`, RFC 0009).** Symmetric to the
+  writer: a `DataFrameReader` protocol + `BaseDataFrameReader` template with the same
+  `require_*` contract, `ParquetReader`/`StoreReader`/`SqlReader` and a `read_group`
+  batch helper — round-tripping each backend with its qualifying metadata.
+- **Format versioning (`sdata.format`, RFC 0010).** A `_sdata_format_version` stamped on
+  every object, with `read_format_version`/`ensure_compatible`/`register_migration`, a
+  `FormatVersionWarning` and an `IncompatibleFormatError`; `Base.from_dict` and the
+  `DataFrame` restore paths check compatibility (opt-in `strict=`).
 - **Writer interface for DataFrames (`sdata.iolib.writer`, RFC 0007).** A unifying sink
   abstraction over the existing serializers: a `DataFrameWriter` protocol +
   `BaseDataFrameWriter` template method with a `require_metadata`/`require_columns`/
@@ -43,7 +58,46 @@ All notable changes to **sdata** are documented here. The format is based on
   `displacement [mm]`, fully semantically described, converted to `[kN, mm, ms]`) and a
   unit-conversion reference in `usage/dataframe.md`; RFC 0006 v2 (dimensional algebra).
 
-## [1.3.0] - 2026-06-29
+### Changed
+
+- **HDF5 backend uses `h5py`** instead of PyTables (RFC 0002 amendment): each column is a
+  native HDF5 dataset under a `key` group (readable by any HDF5 tool), the sdata metadata
+  rides along as the group's `_sdata` attribute; the `hdf` extra now installs `h5py`.
+  Legacy PyTables kwargs (`format`/`complevel`/`complib`) are accepted and ignored.
+- **Packaging modernized to PEP 621 (RFC 0013).** Metadata and extras live in a single
+  `[project]` table in `pyproject.toml`; the version resolves via `dynamic = ["version"]`
+  from `sdata/__init__.py` (single source). Core deps stay `numpy`/`pandas`/`suuid>=0.2.0`.
+- **`DataFrameGroup` members are now `DataFrame` objects (RFC 0011)** with symmetric
+  `write_group`/`read_group` batch helpers, replacing the ad-hoc raw-pandas layout.
+- **`Data` (deprecated) warns on direct instantiation (RFC 0012);** `DataFrame` is the
+  primary export in `__all__`/`SDATACLS`, while `Data` stays resolvable for
+  deserialization (subclasses like `Pud` are undisturbed — port is stage 2 / 2.0).
+
+### Removed
+
+- `setup.py` and `requirements.txt` — folded into the PEP 621 `[project]` table and
+  extras (RFC 0013); `setup.cfg` (RFC 0008 A5).
+- Orphaned vendored `contrib` packages with no importers: `attrdict`, `semver`,
+  `simple_graph_db`; the legacy `iolib/vault.py` and `node.py` (RFC 0011); and the dead
+  `FlatHDFDataStore` (`iolib/hdf.py`, superseded by `DataFrame.to_hdf`/h5py).
+
+### Fixed
+
+- `logging.basicConfig` removed from library modules — a library must not configure the
+  root logger; a `NullHandler` is attached at the package root instead (RFC 0008 A1).
+- `Metadata.from_json` with no source raises a clear `ValueError` instead of
+  `UnboundLocalError` (A2); a German topology-class value that failed to resolve now uses
+  its canonical English term (A6).
+
+### Docs
+
+- RFCs 0009 (reader), 0010 (format versioning), 0011 (persistence consolidation),
+  0012 (`Data` deprecation), 0013 (packaging), an open-points backlog and an RFC 0002
+  h5py amendment.
+- Contributor `conventions.md` (English code/docs, typing, lenient/`strict` error
+  policy); an honest README design-goal status table; license set to **MIT**.
+
+## [1.3.0] - 2026-06-29 (unreleased — shipped as part of 1.4.0)
 
 A large, strictly **additive** increment: a content/integrity foundation under all
 data containers (`Blob`), a much broader `DataFrame` serialization portfolio, and
@@ -112,6 +166,6 @@ native, format-agnostic metadata embedding for images. Core dependencies remain
   dependencies reduced to `numpy`/`pandas`/`suuid` (stdlib `zoneinfo`); warning-free
   test suite.
 
-[Unreleased]: https://github.com/lepy/sdata/compare/v1.3.0...HEAD
-[1.3.0]: https://github.com/lepy/sdata/compare/v1.2.0...v1.3.0
+[Unreleased]: https://github.com/lepy/sdata/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/lepy/sdata/compare/v1.2.0...v1.4.0
 [1.2.0]: https://github.com/lepy/sdata/releases/tag/v1.2.0
