@@ -21,8 +21,8 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 
 - [x] **A1** `logging.basicConfig` entfernen (`base.py:20`, `node.py:9`), nur
   `getLogger(__name__)` (+ `NullHandler` im Paket-Init) — PR #94
-- [ ] **A2** `Metadata.from_json`: expliziter `ValueError` bei fehlender Quelle
-  (`metadata.py:576–592`) + Test
+- [x] **A2** `Metadata.from_json`: expliziter `ValueError` bei fehlender Quelle
+  (`metadata.py:576–592`) + Test — PR #95
 - [ ] **A3** `from_csv` konsumiert `<sname>.meta.jsonld`-Sidecar automatisch (analog
   `image.from_file`), Schalter `sidecar=False`, Roundtrip-Test
 - [ ] **A4** Repo-Hygiene: `t/`, `t.py`, `db.json`, `tabulate.py`, `create_pyc_egg.py`,
@@ -74,3 +74,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 |-------|-------|---------------|-----------|
 | 2026-07-02 | Vorbereitung | `docs/rfc-0008-bestandsaufnahme` | RFC 0008 + Checkliste + Nav committet; Branch baut auf der unge-mergten RFC-0007-Doku (`c5cd053`) auf, damit die Nav konsistent bleibt; PR #93 |
 | 2026-07-02 | A1 | `fix/logging-basicconfig` (PR #94) | basicConfig raus aus `base.py`/`node.py`/`iolib/owncloudfs.py`, Modul-Logger in `node.py`, NullHandler im Paket-Init; `did/*`-CLI-`main()` bewusst belassen; `make ci` grün (100 %) |
+| 2026-07-02 | A2 | `fix/metadata-from-json` (PR #95) | `from_json` ohne Quelle → `ValueError` (statt `UnboundLocalError`); Fallback filepath-fehlt+jsonstr bleibt; 3-Fälle-Test; `make ci` grün (100 %) |
