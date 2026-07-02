@@ -23,8 +23,8 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
   `getLogger(__name__)` (+ `NullHandler` im Paket-Init) — PR #94
 - [x] **A2** `Metadata.from_json`: expliziter `ValueError` bei fehlender Quelle
   (`metadata.py:576–592`) + Test — PR #95
-- [ ] **A3** `from_csv` konsumiert `<sname>.meta.jsonld`-Sidecar automatisch (analog
-  `image.from_file`), Schalter `sidecar=False`, Roundtrip-Test
+- [x] **A3** `from_csv` konsumiert `<sname>.meta.jsonld`-Sidecar automatisch (analog
+  `image.from_file`), Schalter `sidecar=False`, Roundtrip-Test — PR #96
 - [ ] **A4** Repo-Hygiene: `t/`, `t.py`, `db.json`, `tabulate.py`, `create_pyc_egg.py`,
   `upload_pypi.sh`, `sdata.data.png`, alle `.ipynb_checkpoints` entfernen;
   `.gitignore` um `.ipynb_checkpoints/` ergänzen. Hinweis RFC §9: `t/secret*` bleiben
@@ -75,3 +75,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | Vorbereitung | `docs/rfc-0008-bestandsaufnahme` | RFC 0008 + Checkliste + Nav committet; Branch baut auf der unge-mergten RFC-0007-Doku (`c5cd053`) auf, damit die Nav konsistent bleibt; PR #93 |
 | 2026-07-02 | A1 | `fix/logging-basicconfig` (PR #94) | basicConfig raus aus `base.py`/`node.py`/`iolib/owncloudfs.py`, Modul-Logger in `node.py`, NullHandler im Paket-Init; `did/*`-CLI-`main()` bewusst belassen; `make ci` grün (100 %) |
 | 2026-07-02 | A2 | `fix/metadata-from-json` (PR #95) | `from_json` ohne Quelle → `ValueError` (statt `UnboundLocalError`); Fallback filepath-fehlt+jsonstr bleibt; 3-Fälle-Test; `make ci` grün (100 %) |
+| 2026-07-02 | A3 | `fix/csv-sidecar-roundtrip` (PR #96) | `from_csv(sidecar=True)` merged `<stem>.meta.jsonld` (Dataset via `from_jsonld`, Spalten via `set_column`); `to_csv` platziert Sidecar neben der CSV; Grenzen: JSON-LD trägt keine description/Spalten-ontology; 6 neue Tests; `make ci` grün (100 %) |
