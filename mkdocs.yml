@@ -82,5 +82,6 @@ nav:
       - "0010 — Format versioning": rfc/0010-format-versioning.md
       - "0011 — Persistence consolidation": rfc/0011-persistence-consolidation.md
       - "0012 — Data deprecation": rfc/0012-data-deprecation.md
+      - "0013 — Packaging modernization": rfc/0013-packaging-modernization.md
   - Releasing: releasing.md
   - Changelog: changelog.md

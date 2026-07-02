@@ -64,8 +64,8 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
   portieren (`doe.py`, `iolib/hdf.py`, `iolib/pud.py`) — PR #109 (Warnung nur bei
   **direkter** `Data()`-Instanziierung via `type(self) is Data`; Subklassen-Port
   = Stufe 2/2.0; `DataFrame` als Default-Export)
-- [ ] **B5a** RFC 0013 Packaging-Modernisierung schreiben (PEP 621, Extras,
-  `contrib/`-Triage)
+- [x] **B5a** RFC 0013 Packaging-Modernisierung schreiben (PEP 621, Extras,
+  `contrib/`-Triage) — PR #110
 - [ ] **B5b** RFC 0013 implementieren (`[project]`-Tabelle, `requirements.txt`-Rolle,
   contrib-Entflechtung mit Deprecation-Stufe)
 
@@ -101,3 +101,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | B3b-2 | `chore/remove-vault` (PR #107) | `sdata/iolib/vault.py` (an deprecated `Data`, doppelte `reindex`), `sdata/node.py` (einziger Vault-Nutzer, von nichts importiert) und `tests/test_vault.py` entfernt; beide `omit`-Einträge (`node.py`/`vault.py`) raus → weniger ungemessener Code; `StoreWriter`/`StoreReader` ersetzen den Vault funktional; `make ci` grün (100 %) |
 | 2026-07-02 | B4a | `docs/rfc-0012-data-deprecation` (PR #108) | RFC 0012 Draft: Migrationstabelle Data→sclass (1:1 / ersetzt / streichen), Deprecation-Treppe (Stufe 1 = Warnung + `DataFrame` als Default-Export + interne Nutzer portieren; Stufe 2 = 2.0-Entfernung), Deserialisierung alter `Data`-Objekte via RFC-0010-Format-Migration; Implementierung = B4b |
 | 2026-07-02 | B4b | `feat/data-deprecation-stage1` (PR #109) | `Data.__init__` warnt bei **direkter** Instanziierung (`type(self) is Data`; Subklassen `Pud`/`experiments` ungestört — Port = Stufe 2); `DataFrame` an erste Stelle in `__all__`/`SDATACLS`, `Data` bleibt auflösbar (Deserialisierung); 5 Tests; Import bleibt warnungsfrei; `make ci` grün (100 %) |
+| 2026-07-02 | B5a | `docs/rfc-0013-packaging` (PR #110) | RFC 0013 Draft: PEP-621-`[project]` in `pyproject.toml` (Extras/Metadaten an einem Ort, `dynamic=["version"]` hält Single Source), `requirements.txt` entfernen (Extras sind die Wahrheit), `contrib`-Triage (0-Importer `attrdict`/`semver`/`timeflake`/`simple_graph_db` raus; 1-Importer je Fall entscheiden); Implementierung = B5b |
