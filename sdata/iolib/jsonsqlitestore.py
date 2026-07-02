@@ -68,6 +68,11 @@ class JSONSQLiteStore:
             type_parsers (Optional[Dict[str, Callable[[Any], Any]]]): Custom type parsers for deserialization.
             hooks (Optional[Dict[str, Callable[..., None]]]): Event hooks for various operations.
         """
+        import warnings
+        warnings.warn(
+            "JSONSQLiteStore is deprecated (RFC 0011); use "
+            "sdata.iolib.json1sqlitestore.JSON1SQLiteStore. Removal in sdata 2.0.",
+            DeprecationWarning, stacklevel=2)
         self.filename = filename
         self.compression = compression
         self.type_parsers = type_parsers or {}

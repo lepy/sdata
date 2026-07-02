@@ -40,6 +40,7 @@ __all__ = [
     "ParquetReader",
     "StoreReader",
     "SqlReader",
+    "read_group",
 ]
 
 #: Jüngste Metazeile zu einem Selektor (suuid **oder** sname); Literal-SQL mit
@@ -48,6 +49,23 @@ _SQL_META_SELECT = (
     "SELECT target_table, sdata FROM sdata_dataframe_meta "
     "WHERE suuid = ? OR sname = ? ORDER BY rowid DESC LIMIT 1"
 )
+
+
+def read_group(reader: "DataFrameReader", keys, *, name: str = "group"):
+    """Mehrere Mitglieder aus **einer** Quelle zu einer
+    :class:`~sdata.sclass.dataframegroup.DataFrameGroup` zusammenführen (RFC 0011).
+
+    :param reader: eine beliebige :class:`DataFrameReader`-Quelle.
+    :param keys: Iterable von Selektoren (suuid/sname/…), je einer pro Mitglied.
+    :param name: Name der erzeugten Gruppe.
+    :return: eine ``DataFrameGroup`` mit den gelesenen Mitgliedern (Schlüssel = Selektor).
+    """
+    from sdata.sclass.dataframegroup import DataFrameGroup
+    group = DataFrameGroup(name=name)
+    with reader:
+        for key in keys:
+            group.add(reader.read(key), key=str(key), overwrite=True)
+    return group
 
 
 @runtime_checkable

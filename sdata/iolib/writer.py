@@ -44,6 +44,7 @@ __all__ = [
     "ensure_sdata",
     "write_with_provenance",
     "check_contract",
+    "write_group",
 ]
 
 #: Feste Metadatentabelle des :class:`SqlWriter` — als **Literal** in statischem SQL
@@ -145,6 +146,25 @@ def ensure_sdata(obj: Any) -> "DataFrame":
         sdf._restore_from_attrs(obj.attrs.get("_sdata"))
         return sdf
     raise TypeError(f"expected DataFrame or pandas.DataFrame, not {type(obj)!r}")
+
+
+def write_group(writer: "DataFrameWriter", group: Any) -> list:
+    """Alle Mitglieder einer :class:`~sdata.sclass.dataframegroup.DataFrameGroup`
+    in **eine** Senke schreiben (RFC 0011).
+
+    Der Writer wird als Context-Manager geöffnet; für transaktionale Senken
+    (``StoreWriter``/``SqlWriter``) laufen alle Mitglieder in **einer** Transaktion
+    (Commit erst beim ``close``), also alles-oder-nichts je Gruppe.
+
+    :param writer: eine beliebige :class:`DataFrameWriter`-Senke.
+    :param group: eine ``DataFrameGroup`` (oder etwas mit ``items() -> (key, DataFrame)``).
+    :return: Liste der :class:`WriteReceipt` in Mitglied-Reihenfolge.
+    """
+    receipts = []
+    with writer:
+        for _key, sdf in group.items():
+            receipts.append(writer.write(sdf))
+    return receipts
 
 
 def write_with_provenance(writer: "DataFrameWriter", obj: Any,
