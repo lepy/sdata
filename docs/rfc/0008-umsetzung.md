@@ -25,10 +25,11 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
   (`metadata.py:576–592`) + Test — PR #95
 - [x] **A3** `from_csv` konsumiert `<sname>.meta.jsonld`-Sidecar automatisch (analog
   `image.from_file`), Schalter `sidecar=False`, Roundtrip-Test — PR #96
-- [ ] **A4** Repo-Hygiene: `t/`, `t.py`, `db.json`, `tabulate.py`, `create_pyc_egg.py`,
+- [x] **A4** Repo-Hygiene: `t/`, `t.py`, `db.json`, `tabulate.py`, `create_pyc_egg.py`,
   `upload_pypi.sh`, `sdata.data.png`, alle `.ipynb_checkpoints` entfernen;
   `.gitignore` um `.ipynb_checkpoints/` ergänzen. Hinweis RFC §9: `t/secret*` bleiben
   in der Historie — **falls echtes Schlüsselmaterial: melden, nicht still entfernen**
+  — PR #97; `t/secret*` als Krypto-Artefakte gemeldet (siehe Protokoll)
 - [ ] **A5** Tote Konfigs: `.travis.yml`, `setup.cfg` löschen; `tox.ini` löschen oder
   auf py39–py312 reparieren; `greetings.yml` konfigurieren oder entfernen
 - [ ] **A6** `"sdata.sclass:Prozess"` → englischer Name + `BFO_IRIS`-Eintrag
@@ -76,3 +77,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | A1 | `fix/logging-basicconfig` (PR #94) | basicConfig raus aus `base.py`/`node.py`/`iolib/owncloudfs.py`, Modul-Logger in `node.py`, NullHandler im Paket-Init; `did/*`-CLI-`main()` bewusst belassen; `make ci` grün (100 %) |
 | 2026-07-02 | A2 | `fix/metadata-from-json` (PR #95) | `from_json` ohne Quelle → `ValueError` (statt `UnboundLocalError`); Fallback filepath-fehlt+jsonstr bleibt; 3-Fälle-Test; `make ci` grün (100 %) |
 | 2026-07-02 | A3 | `fix/csv-sidecar-roundtrip` (PR #96) | `from_csv(sidecar=True)` merged `<stem>.meta.jsonld` (Dataset via `from_jsonld`, Spalten via `set_column`); `to_csv` platziert Sidecar neben der CSV; Grenzen: JSON-LD trägt keine description/Spalten-ontology; 6 neue Tests; `make ci` grün (100 %) |
+| 2026-07-02 | A4 | `chore/repo-hygiene` (PR #97) | 78 Dateien enttrackt (70 `.ipynb_checkpoints`, `t.py`, `db.json`, `tabulate.py`, `create_pyc_egg.py`, `upload_pypi.sh`, `sdata.data.png`, `t/secret1+2`); `.gitignore` +`.ipynb_checkpoints/`/`t/`/`db.json`. **Befund `t/secret*`:** 64-Byte-Zufallsblobs (identisch), daneben untrackte `privkey*.pem` — Artefakte eines lokalen Krypto-Experiments, versehentlich in `eeb7f0b` committet; nur enttrackt (`--cached`), lokal belassen; bleiben in der Git-Historie — falls je produktiv genutzt: rotieren |
