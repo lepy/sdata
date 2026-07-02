@@ -128,6 +128,22 @@ def test_metadata():
     assert m.get_attr("foo").value==m6.get_attr("foo").value
     print(m.to_dataframe())
 
+def test_from_json_missing_source_raises():
+    import pytest
+    # keine Quelle -> klarer ValueError (statt UnboundLocalError, RFC 0008 A2)
+    with pytest.raises(ValueError, match="requires jsonstr or filepath"):
+        sdata.metadata.Metadata.from_json()
+    # filepath gesetzt, aber nicht existent, kein jsonstr -> ValueError nennt den Pfad
+    with pytest.raises(ValueError, match="file not found"):
+        sdata.metadata.Metadata.from_json(filepath="/tmp/does-not-exist-sdata.json")
+    # nicht existenter filepath MIT jsonstr -> Fallback auf jsonstr bleibt erhalten
+    m = sdata.metadata.Metadata(name="otto")
+    m.add("foo", 1.2, unit="m")
+    m2 = sdata.metadata.Metadata.from_json(
+        jsonstr=m.to_json(), filepath="/tmp/does-not-exist-sdata.json")
+    assert m2.get_attr("foo").value == 1.2
+
+
 def test_timestamp():
     t = sdata.timestamp.TimeStamp()
     print(t)

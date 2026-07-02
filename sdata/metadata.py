@@ -580,6 +580,7 @@ class Metadata(object):
         :param jsonstr: json str
         :param filepath: filepath to json file
         :return: Metadata
+        :raises ValueError: if neither jsonstr nor an existing filepath is given
         """
 
         if filepath is not None and os.path.exists(filepath):
@@ -589,6 +590,11 @@ class Metadata(object):
         elif jsonstr is not None:
             j = json.loads(jsonstr)
             metadata = cls.from_dict(j)
+        else:
+            if filepath is not None:
+                raise ValueError(
+                    f"Metadata.from_json: file not found and no jsonstr given: {filepath!r}")
+            raise ValueError("Metadata.from_json requires jsonstr or filepath")
         return metadata
 
     def to_list(self):
