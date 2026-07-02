@@ -56,7 +56,9 @@ Arbeitsrunde nach der RFC-0008-Roadmap.
 
 * **`Data`-Ablösung Stufe 2 (2.0):** `Data`/`deprecated/data.py` entfernen, `Pud`/
   `experiments/*` portieren oder entfernen, Format-Migration `Data`→`DataFrame`
-  scharfschalten (RFC 0012).
+  scharfschalten (RFC 0012). Der interne `Data`-Nutzer `iolib/hdf.py`
+  (`FlatHDFDataStore`, PyTables) wurde bereits **entfernt** (ersetzt durch
+  `DataFrame.to_hdf`/h5py) — ein Baustein weniger für Stufe 2.
 * **`contrib`-Einzelnutzer** (`piexif`/`sobol_seq`/`ranger`/`sortedcontainers`/
   `sqlitedict`/`timeflake`): je Paket Dependency/Extra/vendoriert entscheiden
   (RFC 0013 §4.3).
