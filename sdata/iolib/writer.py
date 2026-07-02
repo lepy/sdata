@@ -235,17 +235,40 @@ class ParquetWriter(BaseDataFrameWriter):
     """Schreibt Parquet-Bytes (mit eingebettetem ``_sdata``) an eine fsspec-URI.
 
     Die Metadaten reisen **im** Format mit — kein Sidecar nötig (RFC 0007 §6.1).
+
+    Zwei Modi (RFC 0007 F5 / RFC 0011 §5.3):
+
+    * **Einzeldatei** (Default): jeder ``write`` schreibt an dieselbe ``uri`` —
+      mehrere ``write`` überschreiben sich.
+    * **Verzeichnis** (``directory=True``): ``uri`` ist ein Verzeichnis; jeder
+      ``write`` legt eine eigene ``<sname>.spq`` an. Damit schreibt ``write_group``
+      jede Tabelle in eine eigene Datei (statt Überschreiben); die Gegenseite ist
+      :class:`~sdata.iolib.reader.ParquetReader` im Verzeichnis-Modus.
     """
 
-    def __init__(self, uri: str, **contract: Any):
-        """Bind the destination fsspec ``uri`` and the require_* contract."""
+    def __init__(self, uri: str, *, directory: bool = False, **contract: Any):
+        """Bind the destination fsspec ``uri`` and the require_* contract.
+
+        :param uri: Ziel-URI (Einzeldatei) bzw. Ziel-Verzeichnis (``directory=True``).
+        :param directory: Verzeichnis-Modus — eine ``<sname>.spq`` je ``write``.
+        """
         super().__init__(**contract)
         self.uri = uri
+        self.directory = directory
 
     def _write_impl(self, sdf: "DataFrame", meta: Dict[str, Any]) -> WriteReceipt:
         blob = sdf.as_blob("parquet")   # to_parquet()-Bytes: _sdata eingebettet
-        target = blob.write(self.uri)   # fsspec (lokal, s3://, …)
-        return WriteReceipt("parquet", sdf.sname, str(sdf.suuid), target,
+        target = self.uri
+        if self.directory:
+            from sdata.sclass.blob import fsspec
+            if fsspec is None:  # pragma: no cover - optionale Abhängigkeit
+                raise ImportError("directory ParquetWriter requires: pip install sdata[blob]")
+            base = self.uri.rstrip("/")
+            fs, _, _ = fsspec.get_fs_token_paths(base)
+            fs.makedirs(base, exist_ok=True)
+            target = "{}/{}.spq".format(base, sdf.sname)
+        written = blob.write(target)    # fsspec (lokal, s3://, …)
+        return WriteReceipt("parquet", sdf.sname, str(sdf.suuid), written,
                             {"bytes": blob.size})
 
 

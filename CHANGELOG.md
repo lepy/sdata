@@ -8,6 +8,11 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Added
 
+- **Parquet directory mode (RFC 0007 F5 / RFC 0011).** `ParquetWriter(uri,
+  directory=True)` writes one `<sname>.spq` per `write` into a directory instead of
+  overwriting a single URI, so `write_group` keeps each table in its own file;
+  `ParquetReader(uri, directory=True)` with `keys()` + `read_group` reads the directory
+  back into a `DataFrameGroup` (symmetric). Single-file mode is unchanged.
 - **Frequency units `Hz`/`kHz`/`MHz`/`GHz` (RFC 0006).** Recognized as named units
   (input, conversion, QUDT `unit:HZ`), interconvertible with the `1/s` family. The
   rate/frequency dimension keeps its **neutral** canonical back-name (`1/s`/`1/ms`) —
