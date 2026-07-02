@@ -139,7 +139,7 @@ sdf.to_parquet(path="out", sidecar=True)      # out/<sname>.spq + sidecar
 sdf.to_csv(path="out")                         # data-only CSV (pure pandas)
 sdf.to_feather(path="out")                     # Arrow IPC + native per-column field metadata
 sdf.to_datapackage(path="out")                 # Frictionless Data Package (.zip)
-sdf.to_hdf(path="out")                         # HDF5 (needs sdata[hdf])
+sdf.to_hdf(path="out")                         # HDF5 via h5py, one dataset/column (sdata[hdf])
 DataFrame.from_parquet("out/specimen_01.spq")
 
 # validate the table against a schema (missing/dtype/unit/extra columns)
@@ -183,18 +183,21 @@ Try to paste some Excel-Data in the forms ...
 
 ### dtypes for attributes
 
-* int
-* float
-* str
-* bool
-* list (list of strings)
-* timestamp (ISO-8601 with timezone, stdlib `zoneinfo`)
-* bytes (base64 in JSON)
-* json (dict/list)
-* uri
+Every attribute value is coerced to a declared dtype (single source:
+`sdata.dtypes`), each with a lossless JSON-LD / XSD mapping:
 
-Set `strict=True` (e.g. `metadata.add(..., strict=True)`) to raise on invalid
-values instead of the lenient default coercion.
+* `int`, `float`, `str`, `bool`
+* `list` (list of strings), `floatlist` (typed list of floats)
+* `timestamp` (ISO-8601 with timezone, stdlib `zoneinfo`)
+* `date`, `time`, `duration` (ISO-8601 / `datetime` types)
+* `decimal` (exact decimal), `complex` (complex number)
+* `bytes` (base64 in JSON), `json` (dict/list), `uri`
+* `langstring` (language-tagged string, `rdf:langString`, e.g. `"Hallo@de"`)
+
+Coercion is **lenient** by default (invalid values are logged and left unchanged).
+Pass `strict=True` (e.g. `metadata.add(..., strict=True)`) to raise `DtypeError`
+instead. See the [conventions](https://lepy.github.io/sdata/conventions/) for the
+error policy.
 
 ## paper
 
