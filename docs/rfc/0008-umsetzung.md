@@ -19,8 +19,8 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 
 ## Paket A — Quick-Fixes (je 1 Iteration)
 
-- [ ] **A1** `logging.basicConfig` entfernen (`base.py:20`, `node.py:9`), nur
-  `getLogger(__name__)` (+ `NullHandler` im Paket-Init)
+- [x] **A1** `logging.basicConfig` entfernen (`base.py:20`, `node.py:9`), nur
+  `getLogger(__name__)` (+ `NullHandler` im Paket-Init) — PR #94
 - [ ] **A2** `Metadata.from_json`: expliziter `ValueError` bei fehlender Quelle
   (`metadata.py:576–592`) + Test
 - [ ] **A3** `from_csv` konsumiert `<sname>.meta.jsonld`-Sidecar automatisch (analog
@@ -72,4 +72,5 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 
 | Datum | Punkt | Branch/Commit | Anmerkung |
 |-------|-------|---------------|-----------|
-| 2026-07-02 | Vorbereitung | `docs/rfc-0008-bestandsaufnahme` | RFC 0008 + Checkliste + Nav committet; Branch baut auf der unge-mergten RFC-0007-Doku (`c5cd053`) auf, damit die Nav konsistent bleibt |
+| 2026-07-02 | Vorbereitung | `docs/rfc-0008-bestandsaufnahme` | RFC 0008 + Checkliste + Nav committet; Branch baut auf der unge-mergten RFC-0007-Doku (`c5cd053`) auf, damit die Nav konsistent bleibt; PR #93 |
+| 2026-07-02 | A1 | `fix/logging-basicconfig` (PR #94) | basicConfig raus aus `base.py`/`node.py`/`iolib/owncloudfs.py`, Modul-Logger in `node.py`, NullHandler im Paket-Init; `did/*`-CLI-`main()` bewusst belassen; `make ci` grün (100 %) |
