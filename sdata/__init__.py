@@ -15,6 +15,10 @@ import logging
 import re
 import unicodedata
 
+# Bibliothekskonvention: kein basicConfig im Bibliothekscode; die Host-Anwendung
+# konfiguriert das Logging. NullHandler unterdrückt "No handlers could be found".
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+
 # fix "ValueError: unsupported pickle protocol: 5"
 #import pickle
 #pickle.HIGHEST_PROTOCOL = 4

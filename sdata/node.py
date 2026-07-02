@@ -6,12 +6,12 @@ from datetime import datetime
 from sdata.contrib.simple_graph_db import Database
 from sdata.iolib.vault import FileSystemVault
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class Node:
     def __init__(self, name, vault):
-        logging.debug(f"[Node] Creating node: {name}")
+        logger.debug(f"[Node] Creating node: {name}")
         self.name = name
         self.uuid = uuid.uuid4().hex
         self.parents = set()
@@ -34,10 +34,10 @@ class Node:
         if not os.path.exists(self.notes_path):
             with open(self.notes_path, 'w') as notes_file:
                 notes_file.write(f"# Notes for Node: {self.name}\n\n")
-                logging.debug(f"[Node] Initialized notes for node: {self.name}")
+                logger.debug(f"[Node] Initialized notes for node: {self.name}")
 
     def add_parent(self, parent_node):
-        logging.debug(f"[Node] Adding parent: {parent_node.name} to node: {self.name}")
+        logger.debug(f"[Node] Adding parent: {parent_node.name} to node: {self.name}")
         self.parents.add(parent_node)
         parent_node.children.add(self)
         self.update_timestamp()
@@ -46,7 +46,7 @@ class Node:
         parent_node.serialize()
 
     def add_child(self, child_node):
-        logging.debug(f"[Node] Adding child: {child_node.name} to node: {self.name}")
+        logger.debug(f"[Node] Adding child: {child_node.name} to node: {self.name}")
         self.children.add(child_node)
         child_node.parents.add(self)
         self.update_timestamp()
@@ -55,7 +55,7 @@ class Node:
         child_node.serialize()
 
     def add_direct_link(self, linked_node):
-        logging.debug(f"[Node] Adding direct link to node: {linked_node.name} from node: {self.name}")
+        logger.debug(f"[Node] Adding direct link to node: {linked_node.name} from node: {self.name}")
         self.direct_links.add(linked_node)
         linked_node.direct_links.add(self)
         self.update_timestamp()
@@ -64,20 +64,20 @@ class Node:
         linked_node.serialize()
 
     def add_attribute(self, key, value):
-        logging.debug(f"[Node] Adding attribute: {key} = {value} to node: {self.name}")
+        logger.debug(f"[Node] Adding attribute: {key} = {value} to node: {self.name}")
         self.attributes[key] = value
         self.update_timestamp()
         self.serialize()
 
     def add_note(self, note_text):
-        logging.debug(f"[Node] Adding note to node: {self.name}")
+        logger.debug(f"[Node] Adding note to node: {self.name}")
         with open(self.notes_path, 'a') as notes_file:
             notes_file.write(f"{note_text}\n\n")
         self.update_timestamp()
         self.serialize()
 
     def get_siblings(self):
-        logging.debug(f"[Node] Getting siblings for node: {self.name}")
+        logger.debug(f"[Node] Getting siblings for node: {self.name}")
         siblings = set()
         for parent in self.parents:
             siblings.update(parent.children)
@@ -89,7 +89,7 @@ class Node:
         self.attributes["updated_at"] = self.updated_at
 
     def serialize(self):
-        logging.debug(f"[Node] Serializing node: {self.name}")
+        logger.debug(f"[Node] Serializing node: {self.name}")
         data = {
             "uuid": self.uuid,
             "name": self.name,
@@ -105,7 +105,7 @@ class Node:
         return f"Node({self.name}, id={self.uuid})"
 
     def display(self):
-        logging.debug(f"[Node] Displaying node: {self.name} (ID: {self.uuid})")
+        logger.debug(f"[Node] Displaying node: {self.name} (ID: {self.uuid})")
         print(f"  Parents: {[parent.name for parent in self.parents]}")
         print(f"  Children: {[child.name for child in self.children]}")
         print(f"  Direct Links: {[link.name for link in self.direct_links]}")
@@ -115,7 +115,9 @@ class Node:
 
 # Beispiel zur Verwendung der Node- und FileSystemVault-Klassen
 if __name__ == "__main__":
-    logging.debug("[Main] Initializing FileSystemVault and Nodes")
+    # Skript-Kontext: hier ist basicConfig legitim (nicht auf Modulebene)
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger.debug("[Main] Initializing FileSystemVault and Nodes")
     vault = FileSystemVault("/tmp/vault")
     node_a = Node("A", vault)
     node_b = Node("B", vault)
@@ -123,13 +125,13 @@ if __name__ == "__main__":
     node_d = Node("D", vault)
     node_e = Node("E", vault)
 
-    logging.debug("[Main] Creating relationships between nodes")
+    logger.debug("[Main] Creating relationships between nodes")
     node_a.add_child(node_b)
     node_a.add_child(node_c)
     node_b.add_parent(node_d)
     node_c.add_direct_link(node_e)
 
-    logging.debug("[Main] Adding attributes and notes")
+    logger.debug("[Main] Adding attributes and notes")
     node_a.add_attribute("priority", "high")
     node_b.add_attribute("status", "in-progress")
 
@@ -137,7 +139,7 @@ if __name__ == "__main__":
     node_b.add_note("This is a note for Node B.")
     node_c.add_note("This is a note for Node C with an image: ![example](example.png)")
 
-    logging.debug("[Main] Displaying nodes")
+    logger.debug("[Main] Displaying nodes")
     node_a.display()
     node_b.display()
     node_c.display()
