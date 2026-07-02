@@ -58,8 +58,8 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 - [x] **B3b-2** RFC 0011 Teil 2: `vault.py` entfernen (entwirrt `node.py`-`Node`),
   doppelte `reindex` weg; `omit`-Liste bereinigen — PR #107 (vault.py + node.py +
   test_vault.py entfernt, beide `omit`-Einträge weg)
-- [ ] **B4a** RFC 0012 Ablösung `deprecated.Data` schreiben (Migrationstabelle,
-  Deprecation-Stufen)
+- [x] **B4a** RFC 0012 Ablösung `deprecated.Data` schreiben (Migrationstabelle,
+  Deprecation-Stufen) — PR #108
 - [ ] **B4b** RFC 0012 umsetzen Stufe 1: `DeprecationWarning` + interne Abhängigkeiten
   portieren (`doe.py`, `iolib/hdf.py`, `iolib/pud.py`)
 - [ ] **B5a** RFC 0013 Packaging-Modernisierung schreiben (PEP 621, Extras,
@@ -97,3 +97,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | B3a | `docs/rfc-0011-persistence-consolidation` (PR #105) | RFC 0011 Draft: `JSON1SQLiteStore` kanonisch (Alt-`JSONSQLiteStore` deprecaten; zlib-Frage explizit, Empfehlung Option B), `DataFrameGroup` auf `Metadata`+`sclass.DataFrame` heben (abwärtskompatibel via RFC-0010-Migration), `write_group`/`read_group`-Batch über RFC-0007/0009, `vault.py` entfernen (empfohlen) statt an `Data` weiterzuschleppen; Implementierung = B3b |
 | 2026-07-02 | B3b-1 | `feat/persistence-consolidation` (PR #106) | `JSONSQLiteStore.__init__` → `DeprecationWarning` (zlib bleibt Option B/Nicht-Ziel); `DataFrameGroup` hält jetzt `sclass.DataFrame`-Mitglieder (volle Spaltensemantik), `from_dict` liest neues `{sdata}`- **und** Legacy-`{parquet,column_metadata}`-Layout, API abwärtskompatibel; `write_group`/`read_group` (eine Senke/Quelle, Store-Transaktion); alle vier Module 100 %; `make ci` grün (100 %) |
 | 2026-07-02 | B3b-2 | `chore/remove-vault` (PR #107) | `sdata/iolib/vault.py` (an deprecated `Data`, doppelte `reindex`), `sdata/node.py` (einziger Vault-Nutzer, von nichts importiert) und `tests/test_vault.py` entfernt; beide `omit`-Einträge (`node.py`/`vault.py`) raus → weniger ungemessener Code; `StoreWriter`/`StoreReader` ersetzen den Vault funktional; `make ci` grün (100 %) |
+| 2026-07-02 | B4a | `docs/rfc-0012-data-deprecation` (PR #108) | RFC 0012 Draft: Migrationstabelle Data→sclass (1:1 / ersetzt / streichen), Deprecation-Treppe (Stufe 1 = Warnung + `DataFrame` als Default-Export + interne Nutzer portieren; Stufe 2 = 2.0-Entfernung), Deserialisierung alter `Data`-Objekte via RFC-0010-Format-Migration; Implementierung = B4b |

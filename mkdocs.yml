@@ -81,5 +81,6 @@ nav:
       - "0009 — DataFrame reader interface": rfc/0009-dataframe-reader-interface.md
       - "0010 — Format versioning": rfc/0010-format-versioning.md
       - "0011 — Persistence consolidation": rfc/0011-persistence-consolidation.md
+      - "0012 — Data deprecation": rfc/0012-data-deprecation.md
   - Releasing: releasing.md
   - Changelog: changelog.md
