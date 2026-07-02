@@ -8,7 +8,6 @@ from pathlib import Path
 from webdav3.client import Client
 from typing import List
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class OwnCloudVault:
