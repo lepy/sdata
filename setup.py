@@ -51,7 +51,7 @@ setup(
     maintainer='Lepy',
     maintainer_email='lepy@tuta.io',
     url="https://github.com/lepy/sdata",
-    license='MIT/Apache-2.0',
+    license='MIT',
 
     keywords=[
         'open data',

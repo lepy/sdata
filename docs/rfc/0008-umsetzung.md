@@ -38,8 +38,9 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 - [x] **A6** `"sdata.sclass:Prozess"` → englischer Name + `BFO_IRIS`-Eintrag
   (`process.py:47`, `vocab.py`); mutable defaults `process.py:132–137` beheben — PR #99
   (`BFO_IRIS` hatte `"Process"` bereits; nur Umbenennung nötig)
-- [ ] **A7** Lizenzaussage konsolidieren (`LICENSE-APACHE` beilegen **oder** überall
-  nur MIT deklarieren)
+- [x] **A7** Lizenzaussage konsolidieren (`LICENSE-APACHE` beilegen **oder** überall
+  nur MIT deklarieren) — PR #100 (MIT: entspricht `LICENSE-MIT` + Trove-Classifier;
+  Dual-Lizenz wäre eine bewusste Entscheidung des Maintainers)
 
 ## Paket B — Folge-RFCs (je Punkt: RFC-Iteration, dann Implementierungs-Iteration(en))
 
@@ -84,3 +85,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | A4 | `chore/repo-hygiene` (PR #97) | 78 Dateien enttrackt (70 `.ipynb_checkpoints`, `t.py`, `db.json`, `tabulate.py`, `create_pyc_egg.py`, `upload_pypi.sh`, `sdata.data.png`, `t/secret1+2`); `.gitignore` +`.ipynb_checkpoints/`/`t/`/`db.json`. **Befund `t/secret*`:** 64-Byte-Zufallsblobs (identisch), daneben untrackte `privkey*.pem` — Artefakte eines lokalen Krypto-Experiments, versehentlich in `eeb7f0b` committet; nur enttrackt (`--cached`), lokal belassen; bleiben in der Git-Historie — falls je produktiv genutzt: rotieren |
 | 2026-07-02 | A5 | `chore/dead-configs` (PR #98) | `.travis.yml` (toter Provider, doppeltes `install:`), `setup.cfg` (nur deprecated `[aliases]`), `tox.ini` (py27-envlist, `flake8 twine/`-Copy-Paste), `greetings.yml` (unkonfigurierter Platzhalter) gelöscht; keine Referenzen in Makefile/ci/RELEASING/docs; `make ci` grün (100 %) |
 | 2026-07-02 | A6 | `fix/process-topology` (PR #99) | `"sdata.sclass:Prozess"` → `"…:Process"` (`bfo_iri` liefert jetzt `bfo:BFO_0000015` statt `None`); `create_process_class`: mutable defaults (`{}`/`[]`) → `None`-Idiom; manuell verifiziert (Modul in Coverage-`omit`); `make ci` grün (100 %) |
+| 2026-07-02 | A7 | `chore/license-consolidation` (PR #100) | `setup.py` `license='MIT'` (statt `MIT/Apache-2.0`), `mkdocs.yml` `copyright: MIT License`; nur `LICENSE-MIT` liegt bei, Classifier war schon MIT-only; falls Dual-Lizenz gewollt: `LICENSE-APACHE` beilegen und revertieren |
