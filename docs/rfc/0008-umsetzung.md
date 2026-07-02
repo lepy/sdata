@@ -35,8 +35,9 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 - [x] **A5** Tote Konfigs: `.travis.yml`, `setup.cfg` löschen; `tox.ini` löschen oder
   auf py39–py312 reparieren; `greetings.yml` konfigurieren oder entfernen — PR #98
   (alle vier gelöscht; tox wäre ein paralleler, ungetesteter CI-Pfad neben `make ci`)
-- [ ] **A6** `"sdata.sclass:Prozess"` → englischer Name + `BFO_IRIS`-Eintrag
-  (`process.py:47`, `vocab.py`); mutable defaults `process.py:132–137` beheben
+- [x] **A6** `"sdata.sclass:Prozess"` → englischer Name + `BFO_IRIS`-Eintrag
+  (`process.py:47`, `vocab.py`); mutable defaults `process.py:132–137` beheben — PR #99
+  (`BFO_IRIS` hatte `"Process"` bereits; nur Umbenennung nötig)
 - [ ] **A7** Lizenzaussage konsolidieren (`LICENSE-APACHE` beilegen **oder** überall
   nur MIT deklarieren)
 
@@ -82,3 +83,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | A3 | `fix/csv-sidecar-roundtrip` (PR #96) | `from_csv(sidecar=True)` merged `<stem>.meta.jsonld` (Dataset via `from_jsonld`, Spalten via `set_column`); `to_csv` platziert Sidecar neben der CSV; Grenzen: JSON-LD trägt keine description/Spalten-ontology; 6 neue Tests; `make ci` grün (100 %) |
 | 2026-07-02 | A4 | `chore/repo-hygiene` (PR #97) | 78 Dateien enttrackt (70 `.ipynb_checkpoints`, `t.py`, `db.json`, `tabulate.py`, `create_pyc_egg.py`, `upload_pypi.sh`, `sdata.data.png`, `t/secret1+2`); `.gitignore` +`.ipynb_checkpoints/`/`t/`/`db.json`. **Befund `t/secret*`:** 64-Byte-Zufallsblobs (identisch), daneben untrackte `privkey*.pem` — Artefakte eines lokalen Krypto-Experiments, versehentlich in `eeb7f0b` committet; nur enttrackt (`--cached`), lokal belassen; bleiben in der Git-Historie — falls je produktiv genutzt: rotieren |
 | 2026-07-02 | A5 | `chore/dead-configs` (PR #98) | `.travis.yml` (toter Provider, doppeltes `install:`), `setup.cfg` (nur deprecated `[aliases]`), `tox.ini` (py27-envlist, `flake8 twine/`-Copy-Paste), `greetings.yml` (unkonfigurierter Platzhalter) gelöscht; keine Referenzen in Makefile/ci/RELEASING/docs; `make ci` grün (100 %) |
+| 2026-07-02 | A6 | `fix/process-topology` (PR #99) | `"sdata.sclass:Prozess"` → `"…:Process"` (`bfo_iri` liefert jetzt `bfo:BFO_0000015` statt `None`); `create_process_class`: mutable defaults (`{}`/`[]`) → `None`-Idiom; manuell verifiziert (Modul in Coverage-`omit`); `make ci` grün (100 %) |
