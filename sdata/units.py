@@ -31,6 +31,10 @@ UNIT_MAP = {
     "K":    ("unit:K",       "K"),
     "s":    ("unit:SEC",     "s"),
     "1/s":  ("unit:PER-SEC", "/s"),
+    "Hz":   ("unit:HZ",      "Hz"),
+    "kHz":  ("unit:KiloHZ",  "kHz"),
+    "MHz":  ("unit:MegaHZ",  "MHz"),
+    "GHz":  ("unit:GigaHZ",  "GHz"),
     "kg":   ("unit:KiloGM",  "kg"),
     "g":    ("unit:GM",      "g"),
     "%":    ("unit:PERCENT", "%"),
@@ -157,6 +161,11 @@ _UNITS = {
     "m3": ((3, 0, 0, 0), 1.0, 0.0), "mm3": ((3, 0, 0, 0), 1e-9, 0.0),
     # Rate (0,0,-1,0) – Dehnrate / Frequenz
     "1/s": ((0, 0, -1, 0), 1.0, 0.0), "1/ms": ((0, 0, -1, 0), 1e3, 0.0),
+    # Frequenz: Hz/kHz/MHz/GHz als benannte Eingabe-/Konvertier-Einheiten (gleiche
+    # Dimension wie Rate). Die Rück-Benennung bleibt neutral bei 1/s, weil (0,0,-1,0)
+    # auch die Dehnrate ist – siehe _CANON_SYMBOLS.
+    "Hz": ((0, 0, -1, 0), 1.0, 0.0), "kHz": ((0, 0, -1, 0), 1e3, 0.0),
+    "MHz": ((0, 0, -1, 0), 1e6, 0.0), "GHz": ((0, 0, -1, 0), 1e9, 0.0),
     # dimensionslos (0,0,0,0)
     "-": ((0, 0, 0, 0), 1.0, 0.0), "": ((0, 0, 0, 0), 1.0, 0.0),
     "%": ((0, 0, 0, 0), 1e-2, 0.0),
@@ -168,10 +177,18 @@ _CONVERT_ALIASES = {
     "µm": "um", "μm": "um", "µs": "us", "μs": "us",
     "°C": "degC", "celsius": "degC", "C": "degC",
     "sec": "s", "second": "s", "seconds": "s", "minute": "min", "hour": "h",
+    "hertz": "Hz", "Hertz": "Hz", "khz": "kHz", "mhz": "MHz", "ghz": "GHz",
 }
 
-#: Vorzugs-Symbole zur kanonischen Benennung hergeleiteter Einheiten (Reihenfolge
-#: entscheidet bei mehrdeutigen Dimensionen). Nur Offset-freie Einheiten.
+#: Vorzugs-Symbol-Tabelle für die kanonische Rück-Benennung hergeleiteter Einheiten:
+#: für ein ``(Dimension, Faktor)`` gewinnt das **erste** passende Symbol. Nur
+#: Offset-freie Einheiten. Bewusste Entscheidungen bei mehrdeutigen Dimensionen:
+#:   * Energie ``(2,1,-2,0)`` -> ``J`` (statt einer zusammengesetzten ``N*m``-Form).
+#:   * Leistung ``(2,1,-3,0)`` -> ``W``.
+#:   * Rate/Frequenz ``(0,0,-1,0)`` -> neutral ``1/s``/``1/ms``, **nicht** ``Hz``:
+#:     die Dimension bezeichnet auch die Dehnrate. ``Hz``/``kHz``/``MHz``/``GHz`` sind
+#:     als Einheiten erkannt (Eingabe/Konvertierung/QUDT), werden aber nicht
+#:     automatisch zugewiesen, um eine Dehnrate nicht fälschlich als Frequenz zu benennen.
 _CANON_SYMBOLS = (
     "m", "mm", "cm", "km", "um", "nm",
     "kg", "g", "t",
