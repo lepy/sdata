@@ -6,29 +6,33 @@
 
 # Structured data format (sdata)
 
-## Design goals
+## Design goals & status
 
-* open data format for open science projects
-* self describing data
-* flexible data structure layout
-    * hierarchical data structure (nesting groups, dictionaries)
-    * (posix path syntax support?)
-* extendable data structure
-   * data format versions
-* platform independent
-* simple object model
-* support of standard metadata formats (key/value, ...)
-* support of standard dataset formats (hdf5, netcdf, csv, ...)
-* support of standard dataset types (datacubes, tables, series, ...)
-* support of physical units (conversion of units)
-* transparent, optional data compression (zlib, blosc, ...)
-* support of (de-)serialization of every dataset type (group, data, metadata)
-* easy defineable (project) standards, e.g. for a uniaxial tension test (UT)
-* (optional data encryption (gpg, ...))
-* change management support?
-* Enable use of data structures from existing tensor libraries transparently
-* (single writer/ multiple reader (swmr) support)
-* (nested data support)
+sdata is an open, self-describing data format for open-science projects. The
+table below is an honest status of the original design goals (triaged in
+[RFC 0008](docs/rfc/0008-bestandsaufnahme-roadmap.md)) — **implemented**,
+**partial**, on the **roadmap**, or an explicit **non-goal**.
+
+| Goal | Status | Notes |
+|------|--------|-------|
+| Open, self-describing data | **implemented** | metadata embedded in every format |
+| Platform independent, simple object model | **implemented** | pure Python / numpy / pandas |
+| Standard metadata formats (key/value, JSON-LD, …) | **implemented** | `Metadata`, QUDT/BFO/PROV/CSVW/DID/VC |
+| Physical units + conversion | **implemented** | `sdata.units` (RFC 0006) |
+| Standard dataset formats — HDF5, CSV, Parquet, Arrow, Data Package | **implemented** | HDF5 via `sdata[hdf]` |
+| (De-)serialization of data + metadata | **implemented** | lossless round-trips |
+| Data format versions | **implemented** | `_sdata_format_version` + migration (RFC 0010) |
+| Project standards (e.g. tensile test) | **partial** | schema templates (`MetadataSchema`/`TableSchema`) |
+| Series | **partial** | as a one-column table |
+| Hierarchical structure / nested groups | **partial** | `DataFrameGroup` (flat) + `parent`/`project` relations |
+| Transparent compression | **partial** | Parquet-internal (zstd); zlib is a **non-goal** for the store (speed) |
+| Standard dataset formats — **netCDF** | **roadmap** | not implemented |
+| Dataset types — **datacubes** | **roadmap** | not implemented |
+| Optional encryption (gpg, …) | **non-goal** | encrypt blobs/filesystem out of band |
+| posix-path syntax, change management, tensor-library interop, SWMR | **non-goal** | not planned; revisit on demand |
+
+Machine-readable metadata is the backbone (see below); the optional semantic
+backends degrade gracefully to pure Python.
 
 ## Quickstart
 
