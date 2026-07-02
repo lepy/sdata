@@ -18,11 +18,13 @@ Arbeitsrunde nach der RFC-0008-Roadmap.
 
 ## Offen — Serialisierung / Formate
 
-* **RFC 0002 — native Per-Spalten-HDF5-Attribute.** Analog zu Arrow `field.metadata`
-  könnten Einheit/Label/Ontologie **nativ** an die HDF5-Spalten; aktuell nur über
-  den `_sdata`-Blob. → eigener kleiner RFC/PR.
+* **RFC 0002 — native Per-Spalten-HDF5-Attribute.** Seit der h5py-Umstellung
+  (RFC 0002 Amendment) ist jede Spalte ein eigenes Dataset — Einheit/Label/Ontologie
+  ließen sich nun **nativ** als Dataset-Attribute anhängen (statt nur im
+  `_sdata`-Gruppen-Blob). Kleiner Folge-PR.
 * **RFC 0002 — In-Memory-Bytes-Pfad für HDF5.** HDF5 hat keinen sauberen Bytes-Pfad
-  wie Parquet; derzeit nur Datei-API. Offen, ob es sich lohnt.
+  wie Parquet; derzeit nur Datei-API. Offen, ob es sich lohnt (h5py kann über
+  `io.BytesIO`/`driver="core"` in-memory — machbar geworden).
 * **RFC 0004 — Prüfsummen-Determinismus.** Parquet ist nicht garantiert byte-stabil;
   für stabile Content-Hashes ggf. CSV als „canonical form" erwägen.
 * **RFC 0005 — weitere Bild-Träger.** BigTIFF (8-Byte-Offsets), JPEG Multi-Segment-

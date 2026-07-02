@@ -252,7 +252,7 @@ the interop you need:
 | pandas `df.attrs` | `to_dataframe` | `_sdata` in `df.attrs` | — |
 | JSON-LD / RDF | `to_jsonld` / `to_turtle` / `write_sidecar` | the metadata itself | rdflib (optional) |
 | Data Package `.zip` | `to_datapackage` / `from_datapackage` | `datapackage.json` (Frictionless) + lossless `sdata` block | — (csv) / pyarrow (parquet) |
-| HDF5 `.h5` | `to_hdf` / `from_hdf` | `_sdata` node attribute (PyTables) | tables (`sdata[hdf]`) |
+| HDF5 `.h5` | `to_hdf` / `from_hdf` | `_sdata` group attribute (h5py; one dataset per column) | h5py (`sdata[hdf]`) |
 
 All file writers share the same shape: an optional `path` (writes
 `<sname>.<ext>`), an optional exact `filename`, and a `sidecar` flag; without a
@@ -333,7 +333,8 @@ Column annotations map to Frictionless field properties (`title`←label, `unit`
 
 ### HDF5
 
-For large/scientific data, `to_hdf()` writes an HDF5 file (PyTables) with the sdata
+For large/scientific data, `to_hdf()` writes an HDF5 file (h5py — one native dataset
+per column, readable by any HDF5 tool) with the sdata
 metadata stored as the node's `_sdata` attribute; `from_hdf()` reads it back.
 Several DataFrames can share one file via distinct `key`s (HDF5 has no in-memory
 bytes form, so a `path`/`filename` is required). Needs `pip install "sdata[hdf]"`.
