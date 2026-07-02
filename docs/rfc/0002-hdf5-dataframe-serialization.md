@@ -2,20 +2,29 @@
 
 | Feld        | Wert                                                         |
 |-------------|--------------------------------------------------------------|
-| Status      | Accepted — implementiert (Option A)                         |
-| Datum       | 2026-06-29                                                  |
+| Status      | Accepted — implementiert; **Backend auf h5py umgestellt (Option B), s. Amendment** |
+| Datum       | 2026-06-29 (Amendment 2026-07-02)                          |
 | Autor       | lepy <lepy@tuta.io>                                          |
 | Komponente  | `sdata/sclass/dataframe.py` (+ Extra `sdata[hdf]`)          |
 | Betrifft    | `DataFrame.to_hdf` / `from_hdf`                             |
-| Validierung | umgesetzt (Option A); verifiziert via `tests/test_sclass_dataframe_hdf.py` (PyTables) |
+| Validierung | verifiziert via `tests/test_sclass_dataframe_hdf.py` (`importorskip("h5py")`) |
 
-> **Umsetzung.** Implementiert wie in **Option A** beschrieben (`pd.HDFStore` +
-> `_sdata`-Node-Attribut, wiederverwendetes `_restore_from_attrs`, mehrere Keys/Datei
-> via `mode="a"`). Zur **CI-Frage** (Abschnitt 8): PyTables wird **nicht** in die
-> kanonische CI aufgenommen (das vorbestehende WIP-`tests/iolib/test_hdf.py` bricht mit
-> installiertem PyTables). Stattdessen sind `to_hdf`/`from_hdf` `# pragma: no cover`
-> (wie die übrigen optionalen Backends in `omit`) und werden über
-> `importorskip("tables")`-Tests in Umgebungen mit `sdata[hdf]` real verifiziert.
+> **Amendment (2026-07-02) — Backend h5py statt PyTables.** Das HDF5-Backend nutzt
+> jetzt **`h5py` direkt (Option B, Abschnitt 9.2)** statt `pd.HDFStore`/PyTables. Das
+> Extra ist `hdf = ["h5py"]`. Motivation: eine schlankere, weiter verbreitete
+> Abhängigkeit ohne die PyTables-C-/HDF5-Systembibliotheken, und ein **tool-agnostisches
+> Layout** — jede Spalte wird als **eigenes natives HDF5-Dataset** unter einer
+> Gruppe `key` abgelegt (von h5py/HDFView/`h5ls` lesbar), die sdata-Metadaten reisen
+> als Gruppen-Attribut `_sdata` mit. dtype-Treue: numerisch/bool nativ,
+> `datetime64`/`timedelta64` als int64-Nanosekunden (mit `kind`-Tag), sonst
+> variable-length UTF-8. Legacy-PyTables-kwargs (`format`/`complevel`/`complib`)
+> werden akzeptiert und ignoriert. Der Rest des RFC (Abschnitte 1–8) beschreibt die
+> ursprüngliche Option-A-Entscheidung und bleibt als Kontext erhalten.
+>
+> **CI-Frage (Abschnitt 8) unverändert:** das Backend ist **nicht** in der kanonischen
+> CI (installiert nur `[did,parquet,blob,sql]`); `to_hdf`/`from_hdf` und die `_h5_*`-
+> Helfer sind `# pragma: no cover` und werden über `importorskip("h5py")`-Tests in
+> Umgebungen mit `sdata[hdf]` real verifiziert.
 
 ## 1. Zusammenfassung
 

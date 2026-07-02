@@ -18,6 +18,58 @@ logger = logging.getLogger(__name__)
 _COL_FIELD_KEYS = ("unit", "label", "description", "ontology")
 
 
+# Die drei ``_h5_*``-Helfer sind ``# pragma: no cover``: sie laufen nur mit
+# installiertem h5py (Extra ``sdata[hdf]``), das die kanonische CI nicht mitbringt
+# -> die HDF-Tests skippen dort. Verifiziert in Umgebungen mit ``sdata[hdf]``.
+def _h5_string_dtype():  # pragma: no cover
+    """Variable-length UTF-8 dtype for object/string columns (h5py)."""
+    import h5py
+    return h5py.string_dtype(encoding="utf-8")
+
+
+def _h5_encode(values):  # pragma: no cover
+    """Encode a 1-D array for h5py, returning ``(data, kind)``.
+
+    Numeric/boolean arrays are stored natively; ``datetime64``/``timedelta64`` are
+    stored as int64 nanoseconds (with a ``kind`` tag for lossless restore); anything
+    else (object/string/category) is stored as variable-length UTF-8 strings.
+
+    :param values: a numpy array (e.g. ``series.to_numpy()``).
+    :return: ``(data, kind)`` where ``kind`` is one of
+        ``"num" | "datetime" | "timedelta" | "str"``.
+    """
+    import numpy as np
+    arr = np.asarray(values)
+    kind = arr.dtype.kind
+    if kind in ("f", "i", "u", "b"):
+        return arr, "num"
+    if kind == "M":
+        return arr.astype("datetime64[ns]").view("i8"), "datetime"
+    if kind == "m":
+        return arr.astype("timedelta64[ns]").view("i8"), "timedelta"
+    out = np.array(
+        ["" if (v is None or (isinstance(v, float) and np.isnan(v))) else str(v)
+         for v in arr.tolist()],
+        dtype=object,
+    )
+    return out, "str"
+
+
+def _h5_decode(dataset):  # pragma: no cover
+    """Inverse of :func:`_h5_encode` for one h5py dataset (uses its ``kind`` attr)."""
+    import numpy as np
+    raw = dataset[()]
+    kind = dataset.attrs.get("kind", "num")
+    if kind == "datetime":
+        return pd.to_datetime(np.asarray(raw, dtype="i8"))
+    if kind == "timedelta":
+        return pd.to_timedelta(np.asarray(raw, dtype="i8"))
+    if kind == "str":
+        return [v.decode("utf-8") if isinstance(v, (bytes, bytearray)) else v
+                for v in raw]
+    return raw
+
+
 def _require_parquet(engine: str = "pyarrow") -> None:
     """Stelle sicher, dass die Parquet-Engine importierbar ist.
 
@@ -996,47 +1048,76 @@ class DataFrame(ContentIntegrityMixin, Base):
         return tt
 
     # ------------------------------------------------------------------ HDF5
-    # Optionales HDF5-Backend (PyTables, Extra ``sdata[hdf]``), siehe RFC 0002.
-    # Bewusst ``# pragma: no cover``: PyTables ist nicht in der kanonischen CI
-    # (das WIP-Modul ``sdata/iolib/hdf.py`` ist bereits ``omit``, und sein Test
-    # bricht mit installiertem PyTables). Verifiziert über die
-    # ``importorskip("tables")``-Tests in ``tests/test_sclass_dataframe_hdf.py``.
-    def to_hdf(self, path=None, filename=None, key=None, sidecar=False, **kwargs):  # pragma: no cover
-        """Serialize the df to HDF5 (PyTables), embedding sdata metadata as a node attr.
+    # Optionales HDF5-Backend (h5py, Extra ``sdata[hdf]``), siehe RFC 0002.
+    # Bewusst ``# pragma: no cover``: h5py ist nicht in der kanonischen CI
+    # (installiert nur ``[did,parquet,blob,sql]``), also skippt die frische CI
+    # den Pfad. Verifiziert über die ``importorskip("h5py")``-Tests in
+    # ``tests/test_sclass_dataframe_hdf.py`` (laufen, sobald ``sdata[hdf]`` da ist).
+    def to_hdf(self, path=None, filename=None, key=None, sidecar=False,
+               compression=None, **kwargs):  # pragma: no cover
+        """Serialize the df to HDF5 (h5py), embedding sdata metadata as group attrs.
 
-        HDF5 has no in-memory bytes form, so a ``path``/``filename`` is required. The
-        sdata metadata (metadata/column_metadata/description) is stored as the node's
-        ``_sdata`` attribute; several DataFrames can share one file via distinct ``key``.
+        Each column is stored as its own native HDF5 dataset under a group named
+        ``key`` (so other HDF5 tools can read the values); the sdata metadata
+        (metadata/column_metadata/description) rides along as the group's ``_sdata``
+        attribute. HDF5 has no in-memory bytes form, so a ``path``/``filename`` is
+        required; several DataFrames can share one file via distinct ``key``.
 
         :param path: directory to write ``<sname>.h5`` into.
         :param filename: exact output filename (defaults to ``<sname>.h5``).
-        :param key: HDF5 node/key (default: ``self.sname``).
+        :param key: HDF5 group name (default: ``self.sname``); rewritten if present.
         :param sidecar: also write a JSON-LD metadata sidecar next to the file.
-        :param kwargs: forwarded to ``pandas.HDFStore.put`` (e.g. ``format``,
-            ``complevel``, ``complib``).
+        :param compression: h5py dataset compression (e.g. ``"gzip"``); ``None`` = off.
+        :param kwargs: legacy PyTables kwargs (``format``/``complevel``/``complib``)
+            are accepted for backward compatibility and ignored by the h5py backend.
         :return: the file path.
-        :raises ImportError: if PyTables is not installed (``pip install sdata[hdf]``).
+        :raises ImportError: if h5py is not installed (``pip install sdata[hdf]``).
         :raises ValueError: if neither ``path`` nor ``filename`` is given.
         """
         try:
-            import tables  # noqa: F401
+            import h5py
         except ImportError as exp:
-            raise ImportError("HDF5 support requires PyTables. Install it, e.g. "
+            raise ImportError("HDF5 support requires h5py. Install it, e.g. "
                               "`pip install sdata[hdf]`.") from exp
+        for legacy in ("format", "complevel", "complib"):
+            if kwargs.pop(legacy, None) is not None:
+                logger.debug("to_hdf: PyTables kwarg %r is ignored by the h5py backend",
+                             legacy)
         if filename is None and path is not None:
             filename = self.sname + ".h5"
         if filename is None:
             raise ValueError("to_hdf requires a path or filename (HDF5 has no bytes form)")
         filepath = os.path.join(path, filename) if path else filename
         key = key or self.sname
-        fmt = kwargs.pop("format", "fixed")
-        with pd.HDFStore(filepath, mode="a") as store:
-            store.put(key, self.df, format=fmt, **kwargs)
-            store.get_storer(key).attrs._sdata = json.dumps({
+        columns = [str(c) for c in self.df.columns]
+        with h5py.File(filepath, "a") as f:
+            if key in f:
+                del f[key]                       # mode="a" + rewrite same key
+            grp = f.create_group(key)
+            grp.attrs["_sdata"] = json.dumps({
                 "metadata": self.metadata.to_dict(),
                 "column_metadata": self.column_metadata.to_dict(),
                 "description": self.description,
             })
+            grp.attrs["_columns"] = json.dumps(columns)
+            idx = self.df.index
+            default_index = (isinstance(idx, pd.RangeIndex)
+                             and idx.start == 0 and idx.step == 1)
+            grp.attrs["_has_index"] = not default_index
+            if not default_index:
+                data, kind = _h5_encode(idx.to_numpy())
+                ds = grp.create_dataset(
+                    "_index", data=data,
+                    dtype=_h5_string_dtype() if kind == "str" else None)
+                ds.attrs["kind"] = kind
+                grp.attrs["_index_name"] = "" if idx.name is None else str(idx.name)
+            for i, col in enumerate(self.df.columns):
+                data, kind = _h5_encode(self.df[col].to_numpy())
+                ds = grp.create_dataset(
+                    "col_{}".format(i), data=data,
+                    dtype=_h5_string_dtype() if kind == "str" else None,
+                    compression=compression)
+                ds.attrs["kind"] = kind
         logger.info(f"DataFrame HDF5 saved to {filepath}")
         if sidecar:
             self.write_sidecar(path)
@@ -1047,23 +1128,37 @@ class DataFrame(ContentIntegrityMixin, Base):
         """Load a DataFrame from an HDF5 file written by :meth:`to_hdf`.
 
         :param filepath: path to the ``.h5`` file.
-        :param key: HDF5 node/key to read (default: the first key in the file).
+        :param key: HDF5 group to read (default: the first group in the file).
         :return: a :class:`DataFrame` instance.
         :raises FileNotFoundError: if ``filepath`` does not exist.
-        :raises ImportError: if PyTables is not installed.
+        :raises ImportError: if h5py is not installed.
+        :raises ValueError: if the file holds no group.
         """
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"no HDF5 file {filepath}")
         try:
-            import tables  # noqa: F401
+            import h5py
         except ImportError as exp:
-            raise ImportError("HDF5 support requires PyTables. Install it, e.g. "
+            raise ImportError("HDF5 support requires h5py. Install it, e.g. "
                               "`pip install sdata[hdf]`.") from exp
-        with pd.HDFStore(filepath, mode="r") as store:
+        with h5py.File(filepath, "r") as f:
             if key is None:
-                key = store.keys()[0]
-            df = store.get(key)
-            raw = getattr(store.get_storer(key).attrs, "_sdata", None)
+                groups = list(f.keys())
+                if not groups:
+                    raise ValueError(f"no DataFrame group in {filepath}")
+                key = groups[0]
+            grp = f[key]
+            if "_columns" in grp.attrs:
+                columns = json.loads(grp.attrs["_columns"])
+                data = {col: _h5_decode(grp["col_{}".format(i)])
+                        for i, col in enumerate(columns)}
+                df = pd.DataFrame(data, columns=columns)
+                if grp.attrs.get("_has_index"):
+                    name = grp.attrs.get("_index_name") or None
+                    df.index = pd.Index(_h5_decode(grp["_index"]), name=name)
+            else:
+                df = pd.DataFrame()
+            raw = grp.attrs["_sdata"] if "_sdata" in grp.attrs else None
         tt = cls()
         tt.df = df
         tt._restore_from_attrs(json.loads(raw) if raw else None)
