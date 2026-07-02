@@ -453,5 +453,11 @@ class UnitSystem:
             return [(v * factor_cur + offset_cur) / sys_factor for v in value], label
         return (value * factor_cur + offset_cur) / sys_factor, label
 
+    def __eq__(self, other):
+        return isinstance(other, UnitSystem) and self.units == other.units
+
+    def __hash__(self):
+        return hash(tuple(self.units))
+
     def __repr__(self):
         return f"UnitSystem({self.units!r})"
