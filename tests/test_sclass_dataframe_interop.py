@@ -87,6 +87,21 @@ def test_csv_sidecar_custom_filename_next_to_file(tmp_path):
     assert back.metadata.get("license").value == "CC-BY-4.0"
 
 
+def test_csv_sidecar_nameless_column_node_is_skipped(tmp_path):
+    import json
+    sdf = DataFrame(df=_df(), name="specimen")
+    sdf.set_column("weight", unit="kg")
+    fp = sdf.to_csv(path=str(tmp_path), sidecar=True)
+    sidecar = os.path.splitext(fp)[0] + ".meta.jsonld"
+    with open(sidecar) as fh:
+        doc = json.load(fh)
+    doc["columns"].append({"datatype": "xsd:string"})  # Fremdknoten ohne name
+    with open(sidecar, "w") as fh:
+        json.dump(doc, fh)
+    back = DataFrame.from_csv(fp)
+    assert back.column_units["weight"] == "kg"         # Rest wird gemerged
+
+
 def test_csv_sidecar_broken_is_ignored(tmp_path):
     sdf = DataFrame(df=_df(), name="specimen")
     fp = sdf.to_csv(path=str(tmp_path), sidecar=True)
