@@ -2,6 +2,57 @@
 requires = ["setuptools>=64.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "sdata"
+dynamic = ["version"]                 # Single Source: sdata/__init__.py:__version__
+description = "a structured data format"
+readme = "README.md"
+license = { text = "MIT" }            # RFC 0008 A7 / RFC 0013
+requires-python = ">=3.9"
+authors = [{ name = "Ingolf Lepenies", email = "lepy@tuta.io" }]
+maintainers = [{ name = "Ingolf Lepenies", email = "lepy@tuta.io" }]
+keywords = ["open data"]
+# Schlanker Kern: nur numpy/pandas (Datenmodell) und suuid. Zeitzonen über das
+# stdlib-Modul zoneinfo (Python >= 3.9).
+dependencies = ["numpy", "pandas", "suuid>=0.2.0"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+[project.urls]
+Homepage = "https://github.com/lepy/sdata"
+Documentation = "https://lepy.github.io/sdata/"
+
+[project.optional-dependencies]
+# sdata.did ist abhängigkeitsfrei (Ed25519 + base58btc als pure Python);
+# das Extra bleibt als no-op erhalten, damit 'pip install sdata[did]' weiter geht.
+did = []
+http = ["requests"]                   # sonst urllib-Fallback (stdlib)
+excel = ["openpyxl", "xlsxwriter", "tabulate"]
+hdf = ["tables"]
+sql = ["sqlalchemy"]
+parquet = ["pyarrow"]                 # sdata.sclass.DataFrame (Parquet)
+blob = ["fsspec"]                     # sdata.sclass.Blob (URI-Content: file/S3/Zip)
+units = ["pint"]                      # sonst kuratierte QUDT/UCUM-Tabelle
+rdf = ["rdflib"]                      # sonst JSON-LD (= gültiges RDF)
+schema = ["jsonschema"]               # sonst native MetadataSchema-Prüfung
+
+[tool.setuptools.dynamic]
+version = { attr = "sdata.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["sdata*"]
+
 [tool.pytest.ini_options]
 # Nur die eigene Testsuite kollektieren; vendored contrib-Tests (z. B.
 # sdata/contrib/ecdsa/test_*.py) bewusst ausschliessen.

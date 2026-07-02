@@ -14,7 +14,9 @@ Die Version steht an **einer** Stelle:
 
 - `sdata/__init__.py` → `__version__`
 
-`setup.py` liest sie von dort; `pyproject.toml` enthält keine eigene Version.
+`pyproject.toml` löst sie über `dynamic = ["version"]` +
+`[tool.setuptools.dynamic] version = { attr = "sdata.__version__" }` von dort auf
+(PEP 621, RFC 0013) — keine zweite Versionsquelle.
 
 ## Einmalige Voraussetzung (PyPI-seitig)
 
