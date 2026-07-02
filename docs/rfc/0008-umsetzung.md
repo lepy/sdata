@@ -4,6 +4,11 @@ Arbeitsstand zur Roadmap aus [RFC 0008](0008-bestandsaufnahme-roadmap.md).
 Diese Datei ist die **Wahrheitsquelle für den Umsetzungs-Loop**: pro Iteration wird
 genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR/Commit).
 
+> **Abgeschlossen (2026-07-02).** Alle Punkte aus Paket A, B und C sind umgesetzt und
+> gemergt (PRs #94–#115). Verbleibende, bewusst nicht in dieser Roadmap enthaltene
+> Arbeit steht im [Open-points-Backlog](open-points.md) (u. a. `Data`-Ablösung
+> Stufe 2 für 2.0).
+
 ## Arbeitsregeln (gelten für jede Iteration)
 
 1. Genau **einen** offenen Punkt nehmen — den obersten nicht abgehakten, sofern keine
@@ -83,7 +88,8 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
   `Metadata`-High-Traffic-Methoden annotiert; Rest per On-Touch)
 - [x] **C4** Fehler-Politik (lenient/strict) in README/Docs verankern; strict-Default
   als 2.0-Kandidat notieren — PR #114 (Abschnitt in `docs/conventions.md`)
-- [ ] **C5** Offene Punkte aus RFC 0001–0007 als Issues/Roadmap-Liste erfassen
+- [x] **C5** Offene Punkte aus RFC 0001–0007 als Issues/Roadmap-Liste erfassen
+  — PR #115 (`docs/rfc/open-points.md`: erledigt durch 0009–0013 vs. offener Backlog)
 
 ## Protokoll
 
@@ -111,3 +117,4 @@ genau **ein** offener Punkt vollständig umgesetzt und hier abgehakt (`[x]` + PR
 | 2026-07-02 | C1 | `docs/readme-goal-triage` (PR #112) | README „Design goals" → ehrliche Status-Tabelle (implemented/partial/roadmap/non-goal) gemäß RFC 0008 §4; netCDF/datacubes = roadmap, gpg/swmr/posix-paths/tensor-libs/change-management = explizite Nicht-Ziele; reine Doku |
 | 2026-07-02 | C2 | `docs/conventions-language` (PR #113) | `docs/conventions.md` (+ mkdocs-Nav): Sprach-Leitlinie — Identifier/Docstrings/User-Docs/Kommentare **englisch**, RFCs/Commits **deutsch** erlaubt; Migration nur bei Berührung, kein Big-Bang; reine Doku |
 | 2026-07-02 | C3+C4 | `docs/conventions-typing-errors` (PR #114) | `conventions.md` um Typing- und Fehler-Politik-Abschnitt ergänzt; `dtypes.py` Public-API + `DtypeSpec`/`LangString` typannotiert, `Metadata`-High-Traffic-Methoden (`to_dict`/`get`/`get_attr`/`keys`) annotiert; Fehler-Politik lenient/strict verankert, strict-Default als 2.0-Kandidat; `make ci` grün |
+| 2026-07-02 | C5 | `docs/open-points-backlog` (PR #115) | `docs/rfc/open-points.md` (+ mkdocs-Nav): Risiko-/Offen-Abschnitte aus RFC 0001–0007 konsolidiert; markiert Erledigtes (Reader=0009, Group-Batch/Vault=0011, Format-Version=0010, `logger.warn`) vs. offenen Backlog (HDF5-Spaltenattribute, `unit_system`-Persistenz, Parquet-Verzeichnismodus, Bild-Träger, `Data`-Stufe-2, contrib-Einzelnutzer); reine Doku — **letzter Punkt der RFC-0008-Roadmap** |
