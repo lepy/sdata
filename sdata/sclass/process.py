@@ -44,7 +44,7 @@ class ProcessNode(Base):
     def __init__(self, name: str = "ProcessNode", inputs: Dict[str, ProcessData] = None, **kwargs: Any):
         super().__init__(name=name, **kwargs)
         self.metadata.add(
-            self.SDATA_TOPOLOGY_CLASS, "sdata.sclass:Prozess", dtype="str",
+            self.SDATA_TOPOLOGY_CLASS, "sdata.sclass:Process", dtype="str",
             description="sdata topology class name", required=True
         )
         self.inputs: Dict[str, ProcessData] = inputs or {}
@@ -131,9 +131,9 @@ class CompositeProcess(ProcessNode):
 
 def create_process_class(
     process_name: str,
-    input_classes: Dict[str, Type[ProcessData]] = {},
-    output_classes: Dict[str, Type[ProcessData]] = {},
-    processes: List[Type[ProcessNode]]= []
+    input_classes: Optional[Dict[str, Type[ProcessData]]] = None,
+    output_classes: Optional[Dict[str, Type[ProcessData]]] = None,
+    processes: Optional[List[Type[ProcessNode]]] = None
 ) -> Type[ProcessNode]:
     """
     Factory function to generically create a subclass of ProcessNode.
@@ -144,6 +144,9 @@ def create_process_class(
     :param processes: List of ProcessNode subclasses (default: []).
     :return: A new subclass of ProcessNode.
     """
+    input_classes = input_classes if input_classes is not None else {}
+    output_classes = output_classes if output_classes is not None else {}
+    processes = processes if processes is not None else []
     class_dict = {
         'input_classes': input_classes,
         'output_classes': output_classes,
