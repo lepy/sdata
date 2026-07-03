@@ -112,8 +112,8 @@ def test_unit_system_derives_units():
 
 def test_unit_system_factor_for():
     sys = units.UnitSystem(["kN", "mm", "ms"])
-    assert sys.factor_for((1, 1, -2, 0)) == 1000.0    # Kraft -> kN
-    assert sys.factor_for((-1, 1, -2, 0)) == 1e9      # Druck -> GPa
+    assert sys.factor_for((1, 1, -2, 0, 0)) == 1000.0    # Kraft -> kN
+    assert sys.factor_for((-1, 1, -2, 0, 0)) == 1e9      # Druck -> GPa
 
 
 def test_unit_system_uncovered_and_unknown():
@@ -159,9 +159,9 @@ def test_unit_system_unknown_unit_raises():
 def test_compose_and_canonical_helpers():
     from fractions import Fraction
     # kanonischer Treffer
-    assert units._canonical((1, 1, -2, 0), 1e3) == "kN"
-    assert units._canonical((-1, 1, -2, 0), 1e9) == "GPa"
-    assert units._canonical((1, 1, -2, 0), 1.234) is None   # kein Faktor-Treffer
+    assert units._canonical((1, 1, -2, 0, 0), 1e3) == "kN"
+    assert units._canonical((-1, 1, -2, 0, 0), 1e9) == "GPa"
+    assert units._canonical((1, 1, -2, 0, 0), 1.234) is None   # kein Faktor-Treffer
     # Komposition aus Basis-Symbolen
     assert units._compose(["kN", "mm"], [Fraction(1), Fraction(-2)]) == "kN/mm^2"
     assert units._compose(["kN", "mm"], [Fraction(1), Fraction(1)]) == "kN*mm"
@@ -170,10 +170,10 @@ def test_compose_and_canonical_helpers():
 
 
 def test_dimension_of():
-    assert units.dimension_of("MPa") == (-1, 1, -2, 0)
-    assert units.dimension_of("kN") == (1, 1, -2, 0)
+    assert units.dimension_of("MPa") == (-1, 1, -2, 0, 0)
+    assert units.dimension_of("kN") == (1, 1, -2, 0, 0)
     assert units.dimension_of("furlong") is None
-    assert units.dimension_of(None) == (0, 0, 0, 0)   # -> "-"
+    assert units.dimension_of(None) == (0, 0, 0, 0, 0)   # -> "-"
 
 
 def test_solve_linear_helper():
