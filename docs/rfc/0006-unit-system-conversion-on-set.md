@@ -39,9 +39,9 @@ Review fünf belastbare Schwächen. v2 adressiert sie:
 
 Ein **konsistentes Einheitensystem** (z. B. `[kN, mm, ms]`) wird über **Dimensions-Algebra**
 modelliert: aus den angegebenen Basis-Einheiten werden die Skalen der Basis-Dimensionen
-(Länge L, Masse M, Zeit T, Temperatur Θ) gelöst, und **jede** Spalten-Einheit — auch
-abgeleitete wie Spannung, Energie, Geschwindigkeit, Dehnrate — wird daraus deterministisch
-hergeleitet und umgerechnet.
+(Länge L, Masse M, Zeit T, Temperatur Θ, ebener Winkel A) gelöst, und **jede**
+Spalten-Einheit — auch abgeleitete wie Spannung, Energie, Geschwindigkeit, Dehnrate —
+wird daraus deterministisch hergeleitet und umgerechnet.
 
 * **Umrechnen** in ein System: `DataFrame.convert(system, inplace=True)` (rechnet Werte um
   **und** schreibt die abgeleiteten Einheiten). Das ist zugleich „beim Setzen umrechnen".
@@ -68,24 +68,27 @@ hergeleitet und umgerechnet.
 
 ### 3.1 Dimensions-Modell
 
-Jede Größe hat einen **Dimensionsvektor** über den Basis-Dimensionen `(L, M, T, Θ)`
-(erweiterbar um I, N, J). Jede Einheit bildet auf `(dimvector, factor, offset)` ab, wobei
-`factor` einen Wert in die **SI-kohärente** Einheit dieser Dimension überführt
-(`si = wert · factor + offset`; `offset ≠ 0` nur für reine Temperatur):
+Jede Größe hat einen **Dimensionsvektor** über den Basis-Dimensionen `(L, M, T, Θ, A)`
+(erweiterbar um I, N, J). Der **ebene Winkel A** ist eine eigene Achse (nicht
+dimensionslos), damit `rad`/`deg`/`gon` untereinander umrechenbar sind, aber **nicht**
+mit reinen Zahlen/Prozent kollidieren. Jede Einheit bildet auf `(dimvector, factor,
+offset)` ab, wobei `factor` einen Wert in die **SI-kohärente** Einheit dieser Dimension
+überführt (`si = wert · factor + offset`; `offset ≠ 0` nur für reine Temperatur):
 
-| Einheit | Dimvektor `(L,M,T,Θ)` | factor | Größe |
-|---------|-----------------------|--------|-------|
-| `m`, `mm`, `µm` | `(1,0,0,0)` | `1`, `1e-3`, `1e-6` | Länge |
-| `kg`, `g`, `t` | `(0,1,0,0)` | `1`, `1e-3`, `1e3` | Masse |
-| `s`, `ms`, `µs` | `(0,0,1,0)` | `1`, `1e-3`, `1e-6` | Zeit |
-| `K`, `degC` | `(0,0,0,1)` | `1` (offset `0`, `273.15`) | Temperatur |
-| `N`, `kN`, `MN` | `(1,1,-2,0)` | `1`, `1e3`, `1e6` | Kraft |
-| `Pa`, `MPa`, `GPa` | `(-1,1,-2,0)` | `1`, `1e6`, `1e9` | Druck/Spannung |
-| `J`, `kJ` | `(2,1,-2,0)` | `1`, `1e3` | Energie |
-| `W` | `(2,1,-3,0)` | `1` | Leistung |
-| `m/s` | `(1,0,-1,0)` | `1` | Geschwindigkeit |
-| `1/s`, `1/ms` | `(0,0,-1,0)` | `1`, `1e3` | Rate |
-| `-`, `%` | `(0,0,0,0)` | `1`, `1e-2` | dimensionslos |
+| Einheit | Dimvektor `(L,M,T,Θ,A)` | factor | Größe |
+|---------|-------------------------|--------|-------|
+| `m`, `mm`, `µm` | `(1,0,0,0,0)` | `1`, `1e-3`, `1e-6` | Länge |
+| `kg`, `g`, `t` | `(0,1,0,0,0)` | `1`, `1e-3`, `1e3` | Masse |
+| `s`, `ms`, `µs` | `(0,0,1,0,0)` | `1`, `1e-3`, `1e-6` | Zeit |
+| `K`, `degC` | `(0,0,0,1,0)` | `1` (offset `0`, `273.15`) | Temperatur |
+| `N`, `kN`, `MN` | `(1,1,-2,0,0)` | `1`, `1e3`, `1e6` | Kraft |
+| `Pa`, `MPa`, `GPa` | `(-1,1,-2,0,0)` | `1`, `1e6`, `1e9` | Druck/Spannung |
+| `J`, `kJ` | `(2,1,-2,0,0)` | `1`, `1e3` | Energie |
+| `W` | `(2,1,-3,0,0)` | `1` | Leistung |
+| `m/s` | `(1,0,-1,0,0)` | `1` | Geschwindigkeit |
+| `1/s`, `1/ms`, `Hz` | `(0,0,-1,0,0)` | `1`, `1e3`, `1` | Rate/Frequenz |
+| `rad`, `deg`, `gon` | `(0,0,0,0,1)` | `1`, `π/180`, `π/200` | ebener Winkel |
+| `-`, `%` | `(0,0,0,0,0)` | `1`, `1e-2` | dimensionslos |
 
 Zwei Einheiten sind **umrechenbar gdw. ihre Dimvektoren gleich sind**; das ersetzt den
 alten String-Größennamen-Vergleich. `units.dimension_of(unit) -> DimVector` ist die neue
@@ -285,7 +288,9 @@ jetzt korrekt mitgeführt.
   Folge-RFC; ohne sie ist das gemerkte System transient.
 * **`pint`-Interop** für Einheiten außerhalb der kuratierten Tabelle (optional, wie bei
   `validate_unit`).
-* **Winkel/Logarithmische Einheiten** (rad/deg, dB) sind dimensionslos-aber-distinkt und
-  bleiben vorerst außen vor.
+* **Winkel-Einheiten** (rad/deg/gon/mrad) sind über die eigene Achse `A` umgesetzt
+  (§3.1); untereinander umrechenbar, gegen dimensionslos abgegrenzt, QUDT-gemappt.
+  **Logarithmische Einheiten** (dB) bleiben bewusst außen vor: sie passen nicht in das
+  lineare Faktor-Modell (`si = wert · factor`).
 * **Über das DataFrame hinaus:** dieselbe Algebra kann skalare `Attribute` (mit `unit`) im
   `Metadata` umrechnen — späterer Schritt.

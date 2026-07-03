@@ -13,7 +13,7 @@ from sdata.sclass.dataframe import DataFrame
 
 def test_hz_family_recognized():
     for sym in ("Hz", "kHz", "MHz", "GHz"):
-        assert dimension_of(sym) == (0, 0, -1, 0)
+        assert dimension_of(sym) == (0, 0, -1, 0, 0)
         assert quantity_of(sym) == "rate"
 
 
@@ -27,8 +27,8 @@ def test_hz_interconversion():
 
 
 def test_hz_aliases():
-    assert dimension_of("hertz") == (0, 0, -1, 0)
-    assert dimension_of("khz") == (0, 0, -1, 0)
+    assert dimension_of("hertz") == (0, 0, -1, 0, 0)
+    assert dimension_of("khz") == (0, 0, -1, 0, 0)
 
 
 def test_backnaming_stays_neutral_not_hz():

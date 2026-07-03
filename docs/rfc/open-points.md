@@ -39,7 +39,12 @@ Arbeitsrunde nach der RFC-0008-Roadmap.
   **Erledigt:** `Hz`/`kHz`/`MHz`/`GHz` als benannte Einheiten erkannt (QUDT-gemappt);
   `_CANON_SYMBOLS` als Vorzugs-Symbol-Tabelle dokumentiert (Energie→`J`, Rate bleibt
   neutral `1/s`, da = Dehnrate). `N·m`→`J` war bereits korrekt.
-* **RFC 0006 — Winkel/logarithmische Einheiten** (rad/deg, dB) bewusst noch ausgeklammert.
+* ~~**RFC 0006 — Winkel-Einheiten** (rad/deg/gon).~~ **Erledigt:** eigene Dimensions-
+  Achse „A" (ebener Winkel); rad/deg/gon/mrad konvertieren untereinander, sind aber
+  gegen dimensionslos (`-`/`%`) abgegrenzt. QUDT-gemappt (`unit:RAD`/`DEG`/`GON`). Ein
+  `UnitSystem` mit `rad`/`deg` in der Basis normalisiert Winkel; ein rein mechanisches
+  lässt sie unberührt. **Logarithmische Einheiten** (dB) bleiben bewusst ausgeklammert
+  (kein linearer Faktor).
 * **RFC 0006 — `pint`-Interop** außerhalb der kuratierten Tabelle.
 
 ## Offen — Writer / Reader / Persistenz

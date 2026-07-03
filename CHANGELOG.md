@@ -8,6 +8,15 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Added
 
+- **Angle units `rad`/`deg`/`gon`/`mrad` on their own dimension axis (RFC 0006).**
+  Plane angle is now a distinct base dimension (`A`) rather than dimensionless, so the
+  angle units interconvert (`180 deg == π rad`, `200 gon == 180 deg`) but are kept
+  separate from plain numbers/percent (`convert(1, "rad", "%")` raises). QUDT-mapped
+  (`unit:RAD`/`unit:DEG`/`unit:GON`); a `UnitSystem` built on `rad`/`deg` normalizes
+  angles, a purely mechanical system leaves them untouched. Ambiguous `grad`
+  (English gradian vs. German degree) is deliberately **not** mapped; logarithmic
+  units (dB) stay out of the linear factor model. The internal dimension vector grows
+  from four to five components.
 - **Parquet directory mode (RFC 0007 F5 / RFC 0011).** `ParquetWriter(uri,
   directory=True)` writes one `<sname>.spq` per `write` into a directory instead of
   overwriting a single URI, so `write_group` keeps each table in its own file;
