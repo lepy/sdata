@@ -45,7 +45,14 @@ Arbeitsrunde nach der RFC-0008-Roadmap.
   `UnitSystem` mit `rad`/`deg` in der Basis normalisiert Winkel; ein rein mechanisches
   lässt sie unberührt. **Logarithmische Einheiten** (dB) bleiben bewusst ausgeklammert
   (kein linearer Faktor).
-* **RFC 0006 — `pint`-Interop** außerhalb der kuratierten Tabelle.
+* ~~**RFC 0006 — `pint`-Interop** außerhalb der kuratierten Tabelle.~~ **Erledigt:**
+  ist das Extra `[units]` (pint) installiert, werden nicht kuratierte Einheiten
+  (imperial/abgeleitet: `psi`, `inch`, `lbf`, `degF` …) über pint auf denselben
+  5-Achsen-Dimensionsvektor abgebildet und sind damit in `dimension_of`/`convert`/
+  `convert_factor`/`UnitSystem` nutzbar. Die kuratierte Tabelle hat Vorrang; ohne pint
+  unverändert. Grenzen: Achsen außerhalb `(L,M,T,Θ,A)` (Strom/Stoffmenge) sind nicht
+  darstellbar, Winkel folgen pints (dimensionslosem) Modell — dafür die kuratierten
+  rad/deg/gon nutzen.
 
 ## Offen — Writer / Reader / Persistenz
 

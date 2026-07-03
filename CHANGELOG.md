@@ -8,6 +8,15 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Added
 
+- **`pint` interop beyond the curated unit table (RFC 0006).** With the optional
+  `[units]` extra (pint) installed, units outside the curated table (imperial/derived:
+  `psi`, `inch`, `lbf`, `degF`, …) are mapped through pint onto the same five-axis
+  dimension vector, so `dimension_of`/`convert`/`convert_factor`/`UnitSystem` accept them
+  transparently (`convert(1, "psi", "MPa")`, `UnitSystem(["lbf", "inch", "s"])`). The
+  curated table always takes precedence; without pint the behaviour is unchanged.
+  Limits: axes outside `(L, M, T, Θ, A)` (electric current, amount of substance) are
+  not representable, and angles follow pint's dimensionless model — use the curated
+  `rad`/`deg`/`gon` for angles.
 - **Angle units `rad`/`deg`/`gon`/`mrad` on their own dimension axis (RFC 0006).**
   Plane angle is now a distinct base dimension (`A`) rather than dimensionless, so the
   angle units interconvert (`180 deg == π rad`, `200 gon == 180 deg`) but are kept
