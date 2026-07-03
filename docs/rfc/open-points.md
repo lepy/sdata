@@ -25,8 +25,12 @@ Arbeitsrunde nach der RFC-0008-Roadmap.
 * **RFC 0002 — In-Memory-Bytes-Pfad für HDF5.** HDF5 hat keinen sauberen Bytes-Pfad
   wie Parquet; derzeit nur Datei-API. Offen, ob es sich lohnt (h5py kann über
   `io.BytesIO`/`driver="core"` in-memory — machbar geworden).
-* **RFC 0004 — Prüfsummen-Determinismus.** Parquet ist nicht garantiert byte-stabil;
-  für stabile Content-Hashes ggf. CSV als „canonical form" erwägen.
+* ~~**RFC 0004 — Prüfsummen-Determinismus.** Parquet ist nicht garantiert byte-stabil;
+  für stabile Content-Hashes ggf. CSV als „canonical form" erwägen.~~ **Erledigt:**
+  `DataFrame.content_bytes` (Hash-Basis für `sha256`/`update_checksum`/`verify`) ist
+  jetzt die kanonische CSV-Form (`to_csv(index=False)`, UTF-8, ohne Index) statt Parquet
+  — reproduzierbar, portabel, ohne pyarrow. `as_blob(fmt)`-Blobs hashen weiter die
+  echten Format-Bytes (Asset-Integrität), getrennt von der logischen Daten-Identität.
 * **RFC 0005 — weitere Bild-Träger.** BigTIFF (8-Byte-Offsets), JPEG Multi-Segment-
   `APP1` >64 KiB, PNG `zTXt`, WebP `VP8X+XMP`. Erweiterung der Handler-Registry.
 
