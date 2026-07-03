@@ -13,9 +13,13 @@
 > (`sdata/sclass/content.py`) liefert `sha1`/`md5`/`sha256`/`size` sowie
 > `update_checksum`/`verify` über einen `content_bytes`-Hook + `self.metadata`.
 > `Blob` und `DataFrame` erben den Mixin (keine Vererbung untereinander — RFC-Befund).
-> `DataFrame.content_bytes` = **reines Daten-Parquet** (`self.df.to_parquet()`, *ohne*
-> eingebettete Metadaten): der Hash erfasst die Daten, sodass das Speichern der
-> Prüfsumme in den Metadaten den Hash nicht verändert (Selbstreferenz vermieden).
+> `DataFrame.content_bytes` = **kanonische CSV-Form** (`self.df.to_csv(index=False)`,
+> UTF-8, *ohne* Index/eingebettete Metadaten): der Hash erfasst die Daten, sodass das
+> Speichern der Prüfsumme in den Metadaten den Hash nicht verändert (Selbstreferenz
+> vermieden). CSV statt Parquet, weil Parquet **nicht byte-stabil** ist (pyarrow-Version,
+> `created_by`, Kompression, Plattform) — die kanonische Form macht die Prüfsumme
+> **portabel** (auf einer Maschine geschrieben, auf einer anderen verifizierbar) und
+> braucht kein pyarrow (siehe §8).
 >
 > **Option C** umgesetzt: `DataFrame.as_blob(fmt="parquet"|"csv"|"arrow"|"feather")`
 > rendert die Tabelle in **einem gewählten Format** zu einem `bytes`-Content-`Blob`
@@ -145,9 +149,14 @@ heißt also *gemeinsamer Layer*, nicht *zwingende Basisklasse*.
 
 ## 8. Risiken / offene Punkte
 
-* **Determinismus der Prüfsumme:** Parquet ist nicht garantiert byte-stabil
-  (Kompression/Metadaten-Reihenfolge). Für reproduzierbare Hashes ggf. CSV (mit
-  fixierten Optionen) als „canonical form" anbieten — zu spezifizieren.
+* **Determinismus der Prüfsumme:** ~~Parquet ist nicht garantiert byte-stabil
+  (Kompression/Metadaten-Reihenfolge).~~ **Erledigt:** `DataFrame.content_bytes` ist
+  jetzt die **kanonische CSV-Form** (`to_csv(index=False)`, UTF-8, Index ausgeschlossen)
+  statt Parquet. Damit ist die Prüfsumme reproduzierbar und portabel; sie hängt nur an
+  den logischen Daten (Header + Werte in Zeilenreihenfolge) und braucht kein pyarrow.
+  `as_blob(fmt)`-Blobs hashen weiterhin die tatsächlichen Format-Bytes (das ist die
+  Integrität *dieses* Assets) — das ist bewusst getrennt von der logischen
+  Daten-Identität des `DataFrame`.
 * **`as_blob`-Default-Format:** Parquet (kompakt/typisiert) vs. CSV (deterministisch)
   — Default festlegen.
 * Falls später doch eine „is-a"-Beziehung gewünscht ist, müsste ein **getrenntes**

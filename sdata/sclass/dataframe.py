@@ -204,16 +204,27 @@ class DataFrame(ContentIntegrityMixin, Base):
 
     @property
     def content_bytes(self) -> bytes:
-        """Binary serialization of the **data** (plain Parquet of the df, *without* the
-        embedded sdata metadata).
+        """Canonical byte serialization of the **data** for content hashing (RFC 0004).
 
         The hook the inherited :class:`~sdata.sclass.content.ContentIntegrityMixin`
         hashes over — enables ``sha256``/``md5``/``sha1``, ``size`` and
-        ``verify()``/``update_checksum()`` directly on a :class:`DataFrame`. Hashing
-        the data only keeps the checksum stable when *metadata* changes (otherwise
-        storing the checksum in the metadata would alter the hash).
+        ``verify()``/``update_checksum()`` directly on a :class:`DataFrame`.
+
+        Deliberately **CSV**, not Parquet: Parquet is not byte-stable (pyarrow
+        version, embedded ``created_by``, compression codec, platform), so a
+        Parquet-based checksum is not portable — the same data can hash differently
+        across environments. The canonical CSV (header + values in row order, UTF-8,
+        ``\\n`` line breaks, index excluded) depends only on the logical data, so a
+        checksum written with :meth:`update_checksum` on one machine
+        :meth:`verify`\\ s on another, and across pyarrow/pandas upgrades. It also
+        needs no pyarrow. Hashing the data (not the metadata) keeps the checksum
+        stable when only metadata changes.
+
+        Note: content identity is over the **column values in row order** (with the
+        header); the DataFrame index is excluded (consistent with :meth:`to_csv` and
+        :meth:`to_datapackage`).
         """
-        return self.df.to_parquet()
+        return self.df.to_csv(index=False).encode("utf-8")
 
     @property
     def column_metadata(self) -> Metadata:

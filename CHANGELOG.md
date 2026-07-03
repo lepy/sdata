@@ -6,6 +6,19 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **Deterministic `DataFrame` content checksums (RFC 0004).** The hash basis
+  `DataFrame.content_bytes` (behind `sha256`/`sha1`/`md5`/`size` and
+  `update_checksum`/`verify`) is now the **canonical CSV form** (`to_csv(index=False)`,
+  UTF-8, index excluded) instead of `to_parquet()`. Parquet is not byte-stable (pyarrow
+  version, embedded `created_by`, compression, platform), so Parquet-based checksums were
+  not portable; the canonical CSV depends only on the logical data, so a checksum written
+  on one machine verifies on another and survives pyarrow/pandas upgrades — and needs no
+  pyarrow. **Note:** checksums produced by older versions differ from the new ones; call
+  `update_checksum()` to refresh stored values. `as_blob(fmt)` blobs still hash the actual
+  format bytes (asset integrity), which is intentionally separate.
+
 ### Added
 
 - **`pint` interop beyond the curated unit table (RFC 0006).** With the optional
