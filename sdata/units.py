@@ -2,8 +2,11 @@
 """Einheiten-Vokabular: kuratierte Abbildung Einheit → QUDT-IRI / UCUM-Code.
 
 Reine-Python-Tabelle (keine Abhängigkeit). Optionales Extra ``[units]`` = pint
-erweitert die Validierung auf beliebige parsebare Einheiten; ohne pint greift
-die kuratierte Tabelle.
+erweitert (a) die **Validierung** (:func:`validate_unit`) auf beliebige parsebare
+Einheiten und (b) die **Umrechnung** (:func:`dimension_of`/:func:`convert`/
+:class:`UnitSystem`): Einheiten außerhalb der kuratierten Tabelle (imperiale,
+abgeleitete …) werden über pint auf denselben Dimensionsvektor abgebildet. Die
+kuratierte Tabelle hat dabei stets Vorrang; ohne pint greift ausschließlich sie.
 """
 __all__ = [
     "UNIT_MAP", "normalize_symbol", "qudt_iri", "ucum_code", "unit_node",
@@ -249,13 +252,75 @@ def _norm_convert(symbol):
     return _CONVERT_ALIASES.get(text, _CONVERT_ALIASES.get(text.lower(), text))
 
 
+#: pint-Dimensionsname -> Index in unserem ``(L, M, T, Θ, A)``-Vektor. Achsen außerhalb
+#: (Strom/Stoffmenge/Lichtstärke) sind nicht darstellbar; der Winkel ist in pint
+#: dimensionslos (dafür die kuratierten rad/deg/gon nutzen).
+_PINT_AXIS = {"[length]": 0, "[mass]": 1, "[time]": 2, "[temperature]": 3}
+
+
+def _pint_dimvector(dimensionality):
+    """pint-``dimensionality`` (Mapping Name->Exponent) -> 5-Achsen-Tupel, oder ``None``.
+
+    ``None``, sobald eine Achse außerhalb ``(L, M, T, Θ, A)`` mit Exponent ≠ 0 auftaucht
+    (z. B. elektrischer Strom) – solche Einheiten kann unser Modell nicht darstellen.
+    """
+    vec = [0, 0, 0, 0, 0]
+    for name, exp in dimensionality.items():
+        idx = _PINT_AXIS.get(name)
+        if idx is None:
+            return None
+        vec[idx] = int(exp) if float(exp).is_integer() else exp
+    return tuple(vec)
+
+
+def _pint_entry(symbol):
+    """``(dimvektor, factor, offset)`` einer **nicht kuratierten** Einheit via pint.
+
+    ``None``, wenn pint fehlt, das Symbol nicht parsebar ist oder seine Dimension
+    außerhalb der fünf Achsen liegt. ``factor`` überführt in die SI-kohärente Einheit
+    (pints Basiseinheiten sind m/kg/s/K – deckungsgleich mit der kuratierten Tabelle);
+    affine Einheiten (nur Temperatur, z. B. ``degF``) liefern zusätzlich den Offset.
+    """
+    if _pint is None:
+        return None
+    try:
+        unit = _pint.Unit(str(symbol).strip())
+    except Exception:
+        return None
+    dim = _pint_dimvector(unit.dimensionality)
+    if dim is None:
+        return None
+    try:
+        factor = float(_pint.Quantity(1.0, unit).to_base_units().magnitude)
+        offset = 0.0
+    except _pint.OffsetUnitCalculusError:
+        # affine Einheit: zwei Stützpunkte in Kelvin -> (Steigung, Offset)
+        k0 = float(_pint.Quantity(0.0, unit).to("kelvin").magnitude)
+        k1 = float(_pint.Quantity(1.0, unit).to("kelvin").magnitude)
+        factor, offset = k1 - k0, k0
+    return dim, factor, offset
+
+
+def _lookup(symbol):
+    """``(dim, factor, offset)`` einer Einheit – erst kuratierte Tabelle, dann pint.
+
+    Die kuratierte Tabelle hat **Vorrang** (feste Faktoren, eigene Winkel-Achse);
+    das optionale pint füllt nur Lücken (imperiale/abgeleitete Einheiten außerhalb der
+    Tabelle). Ohne pint bleibt das Verhalten unverändert (``None`` für Unbekanntes).
+    """
+    entry = _UNITS.get(_norm_convert(symbol))
+    if entry is not None:
+        return entry
+    return _pint_entry(symbol)
+
+
 def dimension_of(symbol):
     """Dimensionsvektor ``(L, M, T, Θ, A)`` einer Einheit als Tupel, oder ``None``.
 
     :param symbol: Einheiten-Symbol (z. B. ``"MPa"``).
     :return: das Dimvektor-Tupel, oder ``None`` bei unbekannter Einheit.
     """
-    entry = _UNITS.get(_norm_convert(symbol))
+    entry = _lookup(symbol)
     return entry[0] if entry else None
 
 
@@ -274,7 +339,7 @@ def quantity_of(symbol):
 
 def _entry(symbol, role):
     """Tabellen-Eintrag für ``symbol`` holen oder mit klarer Meldung scheitern."""
-    entry = _UNITS.get(_norm_convert(symbol))
+    entry = _lookup(symbol)
     if entry is None:
         raise UnitConversionError(f"unknown {role} unit {symbol!r}")
     return entry
@@ -422,7 +487,7 @@ class UnitSystem:
         self.units = []
         self._basis = []   # Liste von (dimvec, log(factor), symbol) für die Basis
         for symbol in units:
-            entry = _UNITS.get(_norm_convert(symbol))
+            entry = _lookup(symbol)
             if entry is None:
                 raise UnitConversionError(f"unknown unit in system: {symbol!r}")
             dim, factor, offset = entry
@@ -485,7 +550,7 @@ class UnitSystem:
         :return: Tupel ``(wert, label)``, oder ``None`` wenn ``from_unit`` unbekannt
           ist oder ihre Dimension nicht vom System abgedeckt wird.
         """
-        entry = _UNITS.get(_norm_convert(from_unit))
+        entry = _lookup(from_unit)
         if entry is None:
             return None
         dim, factor_cur, offset_cur = entry

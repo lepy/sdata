@@ -286,8 +286,11 @@ jetzt korrekt mitgeführt.
   bei Ambiguität bewusst komponieren (§3.3-Wrinkle).
 * **Persistenz** des `unit_system` über Serialisierung (Parquet/dict/JSON-LD) — separater
   Folge-RFC; ohne sie ist das gemerkte System transient.
-* **`pint`-Interop** für Einheiten außerhalb der kuratierten Tabelle (optional, wie bei
-  `validate_unit`).
+* **`pint`-Interop** für Einheiten außerhalb der kuratierten Tabelle ist umgesetzt: mit
+  dem Extra `[units]` bildet `_lookup` nicht kuratierte Einheiten (imperial/abgeleitet)
+  über pint auf denselben 5-Achsen-Vektor ab (kuratierte Tabelle hat Vorrang). Achsen
+  außerhalb `(L,M,T,Θ,A)` bleiben nicht darstellbar; Winkel folgen pints
+  dimensionslosem Modell (dafür die kuratierten rad/deg/gon).
 * **Winkel-Einheiten** (rad/deg/gon/mrad) sind über die eigene Achse `A` umgesetzt
   (§3.1); untereinander umrechenbar, gegen dimensionslos abgegrenzt, QUDT-gemappt.
   **Logarithmische Einheiten** (dB) bleiben bewusst außen vor: sie passen nicht in das
