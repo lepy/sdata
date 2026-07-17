@@ -28,6 +28,16 @@ parametrisiert Zellen-Unschärfe *explizit* — getrennte Spaltensätze je Lesar
 ``lognormal_geometric_gmean``/``lognormal_geometric_gsd``), statt der vier
 verwechselbaren ``stats_arrays``-Parametrisierungen (Heijungs 2024, S. 915–922).
 Konsumenten reichen die Datensätze unangetastet durch, bis sie sie brauchen.
+
+**Ergebnis-Rückrichtung (RESULTS).** Neben dem *Eingabe*-System hält sdata das
+*Ergebnis*-Format desselben Vertragsstils: :class:`LCAResults` mit den Teiltabellen
+``results`` (Kennzahlen je Zielgröße), ``draws`` (die ``g``-Draws als lange Tabelle)
+und ``provenance`` (Seeds, Generator, Hashes). Es ist die Datei-Grenze, über die
+ein Rechner (lepus-lca) unter Unsicherheit propagierte Ergebnisse an einen
+Konsumenten (dp2g) zurückreicht — dieselbe Ordnungs-/Dialekt-Disziplin wie das
+Eingabe-System. Die statistisch korrekte Benennung ist normativ (Heijungs 2024
+Tab. 14.2): ``interpercentile_lower``/``_upper`` sind **Interperzentil**-Grenzen
+(Streuung, kein Konfidenzintervall).
 """
 import hashlib
 import os
@@ -46,13 +56,20 @@ __all__ = [
     "FLOW_KINDS",
     "FLOW_KIND_GOOD",
     "FLOW_KIND_WASTE",
+    "LCAResults",
     "LCASystem",
+    "LCATableGroup",
     "LCA_SCHEMAS",
     "LCA_TABLE_ORDER",
     "MATRICES",
     "MATRIX_A",
     "MATRIX_B",
     "PROCESSES_SCHEMA",
+    "RESULTS_DRAWS_SCHEMA",
+    "RESULTS_PROVENANCE_SCHEMA",
+    "RESULTS_SCHEMAS",
+    "RESULTS_SUMMARY_SCHEMA",
+    "RESULTS_TABLE_ORDER",
     "UNCERTAINTY_DIST_COLUMNS",
     "UNCERTAINTY_SCHEMA",
 ]
@@ -175,42 +192,82 @@ LCA_SCHEMAS: Dict[str, TableSchema] = {
     "uncertainty": UNCERTAINTY_SCHEMA,
 }
 
+# --- Ergebnis-Schemas (RESULTS, Rückrichtung) -------------------------------
+#: Kennzahlen **je Zielgröße**. Die Benennung ist normativ (Heijungs 2024
+#: Tab. 14.2, L6): ``nominal`` (deterministischer Wert, **nicht** „true value"),
+#: ``mean``/``variance`` (MC-Momente) und das **Interperzentil**-Band
+#: ``interpercentile_lower``/``_upper`` an den Stufen ``lower_percentile``/
+#: ``upper_percentile`` (Streuung — **kein** Konfidenzintervall). ``n_failed``
+#: (exakt singuläre Draws) und ``n_guarded`` (Fast-Singulär-Wächter) sind getrennt.
+RESULTS_SUMMARY_SCHEMA = TableSchema("results", [
+    AttrSpec("target", dtype="str", required=True,
+             description="Zielgröße-ID (Elementarfluss / Impact-Kategorie)"),
+    AttrSpec("nominal", dtype="float", required=True,
+             description="deterministischer Wert am nominalen System (nicht der true value)"),
+    AttrSpec("mean", dtype="float", required=True, description="MC-Mittelwert (Welford)"),
+    AttrSpec("variance", dtype="float", required=True, description="MC-Varianz (Welford)"),
+    AttrSpec("interpercentile_lower", dtype="float", required=True,
+             description="untere Interperzentil-Grenze (Streuung, kein CI)"),
+    AttrSpec("interpercentile_upper", dtype="float", required=True,
+             description="obere Interperzentil-Grenze (Streuung, kein CI)"),
+    AttrSpec("lower_percentile", dtype="float", required=True,
+             description="untere Perzentil-Stufe (z. B. 0.025)"),
+    AttrSpec("upper_percentile", dtype="float", required=True,
+             description="obere Perzentil-Stufe (z. B. 0.975)"),
+    AttrSpec("n", dtype="int", required=True, description="angeforderte Draw-Zahl"),
+    AttrSpec("n_failed", dtype="int", required=True,
+             description="exakt singuläre Draws (verworfen)"),
+    AttrSpec("n_guarded", dtype="int", required=True,
+             description="fast-singuläre Draws (Wächter, verworfen)"),
+])
 
-class LCASystem(DataFrameGroup):
-    """Container eines matrixbasierten LCA-Systems (sechs benannte Teiltabellen).
+#: Die ``g``-Draws als **lange** Tabelle (eine Zeile je (Zielgröße, Draw-Index));
+#: optionale Teiltabelle (Quantil-Rekonstruktion / Nachrechnen).
+RESULTS_DRAWS_SCHEMA = TableSchema("draws", [
+    AttrSpec("target", dtype="str", required=True, description="Zielgröße-ID"),
+    AttrSpec("draw", dtype="int", required=True, description="Draw-Index (0-basiert)"),
+    AttrSpec("value", dtype="float", required=True, description="Ziel-g dieses Draws"),
+])
 
-    Erbt von :class:`~sdata.sclass.dataframegroup.DataFrameGroup`: die Teiltabellen
-    liegen als vollwertige :class:`~sdata.sclass.dataframe.DataFrame` (mit
-    Spalten-Metadaten) unter ihren kanonischen Schlüsseln
-    (:data:`LCA_TABLE_ORDER`). Serialisierung (``to_dict``/``from_dict``,
-    ``to_json``/``from_json``) und die volle DataFrameGroup-API bleiben erhalten.
+#: Provenienz als **Schlüssel/Wert**-Tabelle (Seeds, Generator, Hashes, Warnung).
+RESULTS_PROVENANCE_SCHEMA = TableSchema("provenance", [
+    AttrSpec("key", dtype="str", required=True,
+             description="Provenienz-Schlüssel (seed | generator | content_hash | …)"),
+    AttrSpec("value", dtype="str", required=True, description="Provenienz-Wert"),
+])
 
-    Zusätzlich:
+#: Kanonische Reihenfolge der Ergebnis-Teiltabellen (Prüfsummen-Reihenfolge).
+RESULTS_TABLE_ORDER = ("results", "draws", "provenance")
 
-    * :meth:`set_table` legt eine Tabelle unter Schema an (vervollständigt die
-      Spalten-Metadaten aus dem passenden :class:`TableSchema`);
-    * :meth:`content_checksum` bildet eine deterministische Prüfsumme **über alle
-      Teiltabellen** — die kanonische CSV-Form je Tabelle geht in Zeilen- und
-      Spaltenordnung ein (Zeilen-Permutation ⇒ andere Prüfsumme);
-    * :meth:`validate_tables` prüft jede vorhandene Tabelle gegen ihr Schema;
-    * :meth:`to_csv_dir` / :meth:`from_csv_dir` sind ein verlustfreier
-      CSV-Roundtrip (eine Datei je Tabelle, Ordnung und Werte erhalten) — mit
-      **gepinntem** Dialekt (:data:`CSV_DIALECT`: ``,``-getrennt, Dezimalpunkt,
-      UTF-8); die Roundtrip-/Prüfsummen-Garantie gilt nur für diesen Dialekt.
+#: Ergebnis-Tabellenname → :class:`~sdata.schema.TableSchema`.
+RESULTS_SCHEMAS: Dict[str, TableSchema] = {
+    "results": RESULTS_SUMMARY_SCHEMA,
+    "draws": RESULTS_DRAWS_SCHEMA,
+    "provenance": RESULTS_PROVENANCE_SCHEMA,
+}
+
+
+class LCATableGroup(DataFrameGroup):
+    """Gemeinsamer Container-Vertrag für die LCA-Tabellengruppen (System + Ergebnis).
+
+    Trägt die schema-gebundene Ablage (:meth:`set_table`), die deterministische
+    :meth:`content_checksum` (Zeilen-/Spaltenordnung normativ), die
+    Schema-Validierung (:meth:`validate_tables`/:meth:`is_valid`) und den
+    **gepinnten** CSV-Roundtrip (:meth:`to_csv_dir`/:meth:`from_csv_dir`,
+    :data:`CSV_DIALECT`). Die konkreten Klassen setzen nur ``TABLE_ORDER`` und
+    ``SCHEMAS`` — die Methoden arbeiten generisch darüber.
     """
 
-    SDATA_CLS = "sdata.sclass.lca.LCASystem"
-
     #: Kanonische Tabellenreihenfolge (bestimmt die Prüfsummen-Reihenfolge).
-    TABLE_ORDER = LCA_TABLE_ORDER
+    TABLE_ORDER: tuple = ()
     #: Tabellenname → :class:`TableSchema`.
-    SCHEMAS = LCA_SCHEMAS
+    SCHEMAS: Dict[str, TableSchema] = {}
 
     # ------------------------------------------------------------- public API
     def set_table(self, key: str, df: Any, *, overwrite: bool = True) -> DataFrame:
         """Lege die Teiltabelle ``key`` unter ihrem Schema an (oder überschreibe sie).
 
-        :param key: einer der kanonischen Namen (:data:`LCA_TABLE_ORDER`).
+        :param key: einer der kanonischen Namen (``TABLE_ORDER``).
         :param df: ein :class:`DataFrame` oder ein pandas ``DataFrame``.
         :param overwrite: bestehende Tabelle ersetzen (Default True).
         :return: die gespeicherte :class:`DataFrame`.
@@ -218,7 +275,7 @@ class LCASystem(DataFrameGroup):
         """
         if key not in self.SCHEMAS:
             raise ValueError(
-                f"unbekannte LCA-Tabelle {key!r}; erlaubt: {sorted(self.SCHEMAS)}")
+                f"unbekannte Tabelle {key!r}; erlaubt: {sorted(self.SCHEMAS)}")
         sdf = df if isinstance(df, DataFrame) else DataFrame(df=df, name=key)
         self.SCHEMAS[key].apply(sdf)                       # Spalten-Metadaten füllen
         self.add(sdf, key=key, overwrite=overwrite)
@@ -229,14 +286,14 @@ class LCASystem(DataFrameGroup):
         return self.get(key)
 
     def content_checksum(self) -> str:
-        """SHA-256 über **alle** Teiltabellen — die Quell-Identität des Systems.
+        """SHA-256 über **alle** Teiltabellen — die Content-Identität der Gruppe.
 
-        Gehasht wird je vorhandener Tabelle (in :data:`LCA_TABLE_ORDER`) der
-        Tabellenname plus die kanonische CSV-Form der Daten
-        (:attr:`DataFrame.content_bytes` — Header + Werte in Zeilenordnung, ohne
-        Index, UTF-8). Damit gehen **Zeilenordnung und Spaltenordnung** in die
-        Prüfsumme ein: eine Zeilen-Permutation ergibt eine andere Prüfsumme,
-        obwohl die Zeilenmenge identisch bleibt (Zeilenordnung ist normativ).
+        Gehasht wird je vorhandener Tabelle (in ``TABLE_ORDER``) der Tabellenname
+        plus die kanonische CSV-Form der Daten (:attr:`DataFrame.content_bytes` —
+        Header + Werte in Zeilenordnung, ohne Index, UTF-8). Damit gehen
+        **Zeilenordnung und Spaltenordnung** in die Prüfsumme ein: eine
+        Zeilen-Permutation ergibt eine andere Prüfsumme, obwohl die Zeilenmenge
+        identisch bleibt (Zeilenordnung ist normativ).
 
         Reine Datenprüfsumme (keine Metadaten): stabil, wenn sich nur
         Annotationen ändern — konsistent mit RFC 0004 (``DataFrame.content_bytes``).
@@ -260,10 +317,8 @@ class LCASystem(DataFrameGroup):
         Reicht die :class:`~sdata.schema.TableSchema`-Validierung durch (Spalten,
         dtypes, Einheiten-Annotation), rechnet ``ok`` aber gegen die **Pflicht**-
         spalten (``required``): eine fehlende Pflichtspalte macht die Tabelle
-        ungültig, eine fehlende *optionale* Spalte (``name``/``region``/
-        ``time_slice``/``reference_output``, ungenutzte ``uncertainty``-
-        Parametrisierungen) bleibt gültig. Absente Spalten werden weiterhin in
-        ``missing`` gelistet (informativ).
+        ungültig, eine fehlende *optionale* Spalte bleibt gültig. Absente Spalten
+        werden weiterhin in ``missing`` gelistet (informativ).
 
         :param only_present: nur die tatsächlich vorhandenen Tabellen prüfen
           (Default). Mit ``False`` liefern fehlende Tabellen einen Report, dessen
@@ -303,7 +358,7 @@ class LCASystem(DataFrameGroup):
         bewusst nicht konfigurierbar, damit die Prüfsumme stabil bleibt.
 
         :param path: Zielverzeichnis (wird bei Bedarf angelegt).
-        :return: Liste der geschriebenen Dateipfade (in :data:`LCA_TABLE_ORDER`).
+        :return: Liste der geschriebenen Dateipfade (in ``TABLE_ORDER``).
         """
         os.makedirs(path, exist_ok=True)
         written: List[str] = []
@@ -320,11 +375,11 @@ class LCASystem(DataFrameGroup):
         return written
 
     @classmethod
-    def from_csv_dir(cls, path: str, *, name: str = "lca_system") -> "LCASystem":
+    def from_csv_dir(cls, path: str, *, name: str = "lca_table_group") -> "LCATableGroup":
         """Lese ein per :meth:`to_csv_dir` geschriebenes Verzeichnis zurück.
 
-        Es werden genau die kanonischen ``<key>.csv`` (:data:`LCA_TABLE_ORDER`)
-        geladen, die vorhanden sind; jede wird unter ihrem Schema abgelegt.
+        Es werden genau die kanonischen ``<key>.csv`` (``TABLE_ORDER``) geladen,
+        die vorhanden sind; jede wird unter ihrem Schema abgelegt.
 
         **Dialekt-Vertrag (:data:`CSV_DIALECT`).** Gelesen wird fest mit
         Feldtrenner ``","``, Dezimalpunkt ``"."`` und UTF-8 — passend zu
@@ -335,15 +390,80 @@ class LCASystem(DataFrameGroup):
         die Ordnungs-/Prüfsummen-Garantie vor lautlosem Fehllesen.
 
         :param path: Quellverzeichnis.
-        :param name: Name des rekonstruierten Systems.
-        :return: eine :class:`LCASystem`.
+        :param name: Name des rekonstruierten Objekts.
+        :return: eine Instanz der aufrufenden Klasse.
         """
         import pandas as pd
-        system = cls(name=name)
+        group = cls(name=name)
         for key in cls.TABLE_ORDER:
             filepath = os.path.join(path, f"{key}.csv")
             if os.path.exists(filepath):
-                system.set_table(key, pd.read_csv(
+                # float_precision="round_trip": der Default-Parser von read_csv
+                # verliert bei vollpräzisen float64 Stellen (pandas ≥ 3), sodass die
+                # content_checksum nach dem Roundtrip nicht mehr stimmte. Der
+                # round_trip-Parser liest das kürzeste round-trippable repr **exakt**
+                # zurück — Teil des Dialekt-Vertrags, damit die Prüfsummen-Garantie
+                # auch für MC-Ergebnisfloats (LCAResults) hält.
+                group.set_table(key, pd.read_csv(
                     filepath, sep=CSV_DIALECT["sep"], decimal=CSV_DIALECT["decimal"],
-                    encoding=CSV_DIALECT["encoding"]))
-        return system
+                    encoding=CSV_DIALECT["encoding"], float_precision="round_trip"))
+        return group
+
+
+class LCASystem(LCATableGroup):
+    """Container eines matrixbasierten LCA-Systems (sechs benannte Teiltabellen).
+
+    Erbt von :class:`LCATableGroup` (schema-gebundene Ablage, deterministische
+    :meth:`content_checksum`, gepinnter CSV-Roundtrip); die Teiltabellen liegen
+    als vollwertige :class:`~sdata.sclass.dataframe.DataFrame` (mit
+    Spalten-Metadaten) unter ihren kanonischen Schlüsseln (:data:`LCA_TABLE_ORDER`).
+    Serialisierung (``to_dict``/``from_dict``, ``to_json``/``from_json``) und die
+    volle DataFrameGroup-API bleiben erhalten.
+
+    * :meth:`set_table` legt eine Tabelle unter Schema an;
+    * :meth:`content_checksum` bildet eine deterministische Prüfsumme über alle
+      Teiltabellen (Zeilen-Permutation ⇒ andere Prüfsumme);
+    * :meth:`validate_tables` prüft jede vorhandene Tabelle gegen ihr Schema;
+    * :meth:`to_csv_dir` / :meth:`from_csv_dir` sind ein verlustfreier
+      CSV-Roundtrip mit **gepinntem** Dialekt (:data:`CSV_DIALECT`).
+    """
+
+    SDATA_CLS = "sdata.sclass.lca.LCASystem"
+
+    #: Kanonische Tabellenreihenfolge (bestimmt die Prüfsummen-Reihenfolge).
+    TABLE_ORDER = LCA_TABLE_ORDER
+    #: Tabellenname → :class:`TableSchema`.
+    SCHEMAS = LCA_SCHEMAS
+
+    @classmethod
+    def from_csv_dir(cls, path: str, *, name: str = "lca_system") -> "LCASystem":
+        """Lese ein per :meth:`to_csv_dir` geschriebenes System-Verzeichnis zurück."""
+        return super().from_csv_dir(path, name=name)  # type: ignore[return-value]
+
+
+class LCAResults(LCATableGroup):
+    """Container eines LCA-**Ergebnisses** unter Unsicherheit (Rückrichtung).
+
+    Die Datei-Grenze, über die ein Rechner (lepus-lca) MC-propagierte Ergebnisse
+    an einen Konsumenten (dp2g) zurückreicht — derselbe Vertragsstil wie
+    :class:`LCASystem` (Ordnung normativ, :data:`CSV_DIALECT` gepinnt,
+    deterministische :meth:`content_checksum`). Die drei Teiltabellen
+    (:data:`RESULTS_TABLE_ORDER`):
+
+    * ``results`` — Kennzahlen je Zielgröße (nominal, Mittel, Varianz,
+      Interperzentil-Band, ``n``/``n_failed``/``n_guarded``);
+    * ``draws`` — die ``g``-Draws als lange Tabelle (optional; Quantil-Nachrechnung);
+    * ``provenance`` — Schlüssel/Wert (Seeds, Generator, Hashes, Warnung).
+    """
+
+    SDATA_CLS = "sdata.sclass.lca.LCAResults"
+
+    #: Kanonische Ergebnis-Tabellenreihenfolge (Prüfsummen-Reihenfolge).
+    TABLE_ORDER = RESULTS_TABLE_ORDER
+    #: Ergebnis-Tabellenname → :class:`TableSchema`.
+    SCHEMAS = RESULTS_SCHEMAS
+
+    @classmethod
+    def from_csv_dir(cls, path: str, *, name: str = "lca_results") -> "LCAResults":
+        """Lese ein per :meth:`to_csv_dir` geschriebenes Ergebnis-Verzeichnis zurück."""
+        return super().from_csv_dir(path, name=name)  # type: ignore[return-value]

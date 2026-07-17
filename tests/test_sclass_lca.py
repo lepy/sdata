@@ -25,7 +25,13 @@ from sdata.sclass.lca import (
     LCA_TABLE_ORDER,
     MATRICES,
     PROCESSES_SCHEMA,
+    RESULTS_DRAWS_SCHEMA,
+    RESULTS_PROVENANCE_SCHEMA,
+    RESULTS_SCHEMAS,
+    RESULTS_SUMMARY_SCHEMA,
+    RESULTS_TABLE_ORDER,
     UNCERTAINTY_SCHEMA,
+    LCAResults,
     LCASystem,
 )
 
@@ -253,3 +259,117 @@ def test_set_table_applies_schema_metadata():
     s.set_table("flows", _flows())
     # das Schema hat die Spalten-Metadaten vervollständigt (Beschreibung gesetzt)
     assert s.table("flows").get_column("kind").description
+
+
+# ======================================================================
+# RESULTS — Ergebnis-Rückrichtung (LCAResults), gleicher Vertragsstil
+# ======================================================================
+def _results_summary():
+    return pd.DataFrame({
+        "target": ["CO2", "CH4"],
+        "nominal": [2.0, 0.1],
+        "mean": [2.13, 0.11],
+        "variance": [0.09, 0.001],
+        "interpercentile_lower": [1.71, 0.05],
+        "interpercentile_upper": [2.63, 0.18],
+        "lower_percentile": [0.025, 0.025],
+        "upper_percentile": [0.975, 0.975],
+        "n": [1000, 1000],
+        "n_failed": [0, 0],
+        "n_guarded": [3, 3],
+    })
+
+
+def _results_draws():
+    return pd.DataFrame({
+        "target": ["CO2", "CO2", "CH4", "CH4"],
+        "draw": [0, 1, 0, 1],
+        "value": [2.05, 1.98, 0.10, 0.12],
+    })
+
+
+def _results_provenance():
+    return pd.DataFrame({
+        "key": ["seed", "generator", "content_hash"],
+        "value": ["12345", "Philox", "abc123"],
+    })
+
+
+def _results():
+    r = LCAResults(name="demo_results")
+    r.set_table("results", _results_summary())
+    r.set_table("draws", _results_draws())
+    r.set_table("provenance", _results_provenance())
+    return r
+
+
+def test_results_schema_columns_match_layout():
+    """Die drei Ergebnis-Schemas tragen exakt die spezifizierten Spalten."""
+    assert [c.name for c in RESULTS_SUMMARY_SCHEMA.columns] == [
+        "target", "nominal", "mean", "variance",
+        "interpercentile_lower", "interpercentile_upper",
+        "lower_percentile", "upper_percentile", "n", "n_failed", "n_guarded"]
+    assert [c.name for c in RESULTS_DRAWS_SCHEMA.columns] == ["target", "draw", "value"]
+    assert [c.name for c in RESULTS_PROVENANCE_SCHEMA.columns] == ["key", "value"]
+    assert list(RESULTS_TABLE_ORDER) == list(RESULTS_SCHEMAS.keys())
+
+
+def test_results_naming_is_interpercentile_not_confidence():
+    """L6-Disziplin: das Streuungsband heißt Interperzentil, nie Konfidenz."""
+    cols = {c.name for c in RESULTS_SUMMARY_SCHEMA.columns}
+    assert {"interpercentile_lower", "interpercentile_upper"} <= cols
+    assert not any("confidence" in c.lower() for c in cols)
+    assert "nominal" in cols and "true_value" not in cols
+
+
+def test_results_required_columns():
+    def req(sch):
+        return [c.name for c in sch.columns if c.required]
+    # alle Kennzahl-Spalten sind Pflicht (das Ergebnis ist ohne sie unvollständig)
+    assert req(RESULTS_SUMMARY_SCHEMA) == [c.name for c in RESULTS_SUMMARY_SCHEMA.columns]
+    assert req(RESULTS_DRAWS_SCHEMA) == ["target", "draw", "value"]
+    assert req(RESULTS_PROVENANCE_SCHEMA) == ["key", "value"]
+
+
+def test_results_full_group_is_valid():
+    assert _results().is_valid()
+
+
+def test_results_row_order_is_normative():
+    """Zeilen-Permutation ⇒ andere Content-Prüfsumme (Ordnung normativ)."""
+    r = _results()
+    before = r.content_checksum()
+    r.set_table("results", _results_summary().iloc[[1, 0]].reset_index(drop=True))
+    assert r.content_checksum() != before
+
+
+def test_results_csv_dir_roundtrip_lossless(tmp_path):
+    r = _results()
+    written = r.to_csv_dir(str(tmp_path))
+    assert [p.split("/")[-1] for p in written] == \
+        ["results.csv", "draws.csv", "provenance.csv"]
+    back = LCAResults.from_csv_dir(str(tmp_path))
+    assert back.content_checksum() == r.content_checksum()
+    for key in RESULTS_TABLE_ORDER:
+        assert back.table(key).content_bytes == r.table(key).content_bytes
+
+
+def test_results_uses_pinned_dialect_no_override():
+    with pytest.raises(TypeError):
+        LCAResults.from_csv_dir("irgendwo", sep=";")
+
+
+def test_results_validation_flags_missing_required_column():
+    r = LCAResults(name="x")
+    r.set_table("results", _results_summary().drop(columns=["variance"]))
+    rep = r.validate_tables()["results"]
+    assert not rep.ok
+    assert "variance" in rep.missing
+
+
+def test_results_summary_only_is_valid_draws_optional():
+    """Nur die Kennzahl-Tabelle (ohne draws/provenance) ist ein gültiges Ergebnis."""
+    r = LCAResults(name="summary_only")
+    r.set_table("results", _results_summary())
+    assert r.is_valid()
+    assert r.table("draws") is None
