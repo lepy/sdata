@@ -38,6 +38,7 @@ from sdata.sclass.dataframe import DataFrame
 from sdata.sclass.dataframegroup import DataFrameGroup
 
 __all__ = [
+    "CSV_DIALECT",
     "ELEMENTARY_FLOWS_SCHEMA",
     "EXCHANGES_A_SCHEMA",
     "EXCHANGES_B_SCHEMA",
@@ -55,6 +56,16 @@ __all__ = [
     "UNCERTAINTY_DIST_COLUMNS",
     "UNCERTAINTY_SCHEMA",
 ]
+
+#: **CSV-Dialekt-Vertrag** von :meth:`LCASystem.to_csv_dir` / :meth:`from_csv_dir`.
+#: Feldtrenner ``","``, Dezimalpunkt ``"."``, Kodierung UTF-8. NaN-Politik: eine
+#: leere Zelle *ist* der fehlende Wert (``na_rep=""`` beim Schreiben, leere Zelle
+#: → NaN beim Lesen). Der Dialekt ist **gepinnt** und nicht überschreibbar: die
+#: Ordnungs- und :meth:`content_checksum`-Garantien gelten ausschliesslich für
+#: genau diesen Dialekt. Fremde Dialekte (z. B. ``;``-getrennt, Dezimalkomma)
+#: werden **nicht** still korrekt gelesen — sie fallen als falsche Spaltenform
+#: auf, statt lautlos fehlzuinterpretieren.
+CSV_DIALECT: Dict[str, str] = {"sep": ",", "decimal": ".", "encoding": "utf-8"}
 
 # --- Konvention (Vertrag) ---------------------------------------------------
 #: Gut/Abfall-Label eines ökonomischen Flusses (Definition 6/7, S. 90).
@@ -183,7 +194,9 @@ class LCASystem(DataFrameGroup):
       Spaltenordnung ein (Zeilen-Permutation ⇒ andere Prüfsumme);
     * :meth:`validate_tables` prüft jede vorhandene Tabelle gegen ihr Schema;
     * :meth:`to_csv_dir` / :meth:`from_csv_dir` sind ein verlustfreier
-      CSV-Roundtrip (eine Datei je Tabelle, Ordnung und Werte erhalten).
+      CSV-Roundtrip (eine Datei je Tabelle, Ordnung und Werte erhalten) — mit
+      **gepinntem** Dialekt (:data:`CSV_DIALECT`: ``,``-getrennt, Dezimalpunkt,
+      UTF-8); die Roundtrip-/Prüfsummen-Garantie gilt nur für diesen Dialekt.
     """
 
     SDATA_CLS = "sdata.sclass.lca.LCASystem"
@@ -283,6 +296,12 @@ class LCASystem(DataFrameGroup):
         Ordnung (Zeilen und Spalten) und Werte bleiben erhalten; die qualifizierende
         Spalten-Semantik lebt im Schema, nicht in der CSV.
 
+        **Dialekt-Vertrag (:data:`CSV_DIALECT`).** Geschrieben wird fest mit
+        Feldtrenner ``","``, Dezimalpunkt ``"."`` und UTF-8; NaN als leere Zelle
+        (``na_rep=""``). Die Roundtrip- und :meth:`content_checksum`-Garantien
+        gelten **nur** für diesen Dialekt (siehe :data:`CSV_DIALECT`); er ist
+        bewusst nicht konfigurierbar, damit die Prüfsumme stabil bleibt.
+
         :param path: Zielverzeichnis (wird bei Bedarf angelegt).
         :return: Liste der geschriebenen Dateipfade (in :data:`LCA_TABLE_ORDER`).
         """
@@ -293,21 +312,30 @@ class LCASystem(DataFrameGroup):
             if member is None:
                 continue
             filepath = os.path.join(path, f"{key}.csv")
-            member.df.to_csv(filepath, index=False)
+            member.df.to_csv(
+                filepath, index=False, na_rep="",
+                sep=CSV_DIALECT["sep"], decimal=CSV_DIALECT["decimal"],
+                encoding=CSV_DIALECT["encoding"])
             written.append(filepath)
         return written
 
     @classmethod
-    def from_csv_dir(cls, path: str, *, name: str = "lca_system",
-                     **read_csv_kwargs: Any) -> "LCASystem":
+    def from_csv_dir(cls, path: str, *, name: str = "lca_system") -> "LCASystem":
         """Lese ein per :meth:`to_csv_dir` geschriebenes Verzeichnis zurück.
 
         Es werden genau die kanonischen ``<key>.csv`` (:data:`LCA_TABLE_ORDER`)
         geladen, die vorhanden sind; jede wird unter ihrem Schema abgelegt.
 
+        **Dialekt-Vertrag (:data:`CSV_DIALECT`).** Gelesen wird fest mit
+        Feldtrenner ``","``, Dezimalpunkt ``"."`` und UTF-8 — passend zu
+        :meth:`to_csv_dir`. Der Dialekt ist **nicht** überschreibbar (kein
+        ``**read_csv_kwargs``-Durchgriff): eine Datei in fremdem Dialekt (z. B.
+        ``;``-getrennt oder mit Dezimalkomma) wird dadurch nicht still korrekt
+        gelesen, sondern fällt als falsche Spaltenform auf — der Vertrag schützt
+        die Ordnungs-/Prüfsummen-Garantie vor lautlosem Fehllesen.
+
         :param path: Quellverzeichnis.
         :param name: Name des rekonstruierten Systems.
-        :param read_csv_kwargs: an :func:`pandas.read_csv` durchgereicht.
         :return: eine :class:`LCASystem`.
         """
         import pandas as pd
@@ -315,5 +343,7 @@ class LCASystem(DataFrameGroup):
         for key in cls.TABLE_ORDER:
             filepath = os.path.join(path, f"{key}.csv")
             if os.path.exists(filepath):
-                system.set_table(key, pd.read_csv(filepath, **read_csv_kwargs))
+                system.set_table(key, pd.read_csv(
+                    filepath, sep=CSV_DIALECT["sep"], decimal=CSV_DIALECT["decimal"],
+                    encoding=CSV_DIALECT["encoding"]))
         return system

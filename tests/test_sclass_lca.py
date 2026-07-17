@@ -15,6 +15,7 @@ import pandas as pd
 import pytest
 
 from sdata.sclass.lca import (
+    CSV_DIALECT,
     ELEMENTARY_FLOWS_SCHEMA,
     EXCHANGES_A_SCHEMA,
     EXCHANGES_B_SCHEMA,
@@ -174,6 +175,39 @@ def test_csv_dir_roundtrip_lossless_order_and_values(tmp_path):
     for key in ("flows", "processes", "exchanges_a"):
         assert list(back.table(key).df.columns) == list(s.table(key).df.columns)
         assert back.table(key).content_bytes == s.table(key).content_bytes
+
+
+# ----------------------------------------------------- CSV-Dialekt als Vertrag
+def test_csv_dialect_contract_is_comma_dot_utf8():
+    """Der gepinnte Dialekt ist Teil des öffentlichen Vertrags."""
+    assert CSV_DIALECT == {"sep": ",", "decimal": ".", "encoding": "utf-8"}
+
+
+def test_from_csv_dir_does_not_accept_dialect_override():
+    """Keine Hintertür: ``sep``/``decimal``/``encoding`` sind nicht überschreibbar
+    (``**read_csv_kwargs`` entfernt) — der Aufruf mit solchen kwargs schlägt fehl."""
+    with pytest.raises(TypeError):
+        LCASystem.from_csv_dir("irgendwo", sep=";")
+
+
+def test_foreign_dialect_is_not_silently_misread(tmp_path):
+    """Eine Datei in fremdem Dialekt (``;``-getrennt, Dezimalkomma) wird **nicht**
+    still korrekt gelesen: unter dem gepinnten Komma-Dialekt landet die ganze
+    Zeile in EINER Spalte — die Vertragsspalten fehlen, statt lautlos falsch zu
+    erscheinen (kein stilles Fehllesen)."""
+    (tmp_path / "exchanges_a.csv").write_text(
+        "row_id;col_id;value\nglass;prod_glass;1000,0\n", encoding="utf-8")
+    back = LCASystem.from_csv_dir(str(tmp_path))
+    cols = list(back.table("exchanges_a").df.columns)
+    assert cols != ["row_id", "col_id", "value"]        # nicht still in die Vertragsform gelesen
+    assert len(cols) == 1                                # alles in einer (falschen) Spalte
+
+
+def test_csv_roundtrip_stable_under_pinned_dialect(tmp_path):
+    """Der gepinnte Dialekt hält den Roundtrip byte-/prüfsummenstabil (Regression)."""
+    s = _system()
+    s.to_csv_dir(str(tmp_path))
+    assert LCASystem.from_csv_dir(str(tmp_path)).content_checksum() == s.content_checksum()
 
 
 # ----------------------------------------------------------- Schema-Validierung
