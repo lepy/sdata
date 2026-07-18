@@ -29,6 +29,17 @@ parametrisiert Zellen-Unschärfe *explizit* — getrennte Spaltensätze je Lesar
 verwechselbaren ``stats_arrays``-Parametrisierungen (Heijungs 2024, S. 915–922).
 Konsumenten reichen die Datensätze unangetastet durch, bis sie sie brauchen.
 
+**Vorzeichen-Vertrag der ``uncertainty``-Tabelle.** Eine Verteilung parametrisiert
+stets den **Betrag** ``|x|`` der adressierten Zelle — nie den vorzeichenbehafteten
+Wert. Das Zellvorzeichen trägt allein der Nominaleintrag in ``exchanges_a`` /
+``exchanges_b`` (Matrix-Konvention: Output +, Input −); der Konsument prägt es beim
+Rechnen als ``sign(nominal)·d`` auf (``d`` = Ziehung). Das ist zwingend, weil rein
+positive Familien (Lognormal) sonst eine **negative** Zelle — etwa einen Input —
+still ins Positive kippen würden. Für positive Zellen ist ``sign = +1`` (kein
+Unterschied). Praktisch heißt das: für einen negativen Input mit lognormaler
+Unschärfe füllt man ``lognormal_*`` mit den Parametern des **positiven Betrags**,
+nicht des negativen Werts.
+
 **Ergebnis-Rückrichtung (RESULTS).** Neben dem *Eingabe*-System hält sdata das
 *Ergebnis*-Format desselben Vertragsstils: :class:`LCAResults` mit den Teiltabellen
 ``results`` (Kennzahlen je Zielgröße), ``draws`` (die ``g``-Draws als lange Tabelle)
@@ -99,6 +110,11 @@ MATRICES = [MATRIX_A, MATRIX_B]
 #: Getrennte Spaltensätze je Lesart — nie eine mehrdeutige Sammelspalte. Alle
 #: sind optional; je Zeile werden genau die zur ``dist``-Familie passenden
 #: Spalten gefüllt (der Konsument liest die zu seiner Lesart gehörigen).
+#:
+#: **Betrags-Vertrag:** die Parameter beschreiben den **Betrag** ``|x|`` der Zelle;
+#: das Vorzeichen liefert der Nominaleintrag in ``exchanges_a``/``exchanges_b``
+#: (``sign(nominal)``, Anwendung ``sign(nominal)·Ziehung``). Für einen negativen
+#: Input trägt man also die Parameter des positiven Betrags ein.
 UNCERTAINTY_DIST_COLUMNS: List[AttrSpec] = [
     # Normal
     AttrSpec("normal_mean", dtype="float", description="Normal: Mittelwert μ"),
@@ -172,7 +188,8 @@ UNCERTAINTY_SCHEMA = TableSchema("uncertainty", [
     AttrSpec("row_id", dtype="str", required=True, description="Zeilen-Fluss-ID der Zelle"),
     AttrSpec("col_id", dtype="str", required=True, description="Spalten-Prozess-ID der Zelle"),
     AttrSpec("dist", dtype="str", required=True,
-             description="Verteilungsfamilie (normal | lognormal | uniform | triangular | …)"),
+             description="Verteilungsfamilie (normal | lognormal | uniform | triangular | …); "
+                         "parametrisiert den Betrag |x|, Vorzeichen aus dem Nominaleintrag"),
     *UNCERTAINTY_DIST_COLUMNS,
 ])
 
