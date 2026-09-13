@@ -1,0 +1,24 @@
+/* leporis-docs: lokal vendorierte Schriften. Kein Abruf aus dem Netz.
+   Die Diagramm-SVG (leporis-archify) nennen nur font-family und beziehen
+   ihre Schrift von hier. */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../assets/schriften/jetbrains-mono/JetBrainsMono-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('../assets/schriften/jetbrains-mono/JetBrainsMono-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('../assets/schriften/jetbrains-mono/JetBrainsMono-Bold.woff2') format('woff2');
+}

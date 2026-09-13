@@ -1,3 +1,8 @@
+# leporis-docs: 1.6.0 (Politik aus lepy/leporis-skills)
+#
+# Der Stempel oben ist verbindlich: `scripts/doku_drift.py` liest ihn, um zu
+# erkennen, welche Repos hinter der Hauspolitik zurückliegen. Nicht entfernen.
+
 site_name: sdata
 site_description: a structured data format — self-describing, machine-readable data
 site_url: https://lepy.github.io/sdata/
@@ -8,6 +13,9 @@ copyright: MIT License
 
 theme:
   name: material
+  # Pflicht: ohne dies lädt Material Roboto von fonts.googleapis.com
+  # nach und die Offline-Zusage ist gebrochen.
+  font: false
   features:
     - navigation.sections
     - navigation.top
@@ -58,6 +66,11 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.inlinehilite
   - pymdownx.snippets
+
+# Lokal vendorierte Mono-Schrift (Politik 1.2.0+): Diagramm-SVG aus
+# leporis-archify beziehen ihre Schrift von hier, nicht aus dem Netz.
+extra_css:
+  - stylesheets/schriften.css
 
 nav:
   - Home: index.md

@@ -23,3 +23,24 @@ test: ## alle Tests (benötigt eingerichtete venv aus `make ci`)
 
 clean-ci: ## venv + Coverage-Artefakte entfernen
 	rm -rf $(VENV) .coverage
+
+# --- leporis-docs: 1.6.0 -------------------------------------
+# Von /leporis-docs:init eingefügt. Port ist repo-fest vergeben (politik.json).
+DOCS_PORT ?= 9285
+DOCS_HOST ?= 127.0.0.1
+# Repo mit pyproject.toml:  uv run mkdocs
+# Repo ohne (reines Doku-Repo, Stufe 0):  uvx --with mkdocs-material mkdocs
+MKDOCS    ?= uv run mkdocs
+
+.PHONY: docs mkdocs_serve docs-offline-check
+
+docs:  ## Doku statisch bauen (--strict; bricht bei Warnungen ab)
+	$(MKDOCS) build --strict
+
+mkdocs_serve:  ## Doku lokal servieren auf $(DOCS_HOST):$(DOCS_PORT)
+	$(MKDOCS) serve --dev-addr $(DOCS_HOST):$(DOCS_PORT)
+
+docs-offline-check: docs  ## Bricht ab, wenn die gebaute Site etwas aus dem Netz lädt
+	python3 scripts/check_offline.py site
+
+# --- Ende leporis-docs ------------------------------------------------------

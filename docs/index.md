@@ -1,7 +1,6 @@
 # sdata — structured data format
 
-[![PyPI](https://img.shields.io/pypi/v/sdata.svg?style=flat-square)](https://pypi.python.org/pypi/sdata/)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4311323.svg)](https://doi.org/10.5281/zenodo.4311323)
+[sdata on PyPI](https://pypi.python.org/pypi/sdata/) · DOI [10.5281/zenodo.4311323](https://doi.org/10.5281/zenodo.4311323)
 
 **sdata** is an open, self-describing data format for open-science projects: a
 simple object model where every object carries a deterministic, content-addressable
