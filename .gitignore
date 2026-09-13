@@ -34,3 +34,6 @@ did.json
 .ipynb_checkpoints/
 t/
 db.json
+
+# von `mkdocs build` erzeugt
+site/
