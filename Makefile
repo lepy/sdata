@@ -24,7 +24,7 @@ test: ## alle Tests (benötigt eingerichtete venv aus `make ci`)
 clean-ci: ## venv + Coverage-Artefakte entfernen
 	rm -rf $(VENV) .coverage
 
-# --- leporis-docs: 1.6.0 -------------------------------------
+# --- leporis-docs: 1.6.1 -------------------------------------
 # Von /leporis-docs:init eingefügt. Port ist repo-fest vergeben (politik.json).
 DOCS_PORT ?= 9285
 DOCS_HOST ?= 127.0.0.1

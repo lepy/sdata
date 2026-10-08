@@ -281,14 +281,16 @@ class _SiteParser(HTMLParser):
         Rekursionsgrenze."""
         if not self._sammel_tag:
             return None
-        # Ein CDATA-Element (<style>/<script>) ohne schliessendes Tag ruft
-        # handle_data() fuer seinen Koerper NIE auf — html.parser haelt ihn
-        # unveraendert in self.rawdata zurueck und wartet auf das Ende-Tag,
-        # das nie kommt. Ohne diesen Fallback waere der gesamte Koerper
-        # unsichtbar, nicht nur ungeprueft.
-        rest = self.rawdata
-        if rest:
-            self._sammel_text.append(rest)
+        # Wo der Koerper eines CDATA-Elements (<style>/<script>) ohne
+        # schliessendes Tag landet, haengt von der Python-Fassung ab:
+        # aeltere (bis 3.12.3 beobachtet) rufen handle_data() dafuer NIE auf
+        # und halten ihn unveraendert in self.rawdata zurueck; neuere
+        # (3.11.15, 3.12.13, 3.13.13 beobachtet) reichen ihn bei close()
+        # doch noch an handle_data() durch und leeren self.rawdata. Der
+        # Rest ist deshalb beides zusammen — nur self.rawdata zu lesen,
+        # liess auf den neueren Fassungen das verschluckte Markup durch.
+        rest = "".join(self._sammel_text) + self.rawdata
+        self._sammel_text = [rest]
         self._flush_sammlung()
         # Der verschluckte Rest kann selbst wieder echtes Markup enthalten
         # (ein <script src="…"> oder <img src="…">, das NACH dem nie
