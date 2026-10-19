@@ -91,6 +91,7 @@ class Attribute(object):
         self._description:str = ""
         self._label:str = ""
         self._ontology:str = ""
+        self._symbol:str = ""
         self._dtype:str = "str"
         dtype = kwargs.get("dtype", None) or self.guess_dtype(value)
         self._set_dtype(dtype)
@@ -100,6 +101,7 @@ class Attribute(object):
         self._set_unit(kwargs.get("unit", "-"))
         self._set_required(kwargs.get("required", False))
         self._set_ontology(kwargs.get("ontology", ""))
+        self._set_symbol(kwargs.get("symbol", ""))
         # set dtype first!
         self._set_value(value)
 
@@ -225,6 +227,17 @@ class Attribute(object):
 
     ontology = property(fget=_get_ontology, fset=_set_ontology, doc="Attribute ontology")
 
+    def _get_symbol(self):
+        return self._symbol
+
+    def _set_symbol(self, value):
+        if value is None:
+            value = ""
+        self._symbol = str(value)
+
+    symbol = property(fget=_get_symbol, fset=_set_symbol,
+                      doc="Formelzeichen der Größe, z. B. ``R_p0,2`` (RFC 0016)")
+
     def to_dict(self) -> Dict[str, Any]:
         """Return a dict of the attribute's items (name/value/unit/dtype/...)."""
         return {'name': self.name,
@@ -235,10 +248,12 @@ class Attribute(object):
                 'label': self.label,
                 'required': self.required,
                 'ontology': self.ontology,
+                'symbol': self.symbol,
                 }
 
     def to_list(self):
-        return [self.name, self.value, self.unit, self.dtype, self.description, self.label, self.required, self.ontology]
+        return [self.name, self.value, self.unit, self.dtype, self.description, self.label, self.required, self.ontology,
+                self.symbol]
 
     def to_csv(self, prefix="", sep=",", quote=None):
         """export Attribute to csv
@@ -277,7 +292,7 @@ class Metadata(object):
         * type (int, str, float, bool, timestamp)
         """
 
-    ATTRIBUTEKEYS = ["name", "value", "unit", "dtype", "description", "label", "required", "ontology"]
+    ATTRIBUTEKEYS = ["name", "value", "unit", "dtype", "description", "label", "required", "ontology", "symbol"]
     #: reservierte Attribut-Schlüssel, der den Objektnamen autoritativ hält
     RESERVED_NAME_KEY = "_sdata_name"
 
@@ -342,7 +357,7 @@ class Metadata(object):
             attr = name # name is the Attribute!
         else:
             attr = self.get_attr(prefix + name) or Attribute(name, value, **kwargs)
-        for key in ["unit", "dtype", "description", "label", "required", "ontology"]:
+        for key in ["unit", "dtype", "description", "label", "required", "ontology", "symbol"]:
             if key in kwargs:
                 setattr(attr, key, kwargs.get(key))
         if value is not None:
@@ -411,7 +426,7 @@ class Metadata(object):
                 v = {"name":k, "value":value, "dtype":dtype,
                      "unit":v.get("unit", ""), "description":v.get("description", ""),
                      "label":v.get("label", ""), "required":v.get("required", False),
-                     "ontology":v.get("ontology", ""),}
+                     "ontology":v.get("ontology", ""), "symbol":v.get("symbol", ""),}
             else:
                 v, dtype = self.guess_dtype_from_value(v)
                 # v = {"name":k, "value":v, "dtype":dtype, "unit":"", "description":"", "label":"", "required":False}
@@ -515,6 +530,7 @@ class Metadata(object):
         df["unit"] = df.unit.fillna("")
         df["label"] =df.label.fillna("")
         df["description"] =df.description.fillna("")
+        df["symbol"] = df["symbol"].fillna("") if "symbol" in df.columns else ""
         d = df.to_dict(orient='index')
         metadata = cls.from_dict(d)
         return metadata
@@ -553,7 +569,8 @@ class Metadata(object):
     def from_csv(cls, filepath):
         """create metadata from dataframe"""
         df = pd.read_csv(filepath, header=None)
-        df.columns = cls.ATTRIBUTEKEYS
+        # Dateien vor RFC 0016 haben 8 Spalten (ohne symbol)
+        df.columns = cls.ATTRIBUTEKEYS[:len(df.columns)]
         # Index nach Spalte "name" (Spalte behalten). Kein df.name.values, da das
         # in neueren pandas-Versionen ein StringArray ist, den set_index als
         # unhashbaren Key behandelt (TypeError).

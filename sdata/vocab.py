@@ -56,6 +56,8 @@ CONTEXT_TERMS = {
     "unitRef":         {"@id": "qudt:unit", "@type": "@id"},
     "symbol":          "qudt:symbol",
     "label":           "rdfs:label",
+    # Formelzeichen der Größe (RFC 0016); "symbol" bleibt das Einheiten-Symbol
+    "quantitySymbol":  "sdata:quantitySymbol",
     "required":        {"@id": "sdata:required", "@type": "xsd:boolean"},
     # tabellarische Spalten (CSVW)
     "columns":         {"@id": "csvw:column", "@container": "@list"},

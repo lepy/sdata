@@ -38,6 +38,7 @@
     },
     "symbol": "qudt:symbol",
     "label": "rdfs:label",
+    "quantitySymbol": "sdata:quantitySymbol",
     "required": {
       "@id": "sdata:required",
       "@type": "xsd:boolean"

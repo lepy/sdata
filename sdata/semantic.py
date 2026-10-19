@@ -114,6 +114,8 @@ def _attr_node(attr):
         node["description"] = attr.description
     if attr.label:
         node["label"] = attr.label
+    if attr.symbol:
+        node["quantitySymbol"] = attr.symbol
     if attr.required:
         node["required"] = bool(attr.required)
     return node
@@ -134,6 +136,8 @@ def column_node(attr):
         node["rdfType"] = rdf_type
     if attr.label:
         node["label"] = attr.label
+    if attr.symbol:
+        node["quantitySymbol"] = attr.symbol
     if attr.description:
         node["description"] = attr.description
     return node
