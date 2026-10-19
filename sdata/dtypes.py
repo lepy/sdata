@@ -88,10 +88,17 @@ def _c_str(value, strict):
     return str(value)
 
 
+def _is_empty(value):
+    """None, leerer/Whitespace-String oder NA-artig -> kein Messwert."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return True
+    return _isna(value)
+
+
+# Hinweis: Eine numerische Null ist ein gueltiger Messwert (z. B. 0 Grad zur
+# Walzrichtung) und bleibt erhalten. bool: False -> 0, True -> 1 (wie int(False)).
 def _c_int(value, strict):
-    if not value:                 # 0/None/""/False/[]  -> nan (Altverhalten)
-        return np.nan
-    if _isna(value):
+    if _is_empty(value):
         return np.nan
     try:
         return int(value)
@@ -100,9 +107,7 @@ def _c_int(value, strict):
 
 
 def _c_float(value, strict):
-    if not value:
-        return np.nan
-    if _isna(value):
+    if _is_empty(value):
         return np.nan
     try:
         return float(value)
