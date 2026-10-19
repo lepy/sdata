@@ -22,6 +22,10 @@ All notable changes to **sdata** are documented here. The format is based on
 - **Micrometre no longer validates as millimetre.** `µm`/`μm`/`um` mapped to `mm` in the
   validation aliases, so `qudt_iri("µm")` returned `unit:MilliM` and a µm column passed a
   mm schema. They now resolve to `um` (`unit:MicroM`, UCUM `um`), as in conversion.
+- **`DataFrame.to_parquet(filename=...)` writes the file.** With `filename` (alone or
+  with `path`) it returned the Parquet bytes and wrote nothing, contrary to its docstring.
+  It now writes `<path>/<filename>` or `<filename>` and returns the path, like `to_csv`;
+  the optional sidecar goes next to the file.
 - **Bare `C` is no longer read as degree Celsius.** `C` is the coulomb symbol; it was an
   alias for `degC` in validation and conversion. Celsius is reached via `°C`, `degC` or
   `celsius`; `C` is now an unknown unit (with pint it validates as coulomb, which has no
