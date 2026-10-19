@@ -6,6 +6,8 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-10-19
+
 ### Added
 
 - **Quantity symbol as an attribute field (RFC 0016).** `Attribute.symbol` holds the
@@ -266,6 +268,7 @@ native, format-agnostic metadata embedding for images. Core dependencies remain
   dependencies reduced to `numpy`/`pandas`/`suuid` (stdlib `zoneinfo`); warning-free
   test suite.
 
-[Unreleased]: https://github.com/lepy/sdata/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/lepy/sdata/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/lepy/sdata/releases/tag/v1.5.0
 [1.4.0]: https://github.com/lepy/sdata/compare/v1.2.0...v1.4.0
 [1.2.0]: https://github.com/lepy/sdata/releases/tag/v1.2.0
