@@ -17,6 +17,14 @@ All notable changes to **sdata** are documented here. The format is based on
   CSV gains a ninth column `symbol`; eight-column files still load, but older sdata
   versions cannot read nine-column files. No format-version bump (optional key, RFC 0010).
 
+### Changed
+
+- **Numeric zero is kept (behaviour change).** `dtype="float"` and `dtype="int"` attributes
+  treated every falsy value as missing, so `0`, `0.0` and `False` became NaN and a measured
+  zero (e.g. an angle of 0 degrees) was lost, again on every reload (`from_dict`, Parquet).
+  Now only `None`, empty/whitespace strings and NaN map to NaN; `0`, `0.0`, `"0"` are kept
+  and `False`/`True` convert to 0/1. Code relying on 0 becoming NaN must check explicitly.
+
 ### Fixed
 
 - **Micrometre no longer validates as millimetre.** `µm`/`μm`/`um` mapped to `mm` in the

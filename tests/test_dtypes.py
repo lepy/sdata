@@ -3,6 +3,7 @@
 import datetime
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from sdata import dtypes
@@ -50,10 +51,11 @@ def test_str_coercion():
 
 
 def test_int_float_empty_and_cast():
-    assert np.isnan(Attribute("a", 0, dtype="int").value)
+    # Null ist ein gueltiger Messwert (z. B. 0 Grad zur Walzrichtung) und bleibt erhalten
+    assert Attribute("a", 0, dtype="int").value == 0
     assert np.isnan(Attribute("a", None, dtype="int").value)
     assert np.isnan(Attribute("a", float("nan"), dtype="int").value)    # truthy NaN -> _isna
-    assert np.isnan(Attribute("a", 0.0, dtype="float").value)           # falsy float
+    assert Attribute("a", 0.0, dtype="float").value == 0.0              # Null bleibt Null
     assert np.isnan(Attribute("a", float("nan"), dtype="float").value)
     assert Attribute("a", "5", dtype="int").value == 5
     assert Attribute("a", "1.5", dtype="float").value == 1.5
@@ -472,3 +474,47 @@ def test_timestamp_json_roundtrip():
     m.add("create", "2017-04-27", dtype="timestamp")
     restored = Metadata.from_json(m.to_json())
     assert restored.get("create").value.utc == "2017-04-27T00:00:00+00:00"
+
+
+# --- numerische Null bleibt erhalten ----------------------------------------
+@pytest.mark.parametrize("raw", [0, 0.0, "0", "0.0"])
+def test_float_zero_kept(raw):
+    value = Attribute("a", raw, dtype="float").value
+    assert value == 0.0 and not np.isnan(value)
+
+
+@pytest.mark.parametrize("raw", [0, 0.0, "0"])
+def test_int_zero_kept(raw):
+    value = Attribute("a", raw, dtype="int").value
+    assert value == 0 and not np.isnan(value)
+
+
+def test_bool_to_number():
+    assert Attribute("a", False, dtype="float").value == 0.0
+    assert Attribute("a", True, dtype="float").value == 1.0
+    assert Attribute("a", False, dtype="int").value == 0
+    assert Attribute("a", True, dtype="int").value == 1
+
+
+@pytest.mark.parametrize("dtype", ["int", "float"])
+@pytest.mark.parametrize("raw", [None, "", "  ", float("nan")])
+def test_empty_is_nan(raw, dtype):
+    assert np.isnan(Attribute("a", raw, dtype=dtype).value)
+
+
+def test_zero_roundtrip_metadata_dict():
+    from sdata import Metadata
+    md = Metadata()
+    md.set_attr("angle", 0.0, dtype="float")
+    md2 = Metadata.from_dict(md.to_dict())
+    assert md2.get_attr("angle").value == 0.0
+
+
+def test_zero_roundtrip_parquet(tmp_path):
+    pytest.importorskip("pyarrow")
+    from sdata import DataFrame
+    df = DataFrame(name="z", df=pd.DataFrame({"x": [1.0, 2.0]}))
+    df.metadata.set_attr("angle", 0.0, dtype="float")
+    path = df.to_parquet(path=str(tmp_path))
+    df2 = DataFrame.from_parquet(path)
+    assert df2.metadata.get_attr("angle").value == 0.0
