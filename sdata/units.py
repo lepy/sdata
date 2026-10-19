@@ -22,24 +22,51 @@ except ImportError:  # pragma: no cover - abhängig vom Environment
 
 #: gespeichertes Einheiten-Symbol -> (QUDT-IRI-CURIE | None, UCUM-Code)
 UNIT_MAP = {
-    "mm":   ("unit:MilliM",  "mm"),
-    "cm":   ("unit:CentiM",  "cm"),
+    "km":   ("unit:KiloM",   "km"),
     "m":    ("unit:M",       "m"),
+    "dm":   ("unit:DeciM",   "dm"),
+    "cm":   ("unit:CentiM",  "cm"),
+    "mm":   ("unit:MilliM",  "mm"),
+    "um":   ("unit:MicroM",  "um"),
+    "nm":   ("unit:NanoM",   "nm"),
+    "m2":   ("unit:M2",      "m2"),
+    "mm2":  ("unit:MilliM2", "mm2"),
+    "m3":   ("unit:M3",      "m3"),
+    "mm3":  ("unit:MilliM3", "mm3"),
+    "MN":   ("unit:MegaN",   "MN"),
     "kN":   ("unit:KiloN",   "kN"),
     "N":    ("unit:N",       "N"),
-    "MPa":  ("unit:MegaPA",  "MPa"),
+    "mN":   ("unit:MilliN",  "mN"),
     "GPa":  ("unit:GigaPA",  "GPa"),
+    "MPa":  ("unit:MegaPA",  "MPa"),
+    "kPa":  ("unit:KiloPA",  "kPa"),
     "Pa":   ("unit:PA",      "Pa"),
+    "kJ":   ("unit:KiloJ",   "kJ"),
+    "J":    ("unit:J",       "J"),
+    "mJ":   ("unit:MilliJ",  "mJ"),
+    "kW":   ("unit:KiloW",   "kW"),
+    "W":    ("unit:W",       "W"),
     "degC": ("unit:DEG_C",   "Cel"),
     "K":    ("unit:K",       "K"),
+    "h":    ("unit:HR",      "h"),
+    "min":  ("unit:MIN",     "min"),
     "s":    ("unit:SEC",     "s"),
+    "ms":   ("unit:MilliSEC", "ms"),
+    "us":   ("unit:MicroSEC", "us"),
+    "ns":   ("unit:NanoSEC", "ns"),
+    "m/s":  ("unit:M-PER-SEC", "m.s-1"),
+    "mm/s": ("unit:MilliM-PER-SEC", "mm.s-1"),
+    "m/s2": ("unit:M-PER-SEC2", "m.s-2"),
     "1/s":  ("unit:PER-SEC", "/s"),
+    "1/ms": ("unit:PER-MilliSEC", "ms-1"),
     "Hz":   ("unit:HZ",      "Hz"),
     "kHz":  ("unit:KiloHZ",  "kHz"),
     "MHz":  ("unit:MegaHZ",  "MHz"),
     "GHz":  ("unit:GigaHZ",  "GHz"),
+    "t":    ("unit:TONNE",   "t"),
     "kg":   ("unit:KiloGM",  "kg"),
     "g":    ("unit:GM",      "g"),
+    "mg":   ("unit:MilliGM", "mg"),
     "rad":  ("unit:RAD",     "rad"),
     "mrad": ("unit:MilliRAD","mrad"),
     "deg":  ("unit:DEG",     "deg"),
@@ -52,7 +79,9 @@ UNIT_MAP = {
 #: Symbol-Aliasse -> kanonisches UNIT_MAP-Symbol
 _ALIASES = {
     "°C": "degC", "celsius": "degC", "C": "degC",
-    "µm": "mm", "um": "mm", "mpa": "MPa", "gpa": "GPa", "kn": "kN",
+    "µm": "um", "μm": "um", "µs": "us", "μs": "us",
+    "mm²": "mm2", "m²": "m2", "mm³": "mm3", "m³": "m3",
+    "mpa": "MPa", "gpa": "GPa", "kn": "kN",
     "°": "deg", "degree": "deg", "degrees": "deg",
     "radian": "rad", "radians": "rad", "gradian": "gon",
 }
@@ -192,10 +221,11 @@ _UNITS = {
     "%": ((0, 0, 0, 0, 0), 1e-2, 0.0),
 }
 
-#: Symbol-Aliasse speziell für die Konvertierung (verlustfrei, anders als die
-#: lockeren Validierungs-Aliasse – z. B. ``µm`` ist hier Mikrometer, nicht ``mm``).
+#: Symbol-Aliasse speziell für die Konvertierung (verlustfrei; ``µm`` ist wie in
+#: :data:`_ALIASES` Mikrometer, nicht ``mm``).
 _CONVERT_ALIASES = {
     "µm": "um", "μm": "um", "µs": "us", "μs": "us",
+    "mm²": "mm2", "m²": "m2", "mm³": "mm3", "m³": "m3",
     "°C": "degC", "celsius": "degC", "C": "degC",
     "sec": "s", "second": "s", "seconds": "s", "minute": "min", "hour": "h",
     "hertz": "Hz", "Hertz": "Hz", "khz": "kHz", "mhz": "MHz", "ghz": "GHz",
