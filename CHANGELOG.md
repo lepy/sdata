@@ -11,6 +11,10 @@ All notable changes to **sdata** are documented here. The format is based on
 - **Micrometre no longer validates as millimetre.** `µm`/`μm`/`um` mapped to `mm` in the
   validation aliases, so `qudt_iri("µm")` returned `unit:MilliM` and a µm column passed a
   mm schema. They now resolve to `um` (`unit:MicroM`, UCUM `um`), as in conversion.
+- **Bare `C` is no longer read as degree Celsius.** `C` is the coulomb symbol; it was an
+  alias for `degC` in validation and conversion. Celsius is reached via `°C`, `degC` or
+  `celsius`; `C` is now an unknown unit (with pint it validates as coulomb, which has no
+  axis in the dimension vector and therefore does not convert).
 - **QUDT/UCUM for every convertible unit.** `UNIT_MAP` now covers all units of the
   conversion table (e.g. `mm2` → `unit:MilliM2`, `mm/s` → `unit:MilliM-PER-SEC`, `ms`,
   `kPa`, `J`, `t`), so JSON-LD carries `unitRef` for areas and velocities; `mm²`, `m²`,

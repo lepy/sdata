@@ -78,7 +78,7 @@ UNIT_MAP = {
 
 #: Symbol-Aliasse -> kanonisches UNIT_MAP-Symbol
 _ALIASES = {
-    "°C": "degC", "celsius": "degC", "C": "degC",
+    "°C": "degC", "celsius": "degC",
     "µm": "um", "μm": "um", "µs": "us", "μs": "us",
     "mm²": "mm2", "m²": "m2", "mm³": "mm3", "m³": "m3",
     "mpa": "MPa", "gpa": "GPa", "kn": "kN",
@@ -226,7 +226,7 @@ _UNITS = {
 _CONVERT_ALIASES = {
     "µm": "um", "μm": "um", "µs": "us", "μs": "us",
     "mm²": "mm2", "m²": "m2", "mm³": "mm3", "m³": "m3",
-    "°C": "degC", "celsius": "degC", "C": "degC",
+    "°C": "degC", "celsius": "degC",
     "sec": "s", "second": "s", "seconds": "s", "minute": "min", "hour": "h",
     "hertz": "Hz", "Hertz": "Hz", "khz": "kHz", "mhz": "MHz", "ghz": "GHz",
     # Winkel: „grad" bleibt bewusst *nicht* gemappt (mehrdeutig: engl. gradian vs.

@@ -41,3 +41,14 @@ def test_every_convertible_unit_has_qudt_iri():
 
 def test_unit_node_area():
     assert units.unit_node("mm2") == {"unitRef": "unit:MilliM2", "symbol": "mm2"}
+
+
+def test_bare_c_is_not_celsius():
+    """``C`` ist das Coulomb-Symbol; Celsius nur über ``°C``/``degC``/``celsius``."""
+    assert units.normalize_symbol("C") == "C"
+    assert units.qudt_iri("C") is None
+    assert units.quantity_of("C") is None
+    with pytest.raises(units.UnitConversionError):
+        units.convert(20, "C", "K")
+    assert units.qudt_iri("°C") == "unit:DEG_C"
+    assert units.convert(0, "°C", "K") == pytest.approx(273.15)
