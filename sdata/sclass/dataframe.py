@@ -607,8 +607,9 @@ class DataFrame(ContentIntegrityMixin, Base):
             path (str, optional): Directory where the Parquet file will be saved.
                 If provided (and `filename` is None), a file named
                 `<sname>.spq` is created under this directory.
-            filename (str, optional): Exact filename (without full path)
-                for the output Parquet file. Defaults is `<sname>.spq`.
+            filename (str, optional): Exact output filename; joined with `path`
+                if given, otherwise used as is (may contain a directory).
+                Defaults to `<sname>.spq`.
             **kwargs: Additional keyword arguments passed to `pandas.DataFrame.to_parquet`,
                 e.g.:
                 - engine (str): Parquet engine, defaults to "pyarrow".
@@ -640,14 +641,14 @@ class DataFrame(ContentIntegrityMixin, Base):
 
         if filename is None and path is not None:
             filename = self.sname + ".spq"
-            filepath = os.path.join(path, filename)
+        if filename is not None:
+            filepath = os.path.join(path, filename) if path else filename
             df.to_parquet(filepath, engine=engine, compression=compression)
             logger.info(f"DataFrame Parquet saved to {filepath}")
             if sidecar:
-                self.write_sidecar(path)
+                self.write_sidecar(os.path.dirname(filepath) or ".")
             return filepath
-        else:
-            return df.to_parquet(engine=engine, compression=compression)
+        return df.to_parquet(engine=engine, compression=compression)
 
     def _restore_from_attrs(self, attrs):
         """Restore metadata/column_metadata/description from a ``_sdata`` attrs dict.
