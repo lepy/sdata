@@ -6,6 +6,17 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **Quantity symbol as an attribute field (RFC 0016).** `Attribute.symbol` holds the
+  symbol of the quantity (e.g. `R_p0,2`), separate from the human-readable `label`.
+  Set via `Attribute(..., symbol=...)`, `Metadata.set_attr(..., symbol=...)` or
+  `DataFrame.set_column(..., symbol=...)`; carried through dict/JSON, Parquet, Arrow
+  field metadata, HDF5, Data Package and the CSV sidecar. In JSON-LD it is the new term
+  `quantitySymbol` (`sdata:quantitySymbol`); `symbol` stays the unit symbol. The metadata
+  CSV gains a ninth column `symbol`; eight-column files still load, but older sdata
+  versions cannot read nine-column files. No format-version bump (optional key, RFC 0010).
+
 ### Fixed
 
 - **Micrometre no longer validates as millimetre.** `µm`/`μm`/`um` mapped to `mm` in the

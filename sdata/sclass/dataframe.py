@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 #: Spalten-Annotationen, die zusätzlich nativ als Arrow-Field-Metadata mitreisen
 #: (tool-agnostisch lesbar, z. B. von DuckDB/Polars), neben dem ``_sdata``-Blob.
-_COL_FIELD_KEYS = ("unit", "label", "description", "ontology")
+_COL_FIELD_KEYS = ("unit", "label", "description", "ontology", "symbol")
 
 
 # Die drei ``_h5_*``-Helfer sind ``# pragma: no cover``: sie laufen nur mit
@@ -254,7 +254,7 @@ class DataFrame(ContentIntegrityMixin, Base):
         return self._column_metadata.get(str(name))
 
     def set_column(self, name, *, unit=None, label=None, description=None,
-                   ontology=None, required=None, dtype=None) -> Attribute:
+                   ontology=None, required=None, dtype=None, symbol=None) -> Attribute:
         """Annotate a column; writes through to :attr:`column_metadata`.
 
         Only the provided fields are changed; existing annotations are preserved
@@ -267,6 +267,7 @@ class DataFrame(ContentIntegrityMixin, Base):
         :param description: free-text description.
         :param ontology: CURIE/IRI of the column's class.
         :param required: whether the column is required.
+        :param symbol: quantity symbol (e.g. ``"R_p0,2"``, RFC 0016).
         :param dtype: expected dtype (e.g. ``"float"``), checked against the
           actual pandas dtype; a mismatch is logged. Not stored: the column
           attribute's value already is the pandas dtype name, so the attribute
@@ -275,7 +276,7 @@ class DataFrame(ContentIntegrityMixin, Base):
         """
         name = str(name)
         fields = {"unit": unit, "label": label, "description": description,
-                  "ontology": ontology, "required": required}
+                  "ontology": ontology, "required": required, "symbol": symbol}
         self._column_metadata.set_attr(
             name, **{k: v for k, v in fields.items() if v is not None})
         if name not in {str(c) for c in self._df.columns}:
@@ -797,7 +798,8 @@ class DataFrame(ContentIntegrityMixin, Base):
                 unit=node.get("symbol"),
                 label=node.get("label"),
                 description=node.get("description"),
-                ontology=node.get("rdfType"))
+                ontology=node.get("rdfType"),
+                symbol=node.get("quantitySymbol"))
         logger.debug(f"merged CSV sidecar metadata from {sidecar_path}")
 
     # ---------------------------------------------------------------- Arrow

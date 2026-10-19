@@ -17,11 +17,12 @@ def _esc(value):
 def attribute_html(attr):
     """Einzeilige HTML-Tabelle für ein :class:`Attribute`."""
     return (
-        "<table><tr><th>name</th><th>value</th><th>unit</th><th>dtype</th>"
-        "<th>ontology</th></tr>"
-        "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr></table>"
-    ).format(_esc(attr.name), _esc(attr.value), _esc(attr.unit),
-             _esc(attr.dtype), _esc(attr.ontology))
+        "<table><tr><th>name</th><th>symbol</th><th>value</th><th>unit</th>"
+        "<th>dtype</th><th>ontology</th></tr>"
+        "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td>"
+        "</tr></table>"
+    ).format(_esc(attr.name), _esc(attr.symbol), _esc(attr.value),
+             _esc(attr.unit), _esc(attr.dtype), _esc(attr.ontology))
 
 
 def metadata_html(metadata):
@@ -39,12 +40,13 @@ def metadata_html(metadata):
 
     rows = ""
     for attr in metadata.user_attributes.values():
-        rows += ("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td>"
+        rows += ("<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td>"
                  "<td>{}</td><td>{}</td></tr>").format(
-            _esc(attr.name), _esc(attr.value), _esc(attr.unit),
+            _esc(attr.name), _esc(attr.symbol), _esc(attr.value), _esc(attr.unit),
             _esc(attr.dtype), _esc(attr.ontology), _esc(attr.description))
-    table = ("<table><tr><th>name</th><th>value</th><th>unit</th><th>dtype</th>"
-             "<th>ontology</th><th>description</th></tr>{}</table>".format(rows))
+    table = ("<table><tr><th>name</th><th>symbol</th><th>value</th><th>unit</th>"
+             "<th>dtype</th><th>ontology</th><th>description</th></tr>{}</table>"
+             .format(rows))
     return "<div>{}{}</div>".format(header, table)
 
 
