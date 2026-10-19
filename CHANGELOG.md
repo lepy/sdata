@@ -6,6 +6,25 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **Micrometre no longer validates as millimetre.** `µm`/`μm`/`um` mapped to `mm` in the
+  validation aliases, so `qudt_iri("µm")` returned `unit:MilliM` and a µm column passed a
+  mm schema. They now resolve to `um` (`unit:MicroM`, UCUM `um`), as in conversion.
+- **QUDT/UCUM for every convertible unit.** `UNIT_MAP` now covers all units of the
+  conversion table (e.g. `mm2` → `unit:MilliM2`, `mm/s` → `unit:MilliM-PER-SEC`, `ms`,
+  `kPa`, `J`, `t`), so JSON-LD carries `unitRef` for areas and velocities; `mm²`, `m²`,
+  `mm³`, `m³` are accepted as aliases. IRIs checked against QUDT 3.1.11.
+- **`DataFrame.set_column(dtype=...)` no longer corrupts the column annotation.** The
+  declared dtype was stored on the column attribute and re-cast its value (the pandas dtype
+  name, e.g. `"float64"`), which logged an error and could drop the value on load. The
+  dtype is now checked against the actual column dtype (mismatch is logged) and not
+  stored; column attributes stay of dtype `str`. Older files with a declared column dtype
+  load cleanly.
+- **Column ontology survives the CSV sidecar.** `csvw:column` nodes now carry the column's
+  `ontology` as `rdfType` (`sdata:rdfType`, also in `ns/context.jsonld`), and `from_csv`
+  restores it.
+
 ### Changed
 
 - **Deterministic `DataFrame` content checksums (RFC 0004).** The hash basis
