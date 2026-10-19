@@ -6,6 +6,7 @@ import json
 from typing import Any, Dict, Optional, Union
 import logging
 
+from sdata import dtypes
 from sdata.metadata import Metadata, Attribute
 from sdata.base import Base
 from sdata.interactive import ColumnAccessor
@@ -130,6 +131,11 @@ class DataFrame(ContentIntegrityMixin, Base):
         super().__init__(**kwargs)
 
         if isinstance(column_metadata, dict):
+            # Spalten-Attribute tragen den pandas-dtype-Namen als Wert und sind
+            # daher selbst vom dtype str (ältere Dateien: dtype="float" o. ä.)
+            column_metadata = {
+                key: dict(entry, dtype="str") if isinstance(entry, dict) else entry
+                for key, entry in column_metadata.items()}
             self._column_metadata = Metadata.from_dict(column_metadata)
         elif isinstance(column_metadata, Metadata):
             self._column_metadata = column_metadata.copy()
@@ -194,6 +200,9 @@ class DataFrame(ContentIntegrityMixin, Base):
         """
         colnames = [str(c) for c in self._df.columns]
         for col in self._df.columns:
+            attr = self._column_metadata.get(str(col))
+            if attr is not None and attr.dtype != "str":
+                attr.dtype = "str"
             self._column_metadata.add(name=str(col), value=self._df[col].dtype.name)
         if prune:
             for key in list(self._column_metadata.keys()):
@@ -258,16 +267,24 @@ class DataFrame(ContentIntegrityMixin, Base):
         :param description: free-text description.
         :param ontology: CURIE/IRI of the column's class.
         :param required: whether the column is required.
-        :param dtype: declared dtype string.
+        :param dtype: expected dtype (e.g. ``"float"``), checked against the
+          actual pandas dtype; a mismatch is logged. Not stored: the column
+          attribute's value already is the pandas dtype name, so the attribute
+          itself stays of dtype ``str``.
         :return: the (created or updated) column :class:`Attribute`.
         """
         name = str(name)
         fields = {"unit": unit, "label": label, "description": description,
-                  "ontology": ontology, "required": required, "dtype": dtype}
+                  "ontology": ontology, "required": required}
         self._column_metadata.set_attr(
             name, **{k: v for k, v in fields.items() if v is not None})
         if name not in {str(c) for c in self._df.columns}:
             logger.warning("set_column: %r is not a df column", name)
+        elif dtype is not None:
+            actual = dtypes.resolve(str(self._df[name].dtype))
+            if dtypes.resolve(dtype) != actual:
+                logger.warning("set_column: %r has dtype %s, not %s",
+                               name, actual, dtype)
         return self._column_metadata.get(name)
 
     @property
