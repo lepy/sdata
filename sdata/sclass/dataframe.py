@@ -6,6 +6,7 @@ import json
 from typing import Any, Dict, Optional, Union
 import logging
 
+from sdata import dtypes
 from sdata.metadata import Metadata, Attribute
 from sdata.base import Base
 from sdata.interactive import ColumnAccessor
@@ -130,6 +131,11 @@ class DataFrame(ContentIntegrityMixin, Base):
         super().__init__(**kwargs)
 
         if isinstance(column_metadata, dict):
+            # Spalten-Attribute tragen den pandas-dtype-Namen als Wert und sind
+            # daher selbst vom dtype str (ältere Dateien: dtype="float" o. ä.)
+            column_metadata = {
+                key: dict(entry, dtype="str") if isinstance(entry, dict) else entry
+                for key, entry in column_metadata.items()}
             self._column_metadata = Metadata.from_dict(column_metadata)
         elif isinstance(column_metadata, Metadata):
             self._column_metadata = column_metadata.copy()
@@ -194,6 +200,9 @@ class DataFrame(ContentIntegrityMixin, Base):
         """
         colnames = [str(c) for c in self._df.columns]
         for col in self._df.columns:
+            attr = self._column_metadata.get(str(col))
+            if attr is not None and attr.dtype != "str":
+                attr.dtype = "str"
             self._column_metadata.add(name=str(col), value=self._df[col].dtype.name)
         if prune:
             for key in list(self._column_metadata.keys()):
@@ -258,16 +267,24 @@ class DataFrame(ContentIntegrityMixin, Base):
         :param description: free-text description.
         :param ontology: CURIE/IRI of the column's class.
         :param required: whether the column is required.
-        :param dtype: declared dtype string.
+        :param dtype: expected dtype (e.g. ``"float"``), checked against the
+          actual pandas dtype; a mismatch is logged. Not stored: the column
+          attribute's value already is the pandas dtype name, so the attribute
+          itself stays of dtype ``str``.
         :return: the (created or updated) column :class:`Attribute`.
         """
         name = str(name)
         fields = {"unit": unit, "label": label, "description": description,
-                  "ontology": ontology, "required": required, "dtype": dtype}
+                  "ontology": ontology, "required": required}
         self._column_metadata.set_attr(
             name, **{k: v for k, v in fields.items() if v is not None})
         if name not in {str(c) for c in self._df.columns}:
             logger.warning("set_column: %r is not a df column", name)
+        elif dtype is not None:
+            actual = dtypes.resolve(str(self._df[name].dtype))
+            if dtypes.resolve(dtype) != actual:
+                logger.warning("set_column: %r has dtype %s, not %s",
+                               name, actual, dtype)
         return self._column_metadata.get(name)
 
     @property
@@ -590,8 +607,9 @@ class DataFrame(ContentIntegrityMixin, Base):
             path (str, optional): Directory where the Parquet file will be saved.
                 If provided (and `filename` is None), a file named
                 `<sname>.spq` is created under this directory.
-            filename (str, optional): Exact filename (without full path)
-                for the output Parquet file. Defaults is `<sname>.spq`.
+            filename (str, optional): Exact output filename; joined with `path`
+                if given, otherwise used as is (may contain a directory).
+                Defaults to `<sname>.spq`.
             **kwargs: Additional keyword arguments passed to `pandas.DataFrame.to_parquet`,
                 e.g.:
                 - engine (str): Parquet engine, defaults to "pyarrow".
@@ -623,14 +641,14 @@ class DataFrame(ContentIntegrityMixin, Base):
 
         if filename is None and path is not None:
             filename = self.sname + ".spq"
-            filepath = os.path.join(path, filename)
+        if filename is not None:
+            filepath = os.path.join(path, filename) if path else filename
             df.to_parquet(filepath, engine=engine, compression=compression)
             logger.info(f"DataFrame Parquet saved to {filepath}")
             if sidecar:
-                self.write_sidecar(path)
+                self.write_sidecar(os.path.dirname(filepath) or ".")
             return filepath
-        else:
-            return df.to_parquet(engine=engine, compression=compression)
+        return df.to_parquet(engine=engine, compression=compression)
 
     def _restore_from_attrs(self, attrs):
         """Restore metadata/column_metadata/description from a ``_sdata`` attrs dict.
@@ -726,7 +744,7 @@ class DataFrame(ContentIntegrityMixin, Base):
 
         If a ``<stem>.meta.jsonld`` sidecar (written by ``to_csv(sidecar=True)``)
         exists next to the file, its dataset metadata and column annotations
-        (unit/label/description) are merged back automatically — pass
+        (unit/label/description/ontology) are merged back automatically — pass
         ``sidecar=False`` to load the data only.
 
         :param filepath: path to the CSV file.
@@ -749,7 +767,8 @@ class DataFrame(ContentIntegrityMixin, Base):
 
         Dataset-Metadaten kommen über :func:`sdata.semantic.from_jsonld`;
         die ``csvw:column``-Knoten (von :func:`sdata.semantic.column_node`)
-        werden hier invertiert (unit aus ``symbol``, label, description).
+        werden hier invertiert (unit aus ``symbol``, label, description,
+        ontology aus ``rdfType``).
         ``_sdata_class`` bleibt unangetastet (JSON-LD trägt nur den lokalen
         Klassennamen, nicht die importierbare Spec).
         """
@@ -778,7 +797,8 @@ class DataFrame(ContentIntegrityMixin, Base):
                 name,
                 unit=node.get("symbol"),
                 label=node.get("label"),
-                description=node.get("description"))
+                description=node.get("description"),
+                ontology=node.get("rdfType"))
         logger.debug(f"merged CSV sidecar metadata from {sidecar_path}")
 
     # ---------------------------------------------------------------- Arrow
