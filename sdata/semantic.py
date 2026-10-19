@@ -123,11 +123,15 @@ def column_node(attr):
     """JSON-LD-Knoten (CSVW) für eine Tabellenspalte aus ``column_metadata``.
 
     ``attr.name`` = Spaltenname, ``attr.value`` = pandas-dtype-Name (z.B.
-    ``float64``); optional ``unit``/``label``/``description``.
+    ``float64``); optional ``unit``/``label``/``description`` und ``ontology``
+    (Klasse der Spaltenwerte, als ``rdfType``).
     """
     node = {"name": attr.name, "datatype": vocab.xsd_for_dtype(attr.value)}
     if attr.unit not in (None, "", "-"):
         node.update(units.unit_node(attr.unit))
+    rdf_type = vocab.type_iri(attr.ontology)
+    if rdf_type:
+        node["rdfType"] = rdf_type
     if attr.label:
         node["label"] = attr.label
     if attr.description:

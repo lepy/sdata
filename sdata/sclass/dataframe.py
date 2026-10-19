@@ -743,7 +743,7 @@ class DataFrame(ContentIntegrityMixin, Base):
 
         If a ``<stem>.meta.jsonld`` sidecar (written by ``to_csv(sidecar=True)``)
         exists next to the file, its dataset metadata and column annotations
-        (unit/label/description) are merged back automatically — pass
+        (unit/label/description/ontology) are merged back automatically — pass
         ``sidecar=False`` to load the data only.
 
         :param filepath: path to the CSV file.
@@ -766,7 +766,8 @@ class DataFrame(ContentIntegrityMixin, Base):
 
         Dataset-Metadaten kommen über :func:`sdata.semantic.from_jsonld`;
         die ``csvw:column``-Knoten (von :func:`sdata.semantic.column_node`)
-        werden hier invertiert (unit aus ``symbol``, label, description).
+        werden hier invertiert (unit aus ``symbol``, label, description,
+        ontology aus ``rdfType``).
         ``_sdata_class`` bleibt unangetastet (JSON-LD trägt nur den lokalen
         Klassennamen, nicht die importierbare Spec).
         """
@@ -795,7 +796,8 @@ class DataFrame(ContentIntegrityMixin, Base):
                 name,
                 unit=node.get("symbol"),
                 label=node.get("label"),
-                description=node.get("description"))
+                description=node.get("description"),
+                ontology=node.get("rdfType"))
         logger.debug(f"merged CSV sidecar metadata from {sidecar_path}")
 
     # ---------------------------------------------------------------- Arrow

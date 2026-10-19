@@ -49,6 +49,10 @@
     "datatype": {
       "@id": "csvw:datatype",
       "@type": "@id"
+    },
+    "rdfType": {
+      "@id": "sdata:rdfType",
+      "@type": "@id"
     }
   }
 }

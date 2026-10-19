@@ -60,6 +60,8 @@ CONTEXT_TERMS = {
     # tabellarische Spalten (CSVW)
     "columns":         {"@id": "csvw:column", "@container": "@list"},
     "datatype":        {"@id": "csvw:datatype", "@type": "@id"},
+    # Klasse der Spaltenwerte (``ontology`` der Spalte; wie ``rdfType`` im Data Package)
+    "rdfType":         {"@id": "sdata:rdfType", "@type": "@id"},
 }
 
 #: BFO-2.0-Klassenname -> OBO-CURIE (für ``_sdata_topology_class``).
