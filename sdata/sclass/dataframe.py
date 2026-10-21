@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import io
 import os
@@ -232,8 +233,18 @@ class DataFrame(ContentIntegrityMixin, Base):
         Note: content identity is over the **column values in row order** (with the
         header); the DataFrame index is excluded (consistent with :meth:`to_csv` and
         :meth:`to_datapackage`).
+
+        Array cells (Parquet returns list cells as ``numpy.ndarray``) are written as
+        the equal list, so a checksum over list cells survives a Parquet round trip.
         """
-        return self.df.to_csv(index=False).encode("utf-8")
+        df = self.df
+        cols = [c for c in df.columns
+                if df[c].dtype == object and df[c].map(lambda v: isinstance(v, np.ndarray)).any()]
+        if cols:
+            df = df.copy()
+            for c in cols:
+                df[c] = df[c].map(lambda v: v.tolist() if isinstance(v, np.ndarray) else v)
+        return df.to_csv(index=False).encode("utf-8")
 
     @property
     def column_metadata(self) -> Metadata:

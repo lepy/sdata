@@ -6,6 +6,14 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **Checksum over list cells survives a Parquet round trip.** Parquet returns list
+  cells as `numpy.ndarray`, whose CSV text (`['a' 'b']`) differed from the list
+  (`['a', 'b']`), so `verify()` failed after `to_parquet`/`from_parquet_bytes`.
+  `DataFrame.content_bytes` now writes array cells as the equal list; checksums of
+  frames without array cells are unchanged.
+
 ## [1.5.0] - 2026-10-19
 
 ### Added
