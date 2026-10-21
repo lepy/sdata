@@ -7,6 +7,7 @@ und damit portabel — derselbe Datensatz ergibt umgebungsunabhängig denselben 
 (RFC 0004). Deshalb braucht die Integritäts-Schicht auch kein pyarrow.
 """
 import pandas as pd
+import pytest
 
 
 from sdata.sclass.content import ContentIntegrityMixin
@@ -75,3 +76,29 @@ def test_content_hash_needs_no_pyarrow(monkeypatch):
     monkeypatch.setattr(dfmod.pd.DataFrame, "to_parquet", _boom)
     assert len(sdf.sha256) == 64                     # kein to_parquet im Hash-Pfad
     assert sdf.content_bytes.startswith(b"weight,height")
+
+
+def _list_df():
+    return pd.DataFrame({"x": [1.0, 2.0], "src": [["a", "b"], ["c"]]})
+
+
+def test_list_cells_hash_unchanged():
+    """Listenzellen behalten ihre bisherige CSV-Form, gespeicherte Prüfsummen bleiben gültig."""
+    sdf = DataFrame(df=_list_df(), name="x")
+    assert sdf.content_bytes == sdf.df.to_csv(index=False).encode("utf-8")
+
+
+def test_array_cells_hash_like_list_cells():
+    """Ein Array in einer Zelle hasht wie die gleiche Liste (Parquet liefert Arrays)."""
+    import numpy as np
+    arrays = _list_df()
+    arrays["src"] = [np.array(["a", "b"]), np.array(["c"])]
+    assert DataFrame(df=arrays, name="a").sha256 == DataFrame(df=_list_df(), name="b").sha256
+
+
+def test_list_cells_verify_after_parquet_roundtrip():
+    pytest.importorskip("pyarrow")
+    sdf = DataFrame(df=_list_df(), name="x")
+    sdf.update_checksum()
+    back = DataFrame.from_parquet_bytes(sdf.to_parquet())
+    assert back.verify() is True
