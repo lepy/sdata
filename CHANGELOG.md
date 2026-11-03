@@ -24,6 +24,13 @@ All notable changes to **sdata** are documented here. The format is based on
   `mAh` (`charge`) and `mol`, `mmol` (`amount_of_substance`) with QUDT IRI and UCUM code.
   With the optional `pint` backend, derived units such as `V/A` or `A/mol` resolve through
   the new axes. A `UnitSystem` without a current base leaves a column in `V` unchanged.
+- **`imagemeta.strip()` removes an embedded sdata payload.** The inverse of
+  `embed()`: `strip(embed(x, p)) == x` for PNG, JPEG, JP2, GIF and WebP, so a
+  content hash over `strip(data)` stays stable when metadata (e.g. an identifier)
+  is embedded. Images without payload are returned unchanged;
+  `strippable_formats()` lists the reversible formats. TIFF raises the new
+  `StripNotSupportedError`, because `embed()` redirects the header to an appended
+  IFD copy without keeping the original offset.
 
 ### Fixed
 
