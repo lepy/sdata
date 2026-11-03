@@ -15,13 +15,13 @@ from sdata.units import (convert, convert_factor, dimension_of, quantity_of,
 
 
 def test_angle_is_own_axis():
-    assert dimension_of("rad") == (0, 0, 0, 0, 1)
-    assert dimension_of("deg") == (0, 0, 0, 0, 1)
-    assert dimension_of("gon") == (0, 0, 0, 0, 1)
-    assert dimension_of("mrad") == (0, 0, 0, 0, 1)
+    assert dimension_of("rad") == (0, 0, 0, 0, 1, 0, 0)
+    assert dimension_of("deg") == (0, 0, 0, 0, 1, 0, 0)
+    assert dimension_of("gon") == (0, 0, 0, 0, 1, 0, 0)
+    assert dimension_of("mrad") == (0, 0, 0, 0, 1, 0, 0)
     assert quantity_of("rad") == "angle"
     # dimensionslos bleibt eine andere Achse
-    assert dimension_of("%") == (0, 0, 0, 0, 0)
+    assert dimension_of("%") == (0, 0, 0, 0, 0, 0, 0)
     assert quantity_of("%") is None
 
 
@@ -51,10 +51,10 @@ def test_angle_not_convertible_to_dimensionless():
 
 
 def test_angle_aliases_and_vocabulary():
-    assert dimension_of("°") == (0, 0, 0, 0, 1)          # ° -> deg
-    assert dimension_of("degrees") == (0, 0, 0, 0, 1)
-    assert dimension_of("radians") == (0, 0, 0, 0, 1)
-    assert dimension_of("gradian") == (0, 0, 0, 0, 1)    # gradian -> gon
+    assert dimension_of("°") == (0, 0, 0, 0, 1, 0, 0)          # ° -> deg
+    assert dimension_of("degrees") == (0, 0, 0, 0, 1, 0, 0)
+    assert dimension_of("radians") == (0, 0, 0, 0, 1, 0, 0)
+    assert dimension_of("gradian") == (0, 0, 0, 0, 1, 0, 0)    # gradian -> gon
     assert qudt_iri("deg") == "unit:DEG"
     assert qudt_iri("rad") == "unit:RAD"
     assert qudt_iri("gon") == "unit:GON"

@@ -2,13 +2,13 @@
 
 | Feld        | Wert                                                                                     |
 |-------------|------------------------------------------------------------------------------------------|
-| Status      | Vorschlag                                                                                 |
+| Status      | Angenommen — umgesetzt                                                                    |
 | Datum       | 2026-11-03                                                                                |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
 | Komponente  | `sdata/units.py` (`_DIM_NAMES`, `_UNITS`, `UNIT_MAP`, `_PINT_AXIS`, `_QUANTITY_BY_DIM`), Tests `tests/test_units_*.py`, `tests/test_dtypes.py` |
 | Betrifft    | Rückgabeform von `dimension_of`; Umrechnung und Größennamen elektrischer Einheiten        |
 | Vorgeschichte | RFC 0006 (Dimensions-Algebra), RFC 0014 (Persistenz des Einheitensystems); Anlass: scale-result-api RFC-001 §2.1.1 (SDM-Attribute als sdata-Attribute) |
-| Validierung | offen                                                                                     |
+| Validierung | `tests/test_units_electrical.py`, `test_units_qudt_coverage.py`, `test_units_convert.py`, `test_units_angle.py`, `test_units_frequency.py`, `test_units_pint_interop.py` |
 
 ## 1. Problem
 
