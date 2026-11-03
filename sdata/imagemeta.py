@@ -57,6 +57,10 @@ class UnsupportedImageFormatError(ImageMetadataError):
     """Das Bildformat wird (zum Schreiben) nicht unterstützt."""
 
 
+class StripNotSupportedError(ImageMetadataError):
+    """Die Nutzlast lässt sich für dieses Format nicht verlustfrei entfernen (TIFF)."""
+
+
 class PayloadTooLargeError(ImageMetadataError):
     """Die Nutzlast passt nicht in ein einzelnes Format-Segment (z. B. JPEG ``APP1``)."""
 
@@ -100,6 +104,16 @@ def _png_embed(data: bytes, payload: str) -> bytes:
             continue  # vorhandenen sdata-Text-Chunk verwerfen (replace)
         if ctype == b"IEND":
             out += _png_itxt(payload)
+        out += _png_make_chunk(ctype, cdata)
+    return bytes(out)
+
+
+def _png_strip(data: bytes) -> bytes:
+    """Entferne sdata-Text-Chunks (``iTXt``/``tEXt`` mit Schlüsselwort ``sdata``)."""
+    out = bytearray(_PNG_MAGIC)
+    for ctype, cdata in _png_chunks(data):
+        if ctype in (b"iTXt", b"tEXt") and cdata.split(b"\x00", 1)[0] == _SID:
+            continue
         out += _png_make_chunk(ctype, cdata)
     return bytes(out)
 
@@ -224,6 +238,16 @@ def _jp2_embed(data: bytes, payload: str) -> bytes:
             continue  # vorhandene sdata-Box verwerfen (replace)
         if tbox == b"jp2c":
             out += _jp2_uuid_box(payload)
+        out += data[start:end]
+    return bytes(out)
+
+
+def _jp2_strip(data: bytes) -> bytes:
+    """Entferne die ``uuid``-Box mit der sdata-UUID; alle übrigen Boxen bleiben verbatim."""
+    out = bytearray()
+    for tbox, start, cstart, end in _jp2_boxes(data):
+        if tbox == b"uuid" and data[cstart:cstart + 16] == SDATA_JP2_UUID:
+            continue
         out += data[start:end]
     return bytes(out)
 
@@ -373,6 +397,18 @@ def _webp_embed(data: bytes, payload: str) -> bytes:
     return b"RIFF" + struct.pack("<I", len(out) + 4) + b"WEBP" + bytes(out)
 
 
+def _webp_strip(data: bytes) -> bytes:
+    """Entferne den ``sdAT``-Chunk und setze die RIFF-Länge neu."""
+    out = bytearray()
+    for fourcc, body in _webp_chunks(data):
+        if fourcc == _WEBP_FOURCC:
+            continue
+        out += fourcc + struct.pack("<I", len(body)) + body
+        if len(body) & 1:
+            out += b"\x00"
+    return b"RIFF" + struct.pack("<I", len(out) + 4) + b"WEBP" + bytes(out)
+
+
 def _webp_extract(data: bytes) -> Optional[str]:
     """Lies die sdata-Nutzlast aus dem ``sdAT``-Chunk."""
     for fourcc, body in _webp_chunks(data):
@@ -445,6 +481,14 @@ def _tiff_embed(data: bytes, payload: str) -> bytes:
     return bytes(blob)
 
 
+def _tiff_strip(data: bytes) -> bytes:
+    """Für TIFF nicht umkehrbar: ``_tiff_embed`` lenkt den Header auf eine angehängte
+    IFD-Kopie um und bewahrt den ursprünglichen IFD-Offset nicht auf."""
+    raise StripNotSupportedError(
+        "TIFF: the original IFD offset is not preserved by embed(); "
+        "the original bytes cannot be restored")
+
+
 def _tiff_extract(data: bytes) -> Optional[str]:
     """Lies die sdata-Nutzlast aus dem privaten TIFF-Tag (inline oder per Offset)."""
     e = _tiff_endian(data)
@@ -468,6 +512,16 @@ _HANDLERS = {
     "gif": (_gif_embed, _gif_extract),
     "webp": (_webp_embed, _webp_extract),
     "tiff": (_tiff_embed, _tiff_extract),
+}
+
+#: ``fmt -> strip``: Umkehrung von :func:`embed`, ``strip(embed(x, p)) == x``.
+_STRIPPERS = {
+    "png": _png_strip,
+    "jpeg": _jpeg_strip,
+    "jp2": _jp2_strip,
+    "gif": _gif_strip,
+    "webp": _webp_strip,
+    "tiff": _tiff_strip,
 }
 
 
@@ -531,3 +585,34 @@ def extract(data: bytes, fmt: Optional[str] = None) -> Optional[str]:
     if fmt not in _HANDLERS:
         return None
     return _HANDLERS[fmt][1](data)
+
+
+def strippable_formats() -> Tuple[str, ...]:
+    """Formate, für die :func:`strip` die Original-Bytes bitgleich herstellt."""
+    return tuple(f for f, fn in _STRIPPERS.items() if fn is not _tiff_strip)
+
+
+def strip(data: bytes, fmt: Optional[str] = None) -> bytes:
+    """Entferne eine eingebettete sdata-Nutzlast (Umkehrung von :func:`embed`).
+
+    Für die Formate aus :func:`strippable_formats` gilt ``strip(embed(x, p)) == x``,
+    sofern ``x`` selbst keine sdata-Nutzlast trug. So lässt sich ein
+    inhaltsbasierter Hash über die Bytes *ohne* Nutzlast bilden, der sich durch
+    das Einbetten nicht ändert. Bilder ohne Nutzlast werden unverändert (dasselbe
+    Objekt) zurückgegeben.
+
+    :param data: die Bild-Bytes.
+    :param fmt: Format-Schlüssel; ``None`` → automatische Erkennung.
+    :return: die Bild-Bytes ohne sdata-Nutzlast.
+    :raises UnsupportedImageFormatError: wenn das Format unbekannt/nicht unterstützt ist.
+    :raises StripNotSupportedError: wenn eine Nutzlast vorliegt, das Format sie aber
+        nicht verlustfrei entfernen kann (TIFF).
+    """
+    fmt = fmt or detect_format(data)
+    if fmt not in _STRIPPERS:
+        raise UnsupportedImageFormatError(
+            f"unsupported image format: {fmt!r} "
+            f"(supported: {', '.join(_STRIPPERS)})")
+    if _HANDLERS[fmt][1](data) is None:
+        return data
+    return _STRIPPERS[fmt](data)

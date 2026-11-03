@@ -362,3 +362,74 @@ def test_real_image_roundtrip_keeps_pixels(_pil, fmt, kwargs):
     reopened = _pil.open(io.BytesIO(out))
     reopened.load()
     assert reopened.size == (7, 5)
+
+
+# ===================================================================== strip
+#: Synthetische Quellen je Format für die strip-Rundreise (ohne Pillow).
+_STRIP_SOURCES = {
+    "png": lambda: _png_minimal(),
+    "jpeg": lambda: _jpeg(_app(0xE0, b"JFIF\x00")),
+    "jp2": lambda: _jp2(_box(b"jp2h", b"hdr"), _box(b"jp2c", b"cs")),
+    "gif": lambda: _gif(blocks=_gif_image_block()),
+    "webp": lambda: _riff_webp((b"VP8 ", b"pixeldata")),
+}
+
+
+@pytest.mark.parametrize("fmt", sorted(_STRIP_SOURCES))
+def test_strip_restores_original_bytes(fmt):
+    src = _STRIP_SOURCES[fmt]()
+    out = im.embed(src, PAYLOAD)
+    assert out != src
+    assert im.strip(out) == src
+    assert im.strip(out, fmt=fmt) == src
+    assert im.extract(im.strip(out)) is None
+
+
+@pytest.mark.parametrize("fmt", sorted(_STRIP_SOURCES))
+def test_strip_after_repeated_embed(fmt):
+    src = _STRIP_SOURCES[fmt]()
+    twice = im.embed(im.embed(src, PAYLOAD), '{"name": "zweite"}')
+    assert im.strip(twice) == src
+
+
+@pytest.mark.parametrize("fmt", sorted(_STRIP_SOURCES))
+def test_strip_without_payload_is_identity(fmt):
+    src = _STRIP_SOURCES[fmt]()
+    assert im.strip(src) is src
+
+
+@pytest.mark.parametrize("fmt", sorted(_STRIP_SOURCES))
+def test_embed_is_idempotent(fmt):
+    once = im.embed(_STRIP_SOURCES[fmt](), PAYLOAD)
+    assert im.embed(once, PAYLOAD) == once
+
+
+def test_strip_keeps_foreign_text_chunks_png():
+    src = _png_minimal(_itxt(b"Comment", "fremd"), _text(b"Author", "x"))
+    assert im.strip(im.embed(src, PAYLOAD)) == src
+
+
+def test_strip_tiff_not_reversible():
+    out = im.embed(_tiff("<"), PAYLOAD)
+    with pytest.raises(im.StripNotSupportedError):
+        im.strip(out)
+
+
+def test_strip_tiff_without_payload_is_identity():
+    src = _tiff("<")
+    assert im.strip(src) is src
+
+
+def test_strip_unknown_format_raises():
+    with pytest.raises(im.UnsupportedImageFormatError):
+        im.strip(b"BM\x00\x00not-an-image")
+
+
+def test_strippable_formats():
+    assert im.strippable_formats() == ("png", "jpeg", "jp2", "gif", "webp")
+
+
+@pytest.mark.parametrize("fmt", ["PNG", "JPEG", "JPEG2000", "GIF", "WEBP"])
+def test_real_image_strip_roundtrip(_pil, fmt):
+    raw = _encode(_pil, fmt)
+    assert im.strip(im.embed(raw, PAYLOAD)) == raw

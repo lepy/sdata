@@ -84,8 +84,10 @@ img.write("s3://bucket/specimen.jpg")    # fsspec target (needs sdata[blob])
 
 !!! note "Checksum vs. embedded metadata"
     Embedding metadata **changes the file bytes** (and therefore its hash). If you
-    need a stable content hash, compute it **before** embedding, or hash the decoded
-    pixels — analogous to the data-vs-metadata hash split for `DataFrame`
+    need a stable content hash, hash `imagemeta.strip(data)` — the bytes without
+    the sdata payload, which for PNG, JPEG, JP2, GIF and WebP are bit-identical to
+    the bytes before embedding — or hash the decoded pixels; analogous to the
+    data-vs-metadata hash split for `DataFrame`
     ([RFC 0004](../rfc/0004-dataframe-and-blob.md)).
 
 ## Low-level API (`sdata.imagemeta`)
@@ -100,10 +102,17 @@ imagemeta.detect_format(data)        # 'png' | 'jpeg' | 'jp2' | 'gif' | 'webp' |
 out = imagemeta.embed(data, '{"k": 1}')   # format auto-detected; replace semantics
 imagemeta.extract(out)               # '{"k": 1}'  (None if absent/unknown format)
 imagemeta.supported_formats()        # ('png', 'jpeg', 'jp2', 'gif', 'webp', 'tiff')
+imagemeta.strip(out) == data         # True: the payload removed, original bytes back
+imagemeta.strippable_formats()       # ('png', 'jpeg', 'jp2', 'gif', 'webp')
 ```
 
 * **Replace semantics:** embedding again **replaces** the previous sdata payload
-  rather than appending a second one (idempotent).
+  rather than appending a second one (idempotent; for TIFF only logically — the
+  file grows by an orphaned IFD copy on each embed).
+* **Reversible:** `strip(embed(x, p)) == x` for PNG, JPEG, JP2, GIF and WebP;
+  an image without payload is returned unchanged. For TIFF `strip` raises
+  [`StripNotSupportedError`][sdata.imagemeta.StripNotSupportedError], because
+  `embed` does not keep the original IFD offset.
 * **Lenient reads:** `extract` returns `None` for an unknown format or an image
   without an sdata payload; `embed` raises
   [`UnsupportedImageFormatError`][sdata.imagemeta.UnsupportedImageFormatError] for an

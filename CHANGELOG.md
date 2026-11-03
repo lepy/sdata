@@ -6,6 +6,16 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Added
+
+- **`imagemeta.strip()` removes an embedded sdata payload.** The inverse of
+  `embed()`: `strip(embed(x, p)) == x` for PNG, JPEG, JP2, GIF and WebP, so a
+  content hash over `strip(data)` stays stable when metadata (e.g. an identifier)
+  is embedded. Images without payload are returned unchanged;
+  `strippable_formats()` lists the reversible formats. TIFF raises the new
+  `StripNotSupportedError`, because `embed()` redirects the header to an appended
+  IFD copy without keeping the original offset.
+
 ### Fixed
 
 - **Checksum over list cells survives a Parquet round trip.** Parquet returns list
