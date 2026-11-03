@@ -17,6 +17,8 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Added
 
+- Unit systems now label converted electrical and amount-of-substance columns with SI
+  symbols (`V`, `ohm`, `A`, `C`, `mol`).
 - **Electrical units and amount of substance (RFC 0017).** `A`, `mA`, `kA` (`current`),
   `V`, `mV`, `kV` (`voltage`), `ohm`, `mohm`, `kohm`, `Mohm` (`resistance`), `C`, `Ah`,
   `mAh` (`charge`) and `mol`, `mmol` (`amount_of_substance`) with QUDT IRI and UCUM code.

@@ -274,6 +274,9 @@ _CONVERT_ALIASES = {
 #:     automatisch zugewiesen, um eine Dehnrate nicht fälschlich als Frequenz zu benennen.
 #:   * Winkel ``(0,0,0,0,1,0,0)`` -> ``rad`` (SI-kohärent); ``deg``/``gon`` nur, wenn das
 #:     System explizit darauf basiert (eindeutig über den Faktor, keine Kollision).
+#:   * Elektrische Größen und Stoffmenge -> SI-Symbole (``A``, ``V``, ``ohm``, ``C``,
+#:     ``mol``); ``Ah``/``mAh`` werden erkannt, aber nicht automatisch zugewiesen
+#:     (Ladung wird SI-kohärent als ``C`` benannt).
 _CANON_SYMBOLS = (
     "m", "mm", "cm", "km", "um", "nm",
     "kg", "g", "t",
@@ -285,6 +288,11 @@ _CANON_SYMBOLS = (
     "m/s", "mm/s", "m/s2",
     "1/s", "1/ms",
     "rad", "mrad", "deg", "gon",
+    "A", "mA", "kA",
+    "V", "mV", "kV",
+    "ohm", "mohm", "kohm", "Mohm",
+    "C",
+    "mol", "mmol",
 )
 
 #: Dimvektor -> Größenname (Komfort/Backward-Compat). Dimensionslos ``(0,0,0,0,0,0,0)`` ist
