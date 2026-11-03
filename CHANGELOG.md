@@ -6,6 +6,12 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **Python 3.10 or newer is required.** `requires-python` now says `>=3.10` and the 3.9
+  classifier is gone. This only corrects the metadata: the core dependency `suuid>=0.2.0`
+  already needs Python 3.10, so sdata could not be installed on 3.9 anyway.
+
 ## [1.6.3] - 2026-11-07
 
 ### Fixed

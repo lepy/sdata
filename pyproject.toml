@@ -12,19 +12,18 @@ license = "MIT"                       # SPDX (PEP 639); RFC 0008 A7 / RFC 0013
 # MIT) trägt seinen Lizenztext im Dateikopf. Kein Muster ohne Treffer — setuptools
 # warnt sonst und lehnt solche Builds ab 2027-02-18 ab.
 license-files = ["LICENSE-MIT"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"            # suuid>=0.2.0 verlangt Python >= 3.10
 authors = [{ name = "Ingolf Lepenies", email = "lepy@tuta.io" }]
 maintainers = [{ name = "Ingolf Lepenies", email = "lepy@tuta.io" }]
 keywords = ["open data"]
 # Schlanker Kern: nur numpy/pandas (Datenmodell) und suuid. Zeitzonen über das
-# stdlib-Modul zoneinfo (Python >= 3.9).
+# stdlib-Modul zoneinfo.
 dependencies = ["numpy", "pandas", "suuid>=0.2.0"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Natural Language :: English",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -49,6 +48,14 @@ blob = ["fsspec"]                     # sdata.sclass.Blob (URI-Content: file/S3/
 units = ["pint"]                      # sonst kuratierte QUDT/UCUM-Tabelle
 rdf = ["rdflib"]                      # sonst JSON-LD (= gültiges RDF)
 schema = ["jsonschema"]               # sonst native MetadataSchema-Prüfung
+
+[dependency-groups]
+# Doku-Werkzeuge (MkDocs Material + mkdocstrings). `uv run mkdocs` (Makefile: make docs)
+# und der Docs-Workflow (`pip install --group docs`) beziehen sie von hier.
+docs = ["mkdocs>=1.6", "mkdocs-material>=9.5", "mkdocstrings[python]>=0.26"]
+
+[tool.uv]
+default-groups = ["docs"]
 
 [tool.setuptools.dynamic]
 version = { attr = "sdata.__version__" }
