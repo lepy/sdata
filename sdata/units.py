@@ -266,9 +266,9 @@ _CONVERT_ALIASES = {
 #: Vorzugs-Symbol-Tabelle für die kanonische Rück-Benennung hergeleiteter Einheiten:
 #: für ein ``(Dimension, Faktor)`` gewinnt das **erste** passende Symbol. Nur
 #: Offset-freie Einheiten. Bewusste Entscheidungen bei mehrdeutigen Dimensionen:
-#:   * Energie ``(2,1,-2,0)`` -> ``J`` (statt einer zusammengesetzten ``N*m``-Form).
-#:   * Leistung ``(2,1,-3,0)`` -> ``W``.
-#:   * Rate/Frequenz ``(0,0,-1,0)`` -> neutral ``1/s``/``1/ms``, **nicht** ``Hz``:
+#:   * Energie ``(2,1,-2,0,0,0,0)`` -> ``J`` (statt einer zusammengesetzten ``N*m``-Form).
+#:   * Leistung ``(2,1,-3,0,0,0,0)`` -> ``W``.
+#:   * Rate/Frequenz ``(0,0,-1,0,0,0,0)`` -> neutral ``1/s``/``1/ms``, **nicht** ``Hz``:
 #:     die Dimension bezeichnet auch die Dehnrate. ``Hz``/``kHz``/``MHz``/``GHz`` sind
 #:     als Einheiten erkannt (Eingabe/Konvertierung/QUDT), werden aber nicht
 #:     automatisch zugewiesen, um eine Dehnrate nicht fälschlich als Frequenz zu benennen.
@@ -287,7 +287,7 @@ _CANON_SYMBOLS = (
     "rad", "mrad", "deg", "gon",
 )
 
-#: Dimvektor -> Größenname (Komfort/Backward-Compat). Dimensionslos ``(0,0,0,0)`` ist
+#: Dimvektor -> Größenname (Komfort/Backward-Compat). Dimensionslos ``(0,0,0,0,0,0,0)`` ist
 #: absichtlich *nicht* benannt, damit ``quantity_of("-")`` wie bisher ``None`` liefert.
 _QUANTITY_BY_DIM = {
     (1, 0, 0, 0, 0, 0, 0): "length", (0, 1, 0, 0, 0, 0, 0): "mass", (0, 0, 1, 0, 0, 0, 0): "time",
@@ -340,7 +340,7 @@ def _pint_entry(symbol):
 
     ``None``, wenn pint fehlt, das Symbol nicht parsebar ist oder seine Dimension
     außerhalb der sieben Achsen liegt. ``factor`` überführt in die SI-kohärente Einheit
-    (pints Basiseinheiten sind m/kg/s/K – deckungsgleich mit der kuratierten Tabelle);
+    (pints Basiseinheiten sind m/kg/s/K/A/mol – deckungsgleich mit der kuratierten Tabelle);
     affine Einheiten (nur Temperatur, z. B. ``degF``) liefern zusätzlich den Offset.
     """
     if _pint is None:

@@ -87,5 +87,5 @@ def test_unit_system_without_current_leaves_voltage_unchanged():
 def test_unit_system_with_current_basis_converts_voltage():
     system = units.UnitSystem(["kg", "m", "s", "A"])
     val, label = system.convert_value(1500.0, "mV")
-    assert label is not None                  # Spannung wird aufgelöst (kg*m^2/s^3/A)
+    assert label == "kg*m^2/s^3/A"            # Spannung aufgelöst, kein benanntes Symbol
     assert val == pytest.approx(1.5)
