@@ -3,7 +3,7 @@
 
 Ohne installiertes pint bleibt das Verhalten unverändert (kuratierte Tabelle). Ist
 pint vorhanden, werden nicht kuratierte Einheiten (imperial/abgeleitet) über pint auf
-denselben 5-Achsen-Dimensionsvektor abgebildet und sind damit umrechenbar.
+denselben 7-Achsen-Dimensionsvektor abgebildet und sind damit umrechenbar.
 
 Getestet wird gegen ein **Fake-pint** (monkeypatch), damit die Zweige deterministisch
 und ohne echte Abhängigkeit voll abgedeckt sind – dasselbe Muster wie bei
@@ -28,7 +28,9 @@ class _FakePint:
         "inch": ({"[length]": 1}, 0.0254, 0.0, False),
         "lbf":  ({"[mass]": 1, "[length]": 1, "[time]": -2}, 4.4482216153, 0.0, False),
         "mm":   ({"[length]": 1}, 999.0, 0.0, False),   # bewusst falsch: Vorrang-Test
-        "ampere": ({"[current]": 1}, 1.0, 0.0, False),  # Achse außerhalb -> nicht darstellbar
+        "ampere": ({"[current]": 1}, 1.0, 0.0, False),  # nicht kuratiert (Symbol "A")
+        "mole": ({"[substance]": 1}, 1.0, 0.0, False),
+        "candela": ({"[luminosity]": 1}, 1.0, 0.0, False),  # Achse außerhalb -> nicht darstellbar
         "degF": ({"[temperature]": 1}, 5.0 / 9.0, 255.3722222, True),
     }
 
@@ -87,8 +89,8 @@ def test_without_pint_unknown_stays_unknown():
 # ------------------------------------------------------------------ mit pint
 
 def test_pint_dimension_of(fake_pint):
-    assert units.dimension_of("psi") == (-1, 1, -2, 0, 0)     # Druck
-    assert units.dimension_of("inch") == (1, 0, 0, 0, 0)      # Länge
+    assert units.dimension_of("psi") == (-1, 1, -2, 0, 0, 0, 0)     # Druck
+    assert units.dimension_of("inch") == (1, 0, 0, 0, 0, 0, 0)      # Länge
     assert units.quantity_of("psi") == "pressure"
     assert units.quantity_of("lbf") == "force"
 
@@ -109,10 +111,15 @@ def test_pint_offset_unit_degF(fake_pint):
 
 
 def test_pint_unrepresentable_axis_is_none(fake_pint):
-    # elektrischer Strom liegt außerhalb (L, M, T, Θ, A)
-    assert units.dimension_of("ampere") is None
+    # Lichtstärke liegt außerhalb (L, M, T, Θ, A, I, N)
+    assert units.dimension_of("candela") is None
     with pytest.raises(units.UnitConversionError):
-        units.convert(1.0, "ampere", "psi")
+        units.convert(1.0, "candela", "psi")
+
+
+def test_pint_current_and_substance_axes(fake_pint):
+    assert units.dimension_of("ampere") == (0, 0, 0, 0, 0, 1, 0)
+    assert units.dimension_of("mole") == (0, 0, 0, 0, 0, 0, 1)
 
 
 def test_pint_unparseable_symbol_is_none(fake_pint):
@@ -121,7 +128,7 @@ def test_pint_unparseable_symbol_is_none(fake_pint):
 
 def test_curated_table_takes_precedence(fake_pint):
     # Fake-pint kennt "mm" mit falschem Faktor 999 – die kuratierte Tabelle gewinnt
-    assert units.dimension_of("mm") == (1, 0, 0, 0, 0)
+    assert units.dimension_of("mm") == (1, 0, 0, 0, 0, 0, 0)
     assert units.convert_factor("m", "mm") == pytest.approx(1000.0)
 
 
@@ -138,4 +145,4 @@ def test_pint_dimvector_fractional_exponent(fake_pint):
     # nicht ganzzahliger Exponent bleibt erhalten (kein int-Cast)
     from fractions import Fraction
     vec = units._pint_dimvector({"[length]": Fraction(1, 2)})
-    assert vec == (Fraction(1, 2), 0, 0, 0, 0)
+    assert vec == (Fraction(1, 2), 0, 0, 0, 0, 0, 0)

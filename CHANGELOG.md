@@ -6,8 +6,24 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking: `dimension_of` returns seven values instead of five (RFC 0017).** The
+  dimension vector gains two axes at the end, electric current `I` and amount of
+  substance `N`: `(L, M, T, Theta, A, I, N)`. Indices 0-4 keep their meaning; code that
+  compares results with fixed 5-tuples must append `, 0, 0`. Saved `UnitSystem`s (RFC 0014)
+  store base units and stay readable. The bare symbol `C` is now the coulomb (`charge`,
+  `unit:C`) instead of unknown; it is still not Celsius.
+
 ### Added
 
+- Unit systems now label converted electrical and amount-of-substance columns with SI
+  symbols (`V`, `ohm`, `A`, `C`, `mol`).
+- **Electrical units and amount of substance (RFC 0017).** `A`, `mA`, `kA` (`current`),
+  `V`, `mV`, `kV` (`voltage`), `ohm`, `mohm`, `kohm`, `Mohm` (`resistance`), `C`, `Ah`,
+  `mAh` (`charge`) and `mol`, `mmol` (`amount_of_substance`) with QUDT IRI and UCUM code.
+  With the optional `pint` backend, derived units such as `V/A` or `A/mol` resolve through
+  the new axes. A `UnitSystem` without a current base leaves a column in `V` unchanged.
 - **`imagemeta.strip()` removes an embedded sdata payload.** The inverse of
   `embed()`: `strip(embed(x, p)) == x` for PNG, JPEG, JP2, GIF and WebP, so a
   content hash over `strip(data)` stays stable when metadata (e.g. an identifier)

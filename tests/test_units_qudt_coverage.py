@@ -46,9 +46,9 @@ def test_unit_node_area():
 def test_bare_c_is_not_celsius():
     """``C`` ist das Coulomb-Symbol; Celsius nur über ``°C``/``degC``/``celsius``."""
     assert units.normalize_symbol("C") == "C"
-    assert units.qudt_iri("C") is None
-    assert units.quantity_of("C") is None
-    with pytest.raises(units.UnitConversionError):
+    assert units.qudt_iri("C") == "unit:C"
+    assert units.quantity_of("C") == "charge"
+    with pytest.raises(units.UnitConversionError):   # Ladung != Temperatur
         units.convert(20, "C", "K")
     assert units.qudt_iri("°C") == "unit:DEG_C"
     assert units.convert(0, "°C", "K") == pytest.approx(273.15)

@@ -67,6 +67,21 @@ UNIT_MAP = {
     "kg":   ("unit:KiloGM",  "kg"),
     "g":    ("unit:GM",      "g"),
     "mg":   ("unit:MilliGM", "mg"),
+    "A":    ("unit:A",       "A"),
+    "mA":   ("unit:MilliA",  "mA"),
+    "kA":   ("unit:KiloA",   "kA"),
+    "V":    ("unit:V",       "V"),
+    "mV":   ("unit:MilliV",  "mV"),
+    "kV":   ("unit:KiloV",   "kV"),
+    "ohm":  ("unit:OHM",     "Ohm"),
+    "mohm": ("unit:MilliOHM", "mOhm"),
+    "kohm": ("unit:KiloOHM", "kOhm"),
+    "Mohm": ("unit:MegaOHM", "MOhm"),
+    "C":    ("unit:C",       "C"),
+    "Ah":   ("unit:A-HR",    "A.h"),
+    "mAh":  ("unit:MilliA-HR", "mA.h"),
+    "mol":  ("unit:MOL",     "mol"),
+    "mmol": ("unit:MilliMOL", "mmol"),
     "rad":  ("unit:RAD",     "rad"),
     "mrad": ("unit:MilliRAD","mrad"),
     "deg":  ("unit:DEG",     "deg"),
@@ -147,7 +162,8 @@ def validate_unit(symbol):
 # --------------------------------------------------------------- Konvertierung
 #
 # Dimensions-Algebra (RFC 0006): jede Einheit trägt einen Dimensionsvektor über den
-# Basis-Dimensionen (Länge L, Masse M, Zeit T, Temperatur Θ, ebener Winkel A). Ein
+# Basis-Dimensionen (Länge L, Masse M, Zeit T, Temperatur Θ, ebener Winkel A,
+# elektrische Stromstärke I, Stoffmenge N). Ein
 # :class:`UnitSystem` wird aus seinen Basis-Einheiten *gelöst*, sodass jede abgeleitete
 # Einheit (Spannung, Energie, Geschwindigkeit, …) hergeleitet werden kann. Reine
 # Standardbibliothek (``fractions`` für exakte Exponenten); das optionale ``pint``
@@ -166,59 +182,71 @@ class UnitConversionError(ValueError):
     """Eine Einheit ist unbekannt oder die Dimensionen sind inkompatibel (z. B. mm → kN)."""
 
 
-#: Basis-Dimensionen: Länge, Masse, Zeit, Temperatur, ebener Winkel.
-_DIM_NAMES = ("L", "M", "T", "Theta", "A")
+#: Basis-Dimensionen: Länge, Masse, Zeit, Temperatur, ebener Winkel, Stromstärke, Stoffmenge.
+_DIM_NAMES = ("L", "M", "T", "Theta", "A", "I", "N")
 
-#: Einheit -> (Dimvektor ``(L, M, T, Θ, A)``, Faktor zur SI-kohärenten Einheit, Offset).
+#: Einheit -> (Dimvektor ``(L, M, T, Θ, A, I, N)``, Faktor zur SI-kohärenten Einheit, Offset).
 #: ``si = wert * faktor + offset``; ``offset != 0`` nur bei reiner Temperatur.
 _UNITS = {
-    # Länge (1,0,0,0,0) – SI m
-    "km": ((1, 0, 0, 0, 0), 1e3, 0.0), "m": ((1, 0, 0, 0, 0), 1.0, 0.0),
-    "dm": ((1, 0, 0, 0, 0), 1e-1, 0.0), "cm": ((1, 0, 0, 0, 0), 1e-2, 0.0),
-    "mm": ((1, 0, 0, 0, 0), 1e-3, 0.0), "um": ((1, 0, 0, 0, 0), 1e-6, 0.0),
-    "nm": ((1, 0, 0, 0, 0), 1e-9, 0.0),
-    # Masse (0,1,0,0,0) – SI kg
-    "t": ((0, 1, 0, 0, 0), 1e3, 0.0), "kg": ((0, 1, 0, 0, 0), 1.0, 0.0),
-    "g": ((0, 1, 0, 0, 0), 1e-3, 0.0), "mg": ((0, 1, 0, 0, 0), 1e-6, 0.0),
-    # Zeit (0,0,1,0,0) – SI s
-    "h": ((0, 0, 1, 0, 0), 3600.0, 0.0), "min": ((0, 0, 1, 0, 0), 60.0, 0.0),
-    "s": ((0, 0, 1, 0, 0), 1.0, 0.0), "ms": ((0, 0, 1, 0, 0), 1e-3, 0.0),
-    "us": ((0, 0, 1, 0, 0), 1e-6, 0.0), "ns": ((0, 0, 1, 0, 0), 1e-9, 0.0),
-    # Temperatur (0,0,0,1,0) – SI K, mit Offset
-    "K": ((0, 0, 0, 1, 0), 1.0, 0.0), "degC": ((0, 0, 0, 1, 0), 1.0, 273.15),
-    # Kraft (1,1,-2,0,0) – SI N
-    "MN": ((1, 1, -2, 0, 0), 1e6, 0.0), "kN": ((1, 1, -2, 0, 0), 1e3, 0.0),
-    "N": ((1, 1, -2, 0, 0), 1.0, 0.0), "mN": ((1, 1, -2, 0, 0), 1e-3, 0.0),
-    # Druck / Spannung (-1,1,-2,0,0) – SI Pa
-    "GPa": ((-1, 1, -2, 0, 0), 1e9, 0.0), "MPa": ((-1, 1, -2, 0, 0), 1e6, 0.0),
-    "kPa": ((-1, 1, -2, 0, 0), 1e3, 0.0), "Pa": ((-1, 1, -2, 0, 0), 1.0, 0.0),
-    # Energie (2,1,-2,0,0) – SI J
-    "kJ": ((2, 1, -2, 0, 0), 1e3, 0.0), "J": ((2, 1, -2, 0, 0), 1.0, 0.0),
-    "mJ": ((2, 1, -2, 0, 0), 1e-3, 0.0),
-    # Leistung (2,1,-3,0,0) – SI W
-    "kW": ((2, 1, -3, 0, 0), 1e3, 0.0), "W": ((2, 1, -3, 0, 0), 1.0, 0.0),
-    # Geschwindigkeit (1,0,-1,0,0), Beschleunigung (1,0,-2,0,0)
-    "m/s": ((1, 0, -1, 0, 0), 1.0, 0.0), "mm/s": ((1, 0, -1, 0, 0), 1e-3, 0.0),
-    "m/s2": ((1, 0, -2, 0, 0), 1.0, 0.0),
-    # Fläche (2,0,0,0,0), Volumen (3,0,0,0,0)
-    "m2": ((2, 0, 0, 0, 0), 1.0, 0.0), "mm2": ((2, 0, 0, 0, 0), 1e-6, 0.0),
-    "m3": ((3, 0, 0, 0, 0), 1.0, 0.0), "mm3": ((3, 0, 0, 0, 0), 1e-9, 0.0),
-    # Rate (0,0,-1,0,0) – Dehnrate / Frequenz
-    "1/s": ((0, 0, -1, 0, 0), 1.0, 0.0), "1/ms": ((0, 0, -1, 0, 0), 1e3, 0.0),
+    # Länge (1,0,0,0,0,0,0) – SI m
+    "km": ((1, 0, 0, 0, 0, 0, 0), 1e3, 0.0), "m": ((1, 0, 0, 0, 0, 0, 0), 1.0, 0.0),
+    "dm": ((1, 0, 0, 0, 0, 0, 0), 1e-1, 0.0), "cm": ((1, 0, 0, 0, 0, 0, 0), 1e-2, 0.0),
+    "mm": ((1, 0, 0, 0, 0, 0, 0), 1e-3, 0.0), "um": ((1, 0, 0, 0, 0, 0, 0), 1e-6, 0.0),
+    "nm": ((1, 0, 0, 0, 0, 0, 0), 1e-9, 0.0),
+    # Masse (0,1,0,0,0,0,0) – SI kg
+    "t": ((0, 1, 0, 0, 0, 0, 0), 1e3, 0.0), "kg": ((0, 1, 0, 0, 0, 0, 0), 1.0, 0.0),
+    "g": ((0, 1, 0, 0, 0, 0, 0), 1e-3, 0.0), "mg": ((0, 1, 0, 0, 0, 0, 0), 1e-6, 0.0),
+    # Zeit (0,0,1,0,0,0,0) – SI s
+    "h": ((0, 0, 1, 0, 0, 0, 0), 3600.0, 0.0), "min": ((0, 0, 1, 0, 0, 0, 0), 60.0, 0.0),
+    "s": ((0, 0, 1, 0, 0, 0, 0), 1.0, 0.0), "ms": ((0, 0, 1, 0, 0, 0, 0), 1e-3, 0.0),
+    "us": ((0, 0, 1, 0, 0, 0, 0), 1e-6, 0.0), "ns": ((0, 0, 1, 0, 0, 0, 0), 1e-9, 0.0),
+    # Temperatur (0,0,0,1,0,0,0) – SI K, mit Offset
+    "K": ((0, 0, 0, 1, 0, 0, 0), 1.0, 0.0), "degC": ((0, 0, 0, 1, 0, 0, 0), 1.0, 273.15),
+    # Kraft (1,1,-2,0,0,0,0) – SI N
+    "MN": ((1, 1, -2, 0, 0, 0, 0), 1e6, 0.0), "kN": ((1, 1, -2, 0, 0, 0, 0), 1e3, 0.0),
+    "N": ((1, 1, -2, 0, 0, 0, 0), 1.0, 0.0), "mN": ((1, 1, -2, 0, 0, 0, 0), 1e-3, 0.0),
+    # Druck / Spannung (-1,1,-2,0,0,0,0) – SI Pa
+    "GPa": ((-1, 1, -2, 0, 0, 0, 0), 1e9, 0.0), "MPa": ((-1, 1, -2, 0, 0, 0, 0), 1e6, 0.0),
+    "kPa": ((-1, 1, -2, 0, 0, 0, 0), 1e3, 0.0), "Pa": ((-1, 1, -2, 0, 0, 0, 0), 1.0, 0.0),
+    # Energie (2,1,-2,0,0,0,0) – SI J
+    "kJ": ((2, 1, -2, 0, 0, 0, 0), 1e3, 0.0), "J": ((2, 1, -2, 0, 0, 0, 0), 1.0, 0.0),
+    "mJ": ((2, 1, -2, 0, 0, 0, 0), 1e-3, 0.0),
+    # Leistung (2,1,-3,0,0,0,0) – SI W
+    "kW": ((2, 1, -3, 0, 0, 0, 0), 1e3, 0.0), "W": ((2, 1, -3, 0, 0, 0, 0), 1.0, 0.0),
+    # Geschwindigkeit (1,0,-1,0,0,0,0), Beschleunigung (1,0,-2,0,0,0,0)
+    "m/s": ((1, 0, -1, 0, 0, 0, 0), 1.0, 0.0), "mm/s": ((1, 0, -1, 0, 0, 0, 0), 1e-3, 0.0),
+    "m/s2": ((1, 0, -2, 0, 0, 0, 0), 1.0, 0.0),
+    # Fläche (2,0,0,0,0,0,0), Volumen (3,0,0,0,0,0,0)
+    "m2": ((2, 0, 0, 0, 0, 0, 0), 1.0, 0.0), "mm2": ((2, 0, 0, 0, 0, 0, 0), 1e-6, 0.0),
+    "m3": ((3, 0, 0, 0, 0, 0, 0), 1.0, 0.0), "mm3": ((3, 0, 0, 0, 0, 0, 0), 1e-9, 0.0),
+    # Rate (0,0,-1,0,0,0,0) – Dehnrate / Frequenz
+    "1/s": ((0, 0, -1, 0, 0, 0, 0), 1.0, 0.0), "1/ms": ((0, 0, -1, 0, 0, 0, 0), 1e3, 0.0),
     # Frequenz: Hz/kHz/MHz/GHz als benannte Eingabe-/Konvertier-Einheiten (gleiche
-    # Dimension wie Rate). Die Rück-Benennung bleibt neutral bei 1/s, weil (0,0,-1,0,0)
+    # Dimension wie Rate). Die Rück-Benennung bleibt neutral bei 1/s, weil (0,0,-1,0,0,0,0)
     # auch die Dehnrate ist – siehe _CANON_SYMBOLS.
-    "Hz": ((0, 0, -1, 0, 0), 1.0, 0.0), "kHz": ((0, 0, -1, 0, 0), 1e3, 0.0),
-    "MHz": ((0, 0, -1, 0, 0), 1e6, 0.0), "GHz": ((0, 0, -1, 0, 0), 1e9, 0.0),
-    # Ebener Winkel (0,0,0,0,1) – SI rad, eigene Achse „A". So konvertieren rad/deg/gon
+    "Hz": ((0, 0, -1, 0, 0, 0, 0), 1.0, 0.0), "kHz": ((0, 0, -1, 0, 0, 0, 0), 1e3, 0.0),
+    "MHz": ((0, 0, -1, 0, 0, 0, 0), 1e6, 0.0), "GHz": ((0, 0, -1, 0, 0, 0, 0), 1e9, 0.0),
+    # Ebener Winkel (0,0,0,0,1,0,0) – SI rad, eigene Achse „A". So konvertieren rad/deg/gon
     # untereinander, sind aber gegen dimensionslos (-/%) abgegrenzt. 1 deg = π/180 rad,
     # 1 gon = π/200 rad. (dB als logarithmische Größe bleibt bewusst außen vor.)
-    "rad": ((0, 0, 0, 0, 1), 1.0, 0.0), "mrad": ((0, 0, 0, 0, 1), 1e-3, 0.0),
-    "deg": ((0, 0, 0, 0, 1), math.pi / 180.0, 0.0),
-    "gon": ((0, 0, 0, 0, 1), math.pi / 200.0, 0.0),
-    # dimensionslos (0,0,0,0,0)
-    "-": ((0, 0, 0, 0, 0), 1.0, 0.0), "": ((0, 0, 0, 0, 0), 1.0, 0.0),
-    "%": ((0, 0, 0, 0, 0), 1e-2, 0.0),
+    "rad": ((0, 0, 0, 0, 1, 0, 0), 1.0, 0.0), "mrad": ((0, 0, 0, 0, 1, 0, 0), 1e-3, 0.0),
+    "deg": ((0, 0, 0, 0, 1, 0, 0), math.pi / 180.0, 0.0),
+    "gon": ((0, 0, 0, 0, 1, 0, 0), math.pi / 200.0, 0.0),
+    # Elektrik (RFC 0017): Stromstärke I (0,0,0,0,0,1,0) – SI A; Spannung (2,1,-3,0,0,-1,0)
+    # – SI V; Widerstand (2,1,-3,0,0,-2,0) – SI Ω; Ladung (0,0,1,0,0,1,0) – SI C = A·s.
+    "kA": ((0, 0, 0, 0, 0, 1, 0), 1e3, 0.0), "A": ((0, 0, 0, 0, 0, 1, 0), 1.0, 0.0),
+    "mA": ((0, 0, 0, 0, 0, 1, 0), 1e-3, 0.0),
+    "kV": ((2, 1, -3, 0, 0, -1, 0), 1e3, 0.0), "V": ((2, 1, -3, 0, 0, -1, 0), 1.0, 0.0),
+    "mV": ((2, 1, -3, 0, 0, -1, 0), 1e-3, 0.0),
+    "Mohm": ((2, 1, -3, 0, 0, -2, 0), 1e6, 0.0), "kohm": ((2, 1, -3, 0, 0, -2, 0), 1e3, 0.0),
+    "ohm": ((2, 1, -3, 0, 0, -2, 0), 1.0, 0.0), "mohm": ((2, 1, -3, 0, 0, -2, 0), 1e-3, 0.0),
+    "C": ((0, 0, 1, 0, 0, 1, 0), 1.0, 0.0), "Ah": ((0, 0, 1, 0, 0, 1, 0), 3600.0, 0.0),
+    "mAh": ((0, 0, 1, 0, 0, 1, 0), 3.6, 0.0),
+    # Stoffmenge N (0,0,0,0,0,0,1) – SI mol
+    "mol": ((0, 0, 0, 0, 0, 0, 1), 1.0, 0.0), "mmol": ((0, 0, 0, 0, 0, 0, 1), 1e-3, 0.0),
+    # dimensionslos (0,0,0,0,0,0,0)
+    "-": ((0, 0, 0, 0, 0, 0, 0), 1.0, 0.0), "": ((0, 0, 0, 0, 0, 0, 0), 1.0, 0.0),
+    "%": ((0, 0, 0, 0, 0, 0, 0), 1e-2, 0.0),
 }
 
 #: Symbol-Aliasse speziell für die Konvertierung (verlustfrei; ``µm`` ist wie in
@@ -238,14 +266,17 @@ _CONVERT_ALIASES = {
 #: Vorzugs-Symbol-Tabelle für die kanonische Rück-Benennung hergeleiteter Einheiten:
 #: für ein ``(Dimension, Faktor)`` gewinnt das **erste** passende Symbol. Nur
 #: Offset-freie Einheiten. Bewusste Entscheidungen bei mehrdeutigen Dimensionen:
-#:   * Energie ``(2,1,-2,0)`` -> ``J`` (statt einer zusammengesetzten ``N*m``-Form).
-#:   * Leistung ``(2,1,-3,0)`` -> ``W``.
-#:   * Rate/Frequenz ``(0,0,-1,0)`` -> neutral ``1/s``/``1/ms``, **nicht** ``Hz``:
+#:   * Energie ``(2,1,-2,0,0,0,0)`` -> ``J`` (statt einer zusammengesetzten ``N*m``-Form).
+#:   * Leistung ``(2,1,-3,0,0,0,0)`` -> ``W``.
+#:   * Rate/Frequenz ``(0,0,-1,0,0,0,0)`` -> neutral ``1/s``/``1/ms``, **nicht** ``Hz``:
 #:     die Dimension bezeichnet auch die Dehnrate. ``Hz``/``kHz``/``MHz``/``GHz`` sind
 #:     als Einheiten erkannt (Eingabe/Konvertierung/QUDT), werden aber nicht
 #:     automatisch zugewiesen, um eine Dehnrate nicht fälschlich als Frequenz zu benennen.
-#:   * Winkel ``(0,0,0,0,1)`` -> ``rad`` (SI-kohärent); ``deg``/``gon`` nur, wenn das
+#:   * Winkel ``(0,0,0,0,1,0,0)`` -> ``rad`` (SI-kohärent); ``deg``/``gon`` nur, wenn das
 #:     System explizit darauf basiert (eindeutig über den Faktor, keine Kollision).
+#:   * Elektrische Größen und Stoffmenge -> SI-Symbole (``A``, ``V``, ``ohm``, ``C``,
+#:     ``mol``); ``Ah``/``mAh`` werden erkannt, aber nicht automatisch zugewiesen
+#:     (Ladung wird SI-kohärent als ``C`` benannt).
 _CANON_SYMBOLS = (
     "m", "mm", "cm", "km", "um", "nm",
     "kg", "g", "t",
@@ -257,17 +288,25 @@ _CANON_SYMBOLS = (
     "m/s", "mm/s", "m/s2",
     "1/s", "1/ms",
     "rad", "mrad", "deg", "gon",
+    "A", "mA", "kA",
+    "V", "mV", "kV",
+    "ohm", "mohm", "kohm", "Mohm",
+    "C",
+    "mol", "mmol",
 )
 
-#: Dimvektor -> Größenname (Komfort/Backward-Compat). Dimensionslos ``(0,0,0,0)`` ist
+#: Dimvektor -> Größenname (Komfort/Backward-Compat). Dimensionslos ``(0,0,0,0,0,0,0)`` ist
 #: absichtlich *nicht* benannt, damit ``quantity_of("-")`` wie bisher ``None`` liefert.
 _QUANTITY_BY_DIM = {
-    (1, 0, 0, 0, 0): "length", (0, 1, 0, 0, 0): "mass", (0, 0, 1, 0, 0): "time",
-    (0, 0, 0, 1, 0): "temperature", (1, 1, -2, 0, 0): "force",
-    (-1, 1, -2, 0, 0): "pressure", (2, 1, -2, 0, 0): "energy",
-    (2, 1, -3, 0, 0): "power", (1, 0, -1, 0, 0): "velocity",
-    (1, 0, -2, 0, 0): "acceleration", (2, 0, 0, 0, 0): "area",
-    (3, 0, 0, 0, 0): "volume", (0, 0, -1, 0, 0): "rate", (0, 0, 0, 0, 1): "angle",
+    (1, 0, 0, 0, 0, 0, 0): "length", (0, 1, 0, 0, 0, 0, 0): "mass", (0, 0, 1, 0, 0, 0, 0): "time",
+    (0, 0, 0, 1, 0, 0, 0): "temperature", (1, 1, -2, 0, 0, 0, 0): "force",
+    (-1, 1, -2, 0, 0, 0, 0): "pressure", (2, 1, -2, 0, 0, 0, 0): "energy",
+    (2, 1, -3, 0, 0, 0, 0): "power", (1, 0, -1, 0, 0, 0, 0): "velocity",
+    (1, 0, -2, 0, 0, 0, 0): "acceleration", (2, 0, 0, 0, 0, 0, 0): "area",
+    (3, 0, 0, 0, 0, 0, 0): "volume", (0, 0, -1, 0, 0, 0, 0): "rate", (0, 0, 0, 0, 1, 0, 0): "angle",
+    (0, 0, 0, 0, 0, 1, 0): "current", (2, 1, -3, 0, 0, -1, 0): "voltage",
+    (2, 1, -3, 0, 0, -2, 0): "resistance", (0, 0, 1, 0, 0, 1, 0): "charge",
+    (0, 0, 0, 0, 0, 0, 1): "amount_of_substance",
 }
 _DIM_BY_QUANTITY = {name: dim for dim, name in _QUANTITY_BY_DIM.items()}
 
@@ -282,19 +321,20 @@ def _norm_convert(symbol):
     return _CONVERT_ALIASES.get(text, _CONVERT_ALIASES.get(text.lower(), text))
 
 
-#: pint-Dimensionsname -> Index in unserem ``(L, M, T, Θ, A)``-Vektor. Achsen außerhalb
-#: (Strom/Stoffmenge/Lichtstärke) sind nicht darstellbar; der Winkel ist in pint
+#: pint-Dimensionsname -> Index in unserem ``(L, M, T, Θ, A, I, N)``-Vektor. Achsen
+#: außerhalb (Lichtstärke) sind nicht darstellbar; der Winkel ist in pint
 #: dimensionslos (dafür die kuratierten rad/deg/gon nutzen).
-_PINT_AXIS = {"[length]": 0, "[mass]": 1, "[time]": 2, "[temperature]": 3}
+_PINT_AXIS = {"[length]": 0, "[mass]": 1, "[time]": 2, "[temperature]": 3,
+              "[current]": 5, "[substance]": 6}
 
 
 def _pint_dimvector(dimensionality):
-    """pint-``dimensionality`` (Mapping Name->Exponent) -> 5-Achsen-Tupel, oder ``None``.
+    """pint-``dimensionality`` (Mapping Name->Exponent) -> 7-Achsen-Tupel, oder ``None``.
 
-    ``None``, sobald eine Achse außerhalb ``(L, M, T, Θ, A)`` mit Exponent ≠ 0 auftaucht
-    (z. B. elektrischer Strom) – solche Einheiten kann unser Modell nicht darstellen.
+    ``None``, sobald eine Achse außerhalb ``(L, M, T, Θ, A, I, N)`` mit Exponent ≠ 0 auftaucht
+    (z. B. Lichtstärke) – solche Einheiten kann unser Modell nicht darstellen.
     """
-    vec = [0, 0, 0, 0, 0]
+    vec = [0] * len(_DIM_NAMES)
     for name, exp in dimensionality.items():
         idx = _PINT_AXIS.get(name)
         if idx is None:
@@ -307,8 +347,8 @@ def _pint_entry(symbol):
     """``(dimvektor, factor, offset)`` einer **nicht kuratierten** Einheit via pint.
 
     ``None``, wenn pint fehlt, das Symbol nicht parsebar ist oder seine Dimension
-    außerhalb der fünf Achsen liegt. ``factor`` überführt in die SI-kohärente Einheit
-    (pints Basiseinheiten sind m/kg/s/K – deckungsgleich mit der kuratierten Tabelle);
+    außerhalb der sieben Achsen liegt. ``factor`` überführt in die SI-kohärente Einheit
+    (pints Basiseinheiten sind m/kg/s/K/A/mol – deckungsgleich mit der kuratierten Tabelle);
     affine Einheiten (nur Temperatur, z. B. ``degF``) liefern zusätzlich den Offset.
     """
     if _pint is None:
@@ -345,7 +385,7 @@ def _lookup(symbol):
 
 
 def dimension_of(symbol):
-    """Dimensionsvektor ``(L, M, T, Θ, A)`` einer Einheit als Tupel, oder ``None``.
+    """Dimensionsvektor ``(L, M, T, Θ, A, I, N)`` einer Einheit als Tupel, oder ``None``.
 
     :param symbol: Einheiten-Symbol (z. B. ``"MPa"``).
     :return: das Dimvektor-Tupel, oder ``None`` bei unbekannter Einheit.

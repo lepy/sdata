@@ -98,6 +98,8 @@ nav:
       - "0012 — Data deprecation": rfc/0012-data-deprecation.md
       - "0013 — Packaging modernization": rfc/0013-packaging-modernization.md
       - "0014 — Unit system persistence": rfc/0014-unit-system-persistence.md
+      - "0015 — Frictionless Data Package interop": rfc/0015-frictionless-data-package.md
+      - "0017 — Elektrische Größen (Achsen I und N)": rfc/0017-elektrische-groessen.md
       - "Open points (backlog)": rfc/open-points.md
   - Releasing: releasing.md
   - Changelog: changelog.md
