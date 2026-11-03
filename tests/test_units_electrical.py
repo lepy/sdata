@@ -87,5 +87,32 @@ def test_unit_system_without_current_leaves_voltage_unchanged():
 def test_unit_system_with_current_basis_converts_voltage():
     system = units.UnitSystem(["kg", "m", "s", "A"])
     val, label = system.convert_value(1500.0, "mV")
-    assert label == "kg*m^2/s^3/A"            # Spannung aufgelöst, kein benanntes Symbol
+    assert label == "V"                       # kanonisches SI-Symbol (RFC 0017)
     assert val == pytest.approx(1.5)
+
+
+def test_unit_system_with_current_basis_names_electrical_symbols():
+    system = units.UnitSystem(["kg", "m", "s", "A"])
+    val, label = system.convert_value(2.0, "kohm")
+    assert label == "ohm"
+    assert val == pytest.approx(2000.0)
+    val, label = system.convert_value(1.0, "mAh")
+    assert label == "C"                       # Ladung SI-kohärent, nicht Ah
+    assert val == pytest.approx(3.6)
+    val, label = system.convert_value(250.0, "mA")
+    assert label == "A"
+    assert val == pytest.approx(0.25)
+
+
+def test_unit_system_with_milliampere_basis_names_milliampere():
+    system = units.UnitSystem(["kg", "m", "s", "mA"])
+    val, label = system.convert_value(2.0, "A")
+    assert label == "mA"
+    assert val == pytest.approx(2000.0)
+
+
+def test_unit_system_with_mol_basis_names_mol():
+    system = units.UnitSystem(["kg", "m", "s", "mol"])
+    val, label = system.convert_value(500.0, "mmol")
+    assert label == "mol"
+    assert val == pytest.approx(0.5)
