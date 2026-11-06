@@ -6,6 +6,18 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **Metadata with non-native dtypes can be serialized again.** An attribute of dtype
+  `timestamp`, `date`, `time`, `duration`, `decimal`, `bytes`, `complex` or
+  `langstring` made `Base.to_json`, `DataFrame.to_json`, `DataFrame.to_parquet`
+  (and `to_arrow`), `DataFrame.to_datapackage` and `DataFrame.to_hdf` fail with
+  `TypeError: Object of type … is not JSON serializable`; with `to_parquet`, pandas
+  additionally dropped the metadata with only a `UserWarning`. All JSON writers now
+  use `sdata.dtypes.json_default`, as `Metadata.to_json` already did, and the values
+  read back with their dtype. Timestamps are stored as UTC: the instant is preserved,
+  the original UTC offset is not.
+
 ## [1.6.0] - 2026-11-06
 
 Contains breaking changes despite the minor version bump (the package is classified

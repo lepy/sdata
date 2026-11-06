@@ -428,7 +428,8 @@ def test_spec_to_json_and_default():
         dtypes.json_default(object())
 
 
-def test_coerce_convenience_and_register():
+def test_coerce_convenience_and_register(monkeypatch):
+    monkeypatch.setattr(dtypes, "_REGISTRY", dict(dtypes._REGISTRY))  # kein Leck
     assert dtypes.coerce("5", "int") == 5
     assert dtypes.coerce(b"x", bytes) == b"x"
     spec = dtypes.DtypeSpec("dummy", str, lambda v, s: "D", "xsd:string")
