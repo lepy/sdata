@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Abdeckung für sdata.doe.DOE."""
 import pandas as pd
+import pytest
 
 import sdata
 from sdata.doe import DOE
@@ -74,3 +75,24 @@ def test_to_data_uid_default_is_deterministic():
     a = doe.to_data("mydoe", doe.gen_sobol(n=2))
     b = doe.to_data("mydoe", doe.gen_sobol(n=2))
     assert a.suuid.sname == b.suuid.sname
+
+
+def test_range_behaviour_matches_former_ranger():
+    """Range-Ersatz: Werte, Text- und repr-Form wie beim früheren contrib.ranger."""
+    from sdata.doe import Range
+    r = Range.closed(0.8, 1.8)
+    assert (r.min, r.max) == (0.8, 1.8)
+    assert r.length == 1.8 - 0.8
+    assert str(r) == repr(r) == "[0.8 , 1.8]"
+    assert str(Range.closed(1e-7, 1e20)) == "[1e-07 , 1e+20]"
+    assert Range.closed(1, 2) == Range.closed(1, 2)
+    assert hash(Range.closed(1, 2)) == hash(Range.closed(1, 2))
+    with pytest.raises(ValueError):
+        Range.closed(2, 1)
+
+
+def test_range_stored_in_metadata_as_before():
+    doe = _doe()
+    data = doe.to_data("mydoe", doe.gen_sobol(n=2))
+    assert data.metadata.get("sheet_thickness").value == "[0.8 , 1.8]"
+    assert repr(doe.ranges["slant_depth"]) == "[10.0 , 50.0]"
