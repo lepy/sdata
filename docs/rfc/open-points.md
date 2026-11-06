@@ -77,10 +77,10 @@ Arbeitsrunde.
   scharfschalten (RFC 0012). Der interne `Data`-Nutzer `iolib/hdf.py`
   (`FlatHDFDataStore`, PyTables) wurde bereits **entfernt** (ersetzt durch
   `DataFrame.to_hdf`/h5py) — ein Baustein weniger für Stufe 2.
-* **`contrib`-Einzelnutzer** (`piexif`/`sobol_seq`/`ranger`/
-  `sqlitedict`/`timeflake`): je Paket Dependency/Extra/vendoriert entscheiden
-  (RFC 0013 §4.3). `sortedcontainers` ist erledigt: durch eine eigene
-  `SortedDict`-Klasse in `sdata/metadata.py` ersetzt (2026-11-06).
+* **`contrib`-Einzelnutzer** (`piexif`/`sobol_seq`/`ranger`/`sqlitedict`): je
+  Paket Dependency/Extra/vendoriert entscheiden (RFC 0013 §4.3). Erledigt:
+  `sortedcontainers` (durch eigene `SortedDict`-Klasse in `sdata/metadata.py`
+  ersetzt) und `timeflake` (entfernt, 0 Importer), beide 2026-11-06.
 * **Typisierung/Sprache** vollständig durchziehen (per On-Touch-Regel,
   `docs/conventions.md`).
 

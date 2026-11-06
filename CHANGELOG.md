@@ -27,7 +27,9 @@ All notable changes to **sdata** are documented here. The format is based on
   keeps the sorted iteration, `repr`, equality and copying. Code that imported
   `sdata.contrib.sortedcontainers` directly or relied on its extra methods (`peekitem`,
   `irange`, `bisect_*`, positional view indexing via `SortedKeysView`) must switch to the
-  PyPI package `sortedcontainers`. sdata is now MIT-only throughout.
+  PyPI package `sortedcontainers`.
+- The vendored `sdata.contrib.timeflake` and its self-test are removed; nothing in sdata
+  used it (RFC 0013 §4.3: no importers). Use the PyPI package `timeflake` instead.
 
 ### Added
 
