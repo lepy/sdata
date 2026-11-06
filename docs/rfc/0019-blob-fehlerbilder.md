@@ -54,8 +54,14 @@ Daraus ergeben sich vier Defekte:
    Prüfsumme, Datei danach gelöscht, Inhalt noch nicht gelesen → `verify()`
    gibt `False` zurück, genau wie bei manipuliertem Inhalt. Typischer Fall: ein
    aus `to_dict`/`from_dict` geladener Blob, dessen S3-Quelle gerade nicht
-   erreichbar ist. `update_checksum()` gibt im selben Fall still `None` zurück
-   (`content.py:72`).
+   erreichbar ist. *(Nachtrag 2026-11-06: Dieses Beispiel trifft nicht zu.
+   `Blob.from_dict` liefert keinen `Blob`, sondern eine von `sdata_factory`
+   erzeugte Klasse, die nur von `Base` erbt und weder `content_bytes` noch
+   `verify` hat — `Base.from_dict` ignoriert die aufrufende Klasse,
+   `sdata/base.py:418-420`. Zutreffend ist der Fall einer neuen Instanz auf
+   dieselbe Quelle mit übernommener Prüfsumme. Der `from_dict`-Fehler ist
+   nicht Teil dieses RFC.)* `update_checksum()` gibt im selben Fall still
+   `None` zurück (`content.py:72`).
 
 Zwei Randbedingungen, beide gemessen:
 
@@ -248,3 +254,14 @@ bauen Aufrufer darauf, ein Zurück wäre wieder ein Bruch.
    `[Unreleased]` beim Release entscheiden (vgl. RFC 0017 §5.1).
 4. **Wiederholversuche bei Netzwerkfehlern** (S3-Timeouts) sind nicht Teil
    dieses RFC; sie gehören in die fsspec-Konfiguration des Aufrufers.
+
+## Revisionen
+
+### v1.1 — 2026-11-06 — bei der Umsetzung
+
+- **§1 Defekt 4:** Das Beispiel „aus `to_dict`/`from_dict` geladener Blob"
+  ist falsch; `Blob.from_dict` gibt eine dynamisch erzeugte `Base`-Unterklasse
+  ohne `verify` zurück (gemessen: `type(Blob.from_dict(b.to_dict()))` ist
+  `sdata.base.Blob` mit MRO `(Blob, Base, object)`). Satz bleibt stehen,
+  Nachtrag berichtigt ihn. Der Defekt selbst ist unberührt: mit einer neuen
+  Instanz auf dieselbe Quelle und übernommener Prüfsumme gemessen.
