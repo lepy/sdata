@@ -8,6 +8,8 @@ import re
 import warnings
 import pandas as pd
 
+from sdata.dtypes import json_default
+
 class JSON1SQLiteStore:
     """
     JSON store based on SQLite with extensive functionality:
@@ -128,7 +130,7 @@ class JSON1SQLiteStore:
         )
 
     def _serialize(self, obj: Dict[str, Any]) -> str:
-        return json.dumps(obj, separators=(',', ':'))
+        return json.dumps(obj, separators=(',', ':'), default=json_default)
 
     def _deserialize(self, payload: str) -> Dict[str, Any]:
         obj = json.loads(payload)
@@ -440,21 +442,21 @@ class JSON1SQLiteStore:
         ).fetchone()[0]
 
     def set_path(self, record_id: int, json_path: str, value: Any) -> None:
-        val = json.dumps(value, separators=(',', ':'))
+        val = json.dumps(value, separators=(',', ':'), default=json_default)
         self.conn.execute(
             "UPDATE data SET payload = json_set(payload, ?, json(?)) WHERE id = ?",
             (json_path, val, record_id)
         )
 
     def insert_path(self, record_id: int, json_path: str, value: Any) -> None:
-        val = json.dumps(value, separators=(',', ':'))
+        val = json.dumps(value, separators=(',', ':'), default=json_default)
         self.conn.execute(
             "UPDATE data SET payload = json_insert(payload, ?, json(?)) WHERE id = ?",
             (json_path, val, record_id)
         )
 
     def replace_path(self, record_id: int, json_path: str, value: Any) -> None:
-        val = json.dumps(value, separators=(',', ':'))
+        val = json.dumps(value, separators=(',', ':'), default=json_default)
         self.conn.execute(
             "UPDATE data SET payload = json_replace(payload, ?, json(?)) WHERE id = ?",
             (json_path, val, record_id)

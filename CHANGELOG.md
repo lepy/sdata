@@ -6,6 +6,16 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **`StoreWriter` and `SqlWriter` keep metadata with non-native dtypes.** The fix in
+  1.6.1 missed the persistence writers: `StoreWriter` (via `JSON1SQLiteStore`) failed
+  with `TypeError` on attributes of dtype `timestamp`, `date`, `time`, `duration`,
+  `decimal`, `bytes`, `complex` or `langstring`, and `SqlWriter` serialized them with
+  `str()`, so `SqlReader` read `bytes` back as the wrong value (the bytes of their
+  `repr`) and `duration` as `None`. Both now use `sdata.dtypes.json_default`, as do the
+  `JSON1SQLiteStore.set_path`/`insert_path`/`replace_path` helpers.
+
 ## [1.6.1] - 2026-11-06
 
 ### Fixed
