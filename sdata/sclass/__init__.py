@@ -15,6 +15,7 @@ _registry.register_many({
     "DataFrame":"sdata.sclass.dataframe:DataFrame",
     "FileReference":"sdata.sclass.filereference:FileReference",
     "Image":"sdata.sclass.image:Image",
+    "JsonDocument":"sdata.sclass.json_document:JsonDocument",
     "ProcessData":"sdata.sclass.process:ProcessData",
     "ProcessNode":"sdata.sclass.process:ProcessNode",
     # "Class2": "_mypkg.othermodule:Class2",
