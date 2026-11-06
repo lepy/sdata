@@ -2,7 +2,7 @@
 
 | Feld        | Wert                                                                                     |
 |-------------|------------------------------------------------------------------------------------------|
-| Status      | Angenommen — umgesetzt (PR #156, unreleased; nach 1.5.0)                                  |
+| Status      | Angenommen — umgesetzt in sdata 1.6.0 (PR #156)                                           |
 | Datum       | 2026-11-06                                                                                |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
 | Komponente  | `sdata/sclass/blob.py` (`content_bytes`, `exists`, `open`), `sdata/sclass/content.py` (`update_checksum`, `verify`), Tests `tests/test_sclass_blob_*.py` |
@@ -252,6 +252,8 @@ bauen Aufrufer darauf, ein Zurück wäre wieder ein Bruch.
    `verify` und nicht Teil dieses RFC.
 3. **Version.** §2.4 ist ein Bruch; zusammen mit den übrigen Einträgen unter
    `[Unreleased]` beim Release entscheiden (vgl. RFC 0017 §5.1).
+   — entschieden 2026-11-06: **1.6.0** (Maintainer-Entscheidung; Bruch als
+   *Breaking* im CHANGELOG).
 4. **Wiederholversuche bei Netzwerkfehlern** (S3-Timeouts) sind nicht Teil
    dieses RFC; sie gehören in die fsspec-Konfiguration des Aufrufers.
 
@@ -265,3 +267,7 @@ bauen Aufrufer darauf, ein Zurück wäre wieder ein Bruch.
   `sdata.base.Blob` mit MRO `(Blob, Base, object)`). Satz bleibt stehen,
   Nachtrag berichtigt ihn. Der Defekt selbst ist unberührt: mit einer neuen
   Instanz auf dieselbe Quelle und übernommener Prüfsumme gemessen.
+
+### v1.2 — 2026-11-06 — Release
+
+- **§5.3:** Versionsfrage entschieden: 1.6.0. Status nennt die Version.

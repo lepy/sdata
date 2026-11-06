@@ -159,8 +159,16 @@ Konsumenten auf sieben Achsen bauen, ein Zurück wäre wieder ein Bruch.
 1. **Version:** 1.6.0 oder 2.0.0. Die Rückgabeform einer öffentlichen Funktion
    ändert sich, das Paket ist als Alpha klassifiziert (`pyproject.toml`,
    „Development Status :: 3 - Alpha"). Entscheidung beim Release.
+   — entschieden 2026-11-06: **1.6.0** (Maintainer-Entscheidung; der Bruch
+   steht als *Breaking* im CHANGELOG).
 2. **`grad`** bleibt unübersetzt (Gon oder Grad, `_CONVERT_ALIASES`). Das ist nicht
    Teil dieses RFC.
 3. **Benannte Achsen statt Tupel:** Ein Mapping wie `{"L": 1, "T": -2}` würde
    künftige Achsen ohne Bruch erlauben. Das ist ein größerer Umbau von `units.py` und
    wird erst entschieden, wenn eine weitere Achse ansteht.
+
+## Revisionen
+
+### 2026-11-06 — Release
+
+- **§5.1:** Versionsfrage entschieden: 1.6.0.
