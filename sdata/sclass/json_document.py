@@ -16,41 +16,47 @@ from sdata.metadata import Metadata
 from sdata.sclass.content import ContentIntegrityMixin
 
 
-def _check_json(value: Any, path: str = "$") -> None:
-    """Prüfe rekursiv, dass ``value`` ein reiner JSON-Wert ist.
+def _check_json(value: Any) -> None:
+    """Prüfe, dass ``value`` ein reiner JSON-Wert ist (iterativ, beliebige Tiefe).
 
     Erlaubt sind ``dict`` mit ``str``-Schlüsseln, ``list``, ``str``, ``int``,
     ``float`` (endlich), ``bool`` und ``None``. ``json.dumps`` allein genügt nicht:
     es wandelt int-Schlüssel und Tupel still um, sodass der Inhalt nach einer
-    Rundreise ein anderer wäre.
+    Rundreise ein anderer wäre. Die Prüfung nutzt einen expliziten Stack, damit
+    tiefe Strukturen kein ``RecursionError`` auslösen.
 
     :param value: der zu prüfende Wert.
-    :param path: Pfad des Werts im Dokument (nur für die Fehlermeldung).
     :raises ValueError: bei NaN/Infinity, Nicht-String-Schlüsseln oder Nicht-JSON-Typen.
     """
-    if value is None or isinstance(value, (str, bool, int)):
-        return
-    if isinstance(value, float):
-        if not math.isfinite(value):
-            raise ValueError(f"JsonDocument: {path}: NaN/Infinity ist kein JSON-Wert")
-        return
-    if isinstance(value, list):
-        for i, item in enumerate(value):
-            _check_json(item, f"{path}[{i}]")
-        return
-    if isinstance(value, dict):
-        for key, item in value.items():
-            if not isinstance(key, str):
-                raise ValueError(
-                    f"JsonDocument: {path}: Schlüssel {key!r} ist kein str")
-            _check_json(item, f"{path}.{key}")
-        return
-    raise ValueError(
-        f"JsonDocument: {path}: Typ {type(value).__name__} ist kein JSON-Wert")
+    stack = [(value, "$")]
+    while stack:
+        item, path = stack.pop()
+        if item is None or isinstance(item, (str, bool, int)):
+            continue
+        if isinstance(item, float):
+            if not math.isfinite(item):
+                raise ValueError(f"JsonDocument: {path}: NaN/Infinity ist kein JSON-Wert")
+        elif isinstance(item, list):
+            stack.extend((v, f"{path}[{i}]") for i, v in enumerate(item))
+        elif isinstance(item, dict):
+            for key, v in item.items():
+                if not isinstance(key, str):
+                    raise ValueError(
+                        f"JsonDocument: {path}: Schlüssel {key!r} ist kein str")
+                stack.append((v, f"{path}.{key}"))
+        else:
+            raise ValueError(
+                f"JsonDocument: {path}: Typ {type(item).__name__} ist kein JSON-Wert")
 
 
 class JsonDocument(ContentIntegrityMixin, Base):
-    """JSON-Dokument; der Inhalt liegt als JSON-Wert direkt in ``data['content']``."""
+    """JSON-Dokument; der Inhalt liegt als JSON-Wert direkt in ``data['content']``.
+
+    Der Inhalt wird **per Referenz** gehalten (keine Kopie). Prüfung beim Setzen
+    von :attr:`content` und in :meth:`from_dict`; eine spätere Mutation des
+    übergebenen Objekts oder eine Zuweisung an ``data`` umgeht sie. Deshalb
+    prüft :attr:`content_bytes` (Hash-Basis) erneut, bevor serialisiert wird.
+    """
 
     SDATA_JSON_FORMAT = "json_format"
 
@@ -102,8 +108,13 @@ class JsonDocument(ContentIntegrityMixin, Base):
         Prüfsumme hängt nur am logischen Inhalt, nicht an Schlüsselreihenfolge
         oder Formatierung.
         """
-        return json.dumps(self.content, sort_keys=True, ensure_ascii=False,
-                          separators=(",", ":"), allow_nan=False).encode("utf-8")
+        content = self.content
+        _check_json(content)
+        try:
+            return json.dumps(content, sort_keys=True, ensure_ascii=False,
+                              separators=(",", ":"), allow_nan=False).encode("utf-8")
+        except RecursionError as exp:
+            raise ValueError("JsonDocument: Inhalt zu tief verschachtelt") from exp
 
     @classmethod
     def from_dict(cls, d: dict, *, strict: bool = False) -> "JsonDocument":
@@ -116,11 +127,20 @@ class JsonDocument(ContentIntegrityMixin, Base):
 
         :param d: dict mit ``metadata``, ``data`` und ``description``.
         :param strict: bei neuerer Formatversion hart scheitern (RFC 0010).
-        :raises ValueError: wenn ``data['content']`` kein reiner JSON-Wert ist.
+        :raises ValueError: wenn ``_sdata_class`` nicht auf dieses JsonDocument zeigt
+          oder ``data['content']`` kein reiner JSON-Wert ist.
         """
         d = ensure_compatible(d, strict=strict)      # RFC 0010: Version prüfen/migrieren
+        metadata = Metadata.from_dict(d.get("metadata", {}))
+        attr = metadata.get(cls.SDATA_CLASS)
+        spec = attr.value if attr is not None else None
+        allowed = {"sdata.sclass.json_document:JsonDocument",
+                   f"{cls.__module__}:{cls.__qualname__}"}
+        if spec not in allowed:
+            raise ValueError(
+                f"JsonDocument.from_dict: _sdata_class {spec!r} ist kein JsonDocument")
         instance = cls()
-        instance.metadata = Metadata.from_dict(d.get("metadata", {}))
+        instance.metadata = metadata
         data = dict(d.get("data", {}))
         instance.data = data
         instance.content = data.get("content")
