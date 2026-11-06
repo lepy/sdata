@@ -24,7 +24,40 @@ import json
 import hashlib
 import base64
 import re
-from sdata.contrib.sqlitedict import SqliteDict
+import pickle
+import sqlite3
+
+# Schlüssel/Wert-Ablage im Dateiformat des früher vendorten ``sqlitedict``
+# (Apache-2.0): Tabelle "unnamed" (key TEXT PRIMARY KEY, value BLOB), Werte
+# gepickelt. So bleiben mit älteren sdata-Versionen geschriebene Dateien lesbar
+# und neu geschriebene für ältere Versionen lesbar.
+_SQLITEDICT_TABLE = "unnamed"
+
+
+def _sqlitedict_write(filepath, items):
+    con = sqlite3.connect(filepath)
+    try:
+        with con:
+            con.execute(f'CREATE TABLE IF NOT EXISTS "{_SQLITEDICT_TABLE}" '
+                        '(key TEXT PRIMARY KEY, value BLOB)')
+            con.executemany(
+                f'REPLACE INTO "{_SQLITEDICT_TABLE}" (key, value) VALUES (?, ?)',
+                [(k, sqlite3.Binary(pickle.dumps(v, protocol=pickle.HIGHEST_PROTOCOL)))
+                 for k, v in items.items()])
+    finally:
+        con.close()
+
+
+def _sqlitedict_read(filepath):
+    """Alle Einträge lesen. Achtung: Werte werden ent-pickelt — nur vertrauenswürdige Dateien öffnen."""
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(filepath)
+    con = sqlite3.connect(filepath)
+    try:
+        rows = con.execute(f'SELECT key, value FROM "{_SQLITEDICT_TABLE}"').fetchall()
+    finally:
+        con.close()
+    return {k: pickle.loads(bytes(v)) for k, v in rows}
 
 if sys.version_info < (3, 0):
     from StringIO import StringIO
@@ -1260,13 +1293,13 @@ class Data(object):
             df = self.df
         df.columns = df.columns.astype(str)
 
-        with SqliteDict(filepath, autocommit=True) as sqdict:
-            sqdict['metadata'] = self.metadata.df.to_parquet()
-            sqdict['table'] = df.to_parquet()
-
-            description = self.description_to_df().copy()
-            description.columns = description.columns.astype(str)
-            sqdict['description'] = description.to_parquet()
+        description = self.description_to_df().copy()
+        description.columns = description.columns.astype(str)
+        _sqlitedict_write(filepath, {
+            'metadata': self.metadata.df.to_parquet(),
+            'table': df.to_parquet(),
+            'description': description.to_parquet(),
+        })
 
     @classmethod
     def from_sqlite(cls, filepath, **kwargs):
@@ -1277,13 +1310,13 @@ class Data(object):
         :return: sdata.Data
         """
 
-        with SqliteDict(filepath) as sqdict:
-            metadata = sdata.Metadata.from_dataframe(pd.read_parquet(BytesIO(sqdict['metadata'])))
-            df_table = pd.read_parquet(BytesIO(sqdict['table']))
-            df_description = pd.read_parquet(BytesIO(sqdict['description']))
-            data = Data(metadata=metadata, table=df_table)
-            data.description_from_df(df_description)
-            return data
+        sqdict = _sqlitedict_read(filepath)
+        metadata = sdata.Metadata.from_dataframe(pd.read_parquet(BytesIO(sqdict['metadata'])))
+        df_table = pd.read_parquet(BytesIO(sqdict['table']))
+        df_description = pd.read_parquet(BytesIO(sqdict['description']))
+        data = Data(metadata=metadata, table=df_table)
+        data.description_from_df(df_description)
+        return data
 
     @classmethod
     def metadata_from_hdf5(cls, filepath, **kwargs):
