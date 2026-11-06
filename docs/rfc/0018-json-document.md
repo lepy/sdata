@@ -4,7 +4,7 @@
 |-------------|------------------------------------------------------------------------------------------|
 | Status      | Angenommen (Nutzer 2026-11-06: „dp2g-Report soll auf sdata-json aufbauen“) |
 | Datum       | 2026-11-06                                                                                |
-| Fassung     | v1.1 (siehe Revisionen)                                                                   |
+| Fassung     | v1.2 (siehe Revisionen)                                                                   |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
 | Komponente  | neu `sdata/sclass/json_document.py`, Registry `sdata/sclass/__init__.py`, Tests `tests/test_sclass_json_document.py` |
 | Betrifft    | Ablage strukturierter JSON-Dokumente (z. B. Report-Boards) als sdata-Container             |
@@ -97,6 +97,15 @@ erkennt JSON an der Kennung. `_sdata_class` lautet
 `sdata.sclass.json_document:JsonDocument`, `from_dict` findet die Klasse
 darüber (`sdata/base.py:419`).
 
+> **Nachtrag v1.2 (2026-11-06):** Der letzte Satz stimmt nicht. `Base.from_dict`
+> gibt nur den Klassennamen aus `_sdata_class` an `sdata_factory` weiter
+> (`sdata/base.py:416-421`) und erzeugt eine dynamische Unterklasse von `Base`
+> gleichen Namens, ohne `content` und ohne Prüfung; das gilt ebenso für
+> `Blob` und `DataFrame` (Probe 2026-11-06: `Base.from_dict(blob.to_dict())`
+> hat MRO `sdata.base.Blob, Base`). Leser rufen deshalb
+> `JsonDocument.from_dict`; es prüft `_sdata_class` und lehnt fremde Klassen
+> ab. Die Auflösung der echten Klasse in `Base.from_dict` ist ein eigener RFC.
+
 Fachregister dürfen den Typteil der SUUID durch ihren Datentyp ersetzen (so
 dp2g-format: `Report__…`). Sie müssen dann im Register festhalten, dass dieser
 Typ `JsonDocument` nutzt; der Leser erkennt JSON dann über den Typ.
@@ -148,6 +157,15 @@ dauerhaft ablegt (z. B. im Vault).
    ein JSON-Schema ist nicht vorgesehen.
 
 ## Revisionen
+
+### v1.2 — 2026-11-06 — nach Umsetzung und Review
+
+- **§2.2:** „`from_dict` findet die Klasse darüber“ trifft nicht zu (Nachtrag
+  dort, Beleg `sdata/base.py:416-421`). Leser nutzen `JsonDocument.from_dict`.
+- Umsetzung auf `feat/json-document` (25ca08d, e010f5d): Tupel werden
+  abgelehnt (json.dumps machte sie still zu Listen), Prüfung iterativ ohne
+  Rekursionsgrenze, `content_bytes` prüft erneut. §5 Punkt 1 (Größengrenze)
+  bleibt offen.
 
 ### v1.1 — 2026-11-06 — vorhandene JSON-Bausteine
 
