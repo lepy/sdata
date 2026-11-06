@@ -19,6 +19,9 @@ All notable changes to **sdata** are documented here. The format is based on
   `.table`) with `doe_id` as a regular column instead of the index, so it survives
   serialization; the parameter ranges stay in `.metadata`. `uid` accepts a `SUUID` or a UUID
   hex string; without it the SUUID is derived from class and name.
+- Packaging: license metadata uses the PEP 639 SPDX form (`license = "MIT"`,
+  `License-Expression` in the wheel); the license files of the vendored `sdata/contrib`
+  packages are now shipped in the wheel. Building requires `setuptools>=77`.
 
 ### Added
 
