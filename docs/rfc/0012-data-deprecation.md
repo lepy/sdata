@@ -74,7 +74,7 @@ auf.
 | Default-Export | `Data` erste Position in `__all__`, in `SDATACLS` | `__init__.py:123/130` |
 | `Pud` | `class Pud(Data)`, `Data.__init__` | `pud.py:12/41` (nicht in `omit`) |
 | `hdf.py` | `from sdata import Data` | `hdf.py:10` (in `omit`) |
-| `experiments` | `TestProgram(Data)`/`Workbook(Data)`/`Image(Data)` | `experiments/__init__.py:20`, `workbook.py:19`, `image_old.py:24` (in `omit`) |
+| `experiments` | `TestProgram(Data)`/`Workbook(Data)`/~~`Image(Data)`~~ | `experiments/__init__.py:20`, `workbook.py:19` (in `omit`); `image_old.py` am 2026-11-06 entfernt |
 | Größe | 1492 Zeilen Alt-Code | `deprecated/data.py` |
 
 ## 5. Migrationstabelle (Data → sclass)
