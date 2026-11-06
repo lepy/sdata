@@ -101,6 +101,7 @@ nav:
       - "0015 — Frictionless Data Package interop": rfc/0015-frictionless-data-package.md
       - "0016 — Formelzeichen als Attributfeld symbol": rfc/0016-attribute-symbol.md
       - "0017 — Elektrische Größen (Achsen I und N)": rfc/0017-elektrische-groessen.md
+      - "0019 — Einheitliche Fehlerbilder beim Blob-Zugriff": rfc/0019-blob-fehlerbilder.md
       - "Open points (backlog)": rfc/open-points.md
   - Releasing: releasing.md
   - Changelog: changelog.md
