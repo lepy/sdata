@@ -1,4 +1,5 @@
 import base64
+import errno as _errno
 import logging
 import hashlib
 import os
@@ -17,6 +18,44 @@ try:
 except ImportError:  # pragma: no cover - optionales Backend (sdata[blob])
     logger.warning('fsspec not installed')
     fsspec = None
+
+
+class ContentUnavailableError(ValueError):
+    """Der Inhalt eines Blob konnte nicht gelesen oder geprüft werden (RFC 0019).
+
+    Unterklasse von ``ValueError``, damit ältere ``except ValueError`` um
+    :attr:`Blob.content_bytes` weiter greifen. ``uri`` nennt die Quelle,
+    ``__cause__`` den ursprünglichen Fehler des Backends.
+    """
+
+    uri = None  # Quelle; von _unavailable gesetzt
+
+
+class ContentNotFoundError(FileNotFoundError, ContentUnavailableError):
+    """Die Quelle existiert nicht (zugleich ``FileNotFoundError``)."""
+
+
+class ContentPermissionError(PermissionError, ContentUnavailableError):
+    """Keine Berechtigung für die Quelle (zugleich ``PermissionError``)."""
+
+
+def _unavailable(uri: str, exc: BaseException) -> ContentUnavailableError:
+    """Übersetzt einen Backend-Fehler; der Aufrufer schreibt ``raise … from exc``.
+
+    Der OS-Fehlertyp steht in der Basisliste vorne, damit ``errno`` und
+    ``filename`` gesetzt werden; ``uri`` wird nachträglich gesetzt, weil
+    ``OSError.__new__`` keine Schlüsselwort-Argumente annimmt.
+    """
+    msg = f"Failed to access URI '{uri}': {exc}"
+    code = getattr(exc, "errno", None)
+    if isinstance(exc, FileNotFoundError):
+        err = ContentNotFoundError(code or _errno.ENOENT, msg, uri)
+    elif isinstance(exc, PermissionError):
+        err = ContentPermissionError(code or _errno.EACCES, msg, uri)
+    else:
+        err = ContentUnavailableError(msg)
+    err.uri = uri
+    return err
 
 class Blob(ContentIntegrityMixin, Base):
     """
@@ -221,8 +260,12 @@ class Blob(ContentIntegrityMixin, Base):
         Caches the result for subsequent accesses.
 
         :return: The content as bytes.
-        :raises ValueError: If loading fails or no value set.
-        :raises Exception: If fsspec encounters an error (e.g., invalid URI, missing dependencies like s3fs for S3).
+        :raises ContentNotFoundError: the URI does not exist (also ``FileNotFoundError``).
+        :raises ContentPermissionError: no permission (also ``PermissionError``).
+        :raises ContentUnavailableError: any other backend error, e.g. a directory,
+          a missing backend such as s3fs or an unknown protocol (RFC 0019).
+        :raises ValueError: no content/value set or unknown content_type.
+        :raises ImportError: fsspec is not installed.
         """
         if getattr(self, '_content_cache', None) is not None:
             return self._content_cache
@@ -245,7 +288,7 @@ class Blob(ContentIntegrityMixin, Base):
                 with fsspec.open(val, 'rb') as f:
                     loaded_bytes = f.read()
             except Exception as e:
-                raise ValueError(f"Failed to load from URI '{val}': {str(e)}")
+                raise _unavailable(val, e) from e
         else:
             raise ValueError(f"Unknown content_type: {ctype}")
 
@@ -264,7 +307,15 @@ class Blob(ContentIntegrityMixin, Base):
     def exists(self) -> bool:
         """
         Test whether the blob content exists.
-        For 'uri', checks if the path/URI is accessible via fsspec; for 'bytes', always True if value set.
+
+        For 'uri', asks the fsspec backend whether the path exists — an existing
+        but unreadable path (permissions, directory) counts as existing. For
+        'bytes', True if a value is set. False also without content or for an
+        unknown content_type.
+
+        :raises ContentUnavailableError: the existence cannot be checked, e.g.
+          missing backend such as s3fs or unknown protocol (RFC 0019).
+        :raises ImportError: fsspec is not installed.
         """
         content = self.data.get('content')
         if content is None:
@@ -279,14 +330,12 @@ class Blob(ContentIntegrityMixin, Base):
             return True  # In-memory, assumes exists if set
         elif ctype == 'uri':
             if fsspec is None:
-                logger.warning('fsspec not installed')
-                return False
+                raise ImportError("fsspec is required for URI exists() (pip install sdata[blob]).")
             try:
                 fs, _, paths = fsspec.core.get_fs_token_paths(val)
-                return fs.exists(paths[0])
+                return bool(fs.exists(paths[0]))
             except Exception as e:
-                logger.warning(f"Failed to check existence for URI '{val}': {str(e)}")
-                return False
+                raise _unavailable(val, e) from e
         else:
             return False
 
@@ -309,11 +358,13 @@ class Blob(ContentIntegrityMixin, Base):
     def open(self, mode: str = "rb"):
         """Return a file-like handle to the content; use as a context manager.
 
-        For ``uri`` content a **streaming** fsspec handle is returned (no full
-        in-memory load); for ``bytes`` content an :class:`io.BytesIO` over the
-        decoded bytes.
+        For ``uri`` content the source is opened **immediately** and a
+        streaming file object is returned (no full in-memory load); errors
+        surface at the call, translated like :attr:`content_bytes` (RFC 0019).
+        For ``bytes`` content an :class:`io.BytesIO` over the decoded bytes.
 
         :param mode: open mode (default ``"rb"``).
+        :raises ContentUnavailableError: (or its subclasses) the URI cannot be opened.
         :raises ValueError: if no content/value is set or the content_type is unknown.
         :raises ImportError: if fsspec is required (uri) but not installed.
         """
@@ -324,7 +375,11 @@ class Blob(ContentIntegrityMixin, Base):
         if ctype == 'uri':
             if fsspec is None:
                 raise ImportError("fsspec is required for uri open() (pip install sdata[blob]).")
-            return fsspec.open(content['value'], mode)
+            uri = content['value']
+            try:
+                return fsspec.open(uri, mode).open()
+            except Exception as e:
+                raise _unavailable(uri, e) from e
         elif ctype == 'bytes':
             return io.BytesIO(self.content_bytes)
         else:
