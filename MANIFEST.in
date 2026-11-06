@@ -1,4 +1,2 @@
 include LICENSE-MIT
 include README.md
-
-include sdata/contrib/sortedcontainers/LICENSE

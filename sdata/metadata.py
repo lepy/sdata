@@ -14,7 +14,41 @@ import os
 import hashlib
 import re
 import copy
-from sdata.contrib.sortedcontainers.sorteddict import SortedDict
+
+
+class SortedDict(dict):
+    """``dict``, das in Schlüssel-Reihenfolge iteriert.
+
+    Ersetzt das früher vendorte ``sortedcontainers.SortedDict``; sdata braucht
+    davon nur die sortierte Iteration. Sortiert wird bei jedem Durchlauf —
+    für Metadaten-Größen (wenige hundert Attribute) unerheblich.
+    """
+
+    __slots__ = ()
+
+    def __iter__(self):
+        return iter(sorted(dict.keys(self)))
+
+    def __reversed__(self):
+        return iter(sorted(dict.keys(self), reverse=True))
+
+    def keys(self):
+        return list(self)
+
+    def values(self):
+        return [self[k] for k in self]
+
+    def items(self):
+        return [(k, self[k]) for k in self]
+
+    def copy(self):
+        return type(self)(self)
+
+    __copy__ = copy
+
+    def __repr__(self):
+        return f"{type(self).__name__}({dict(self.items())!r})"
+
 
 def extract_name_unit(value):
     """extract name and unit from a combined string
