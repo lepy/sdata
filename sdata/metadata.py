@@ -391,11 +391,19 @@ class Metadata(object):
             attr = name # name is the Attribute!
         else:
             attr = self.get_attr(prefix + name) or Attribute(name, value, **kwargs)
-        for key in ["unit", "dtype", "description", "label", "required", "ontology", "symbol"]:
-            if key in kwargs:
-                setattr(attr, key, kwargs.get(key))
-        if value is not None:
-            attr.value = value
+        # ``strict`` gilt für diesen Aufruf auch bei einem vorhandenen Attribut
+        # (sonst würde es dort still ignoriert); danach gilt wieder dessen Modus.
+        saved_strict = attr._strict
+        if "strict" in kwargs:
+            attr._strict = bool(kwargs["strict"])
+        try:
+            for key in ["unit", "dtype", "description", "label", "required", "ontology", "symbol"]:
+                if key in kwargs:
+                    setattr(attr, key, kwargs.get(key))
+            if value is not None:
+                attr.value = value
+        finally:
+            attr._strict = saved_strict
         self._attributes[prefix + attr.name] = attr
 
     def get_attr(self, name: str) -> Optional["Attribute"]:

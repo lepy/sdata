@@ -6,6 +6,14 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **`strict=True` is honoured when updating an existing attribute.** `Metadata.add` /
+  `set_attr` ignored `strict` if the attribute already existed, so an invalid value
+  was only logged and dropped instead of raising `DtypeError`. `strict` now applies to
+  that call; afterwards the attribute keeps its own mode (an attribute created with
+  `strict=True` can be updated leniently with an explicit `strict=False`).
+
 ## [1.6.2] - 2026-11-07
 
 ### Fixed
