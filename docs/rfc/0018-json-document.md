@@ -4,6 +4,7 @@
 |-------------|------------------------------------------------------------------------------------------|
 | Status      | Angenommen (Nutzer 2026-11-06: „dp2g-Report soll auf sdata-json aufbauen“) |
 | Datum       | 2026-11-06                                                                                |
+| Fassung     | v1.1 (siehe Revisionen)                                                                   |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
 | Komponente  | neu `sdata/sclass/json_document.py`, Registry `sdata/sclass/__init__.py`, Tests `tests/test_sclass_json_document.py` |
 | Betrifft    | Ablage strukturierter JSON-Dokumente (z. B. Report-Boards) als sdata-Container             |
@@ -29,6 +30,24 @@ heute nur als `Blob` ablegen. Gemessen auf `origin/master` (df8a400):
 
 `DataFrame` und `DataFrameGroup` passen nicht: ein verschachtelter Baum hat keine
 Spalten.
+
+> **Nachtrag v1.1 (2026-11-06):** v1.0 ging davon aus, sdata habe nichts für
+> JSON außer `Blob`. Das stimmt so nicht; vorhanden sind zwei Bausteine:
+>
+> - **dtype `json`** für Metadatenattribute (`sdata/dtypes.py:413`,
+>   `DtypeSpec("json", dict, …)`): ein Attribut kann ein dict tragen. Das ist
+>   ein Attributwert, kein Dokument; Prüfsumme, Inhaltskennung und
+>   Größenbetrachtung gelten dafür nicht, und ein Board von 245 KB als ein
+>   Attribut neben `_sdata_sname` passt nicht zu den Metadaten.
+> - **`Base.data`** ist ein freies dict und läuft durch `to_dict`/`from_dict`
+>   (`sdata/base.py:387-397`; Probe 2026-11-06: ein verschachteltes dict
+>   kommt unverändert zurück). Ein `Base` mit dem Board in `data` wäre
+>   ablegbar. Es fehlen aber die kanonische Hash-Basis, die Prüfung auf
+>   JSON-Werte, und `_sdata_class` lautet `sdata.base:Base`, die Kennung
+>   `Base__…` – ein Leser erkennt daran nicht, dass ein JSON-Dokument folgt.
+>
+> `JsonDocument` ist deshalb eine dünne Spezialisierung von `Base`: Inhalt in
+> `data['content']`, kanonische `content_bytes`, Prüfung, eigener Klassenname.
 
 ## 2. Vorschlag
 
@@ -58,6 +77,17 @@ class JsonDocument(ContentIntegrityMixin, Base):
 - `json_format`: optionaler Bezeichner des Inhaltsformats, z. B.
   `scale-board/1`. sdata deutet ihn nicht; er sagt dem Leser, welches Schema
   der Inhalt erfüllt.
+
+### 2.1a Metadaten (v1.1)
+
+`JsonDocument` erbt die vollständigen sdata-Metadaten von `Base`: die
+reservierten Attribute (`_sdata_sname`, `_sdata_suuid`, `_sdata_class`,
+`_sdata_ctime`, `_sdata_format_version`, `_sdata_name`, …) und beliebige
+eigene Attribute mit `dtype`, `unit`, `label`, `description`, `ontology`,
+`symbol` (`Metadata.add`). Fachliche Attribute eines Dokuments – bei dp2g
+`Report` etwa `report_id`, `subject`, `revision`, `board_format`,
+`derived_from` – stehen dort als gewöhnliche sdata-Attribute, nicht im
+JSON-Inhalt. `json_format` ist eines davon.
 
 ### 2.2 Erkennbar an der Kennung
 
@@ -102,6 +132,10 @@ dauerhaft ablegt (z. B. im Vault).
   Namen.
 - **Mehrere Klassen (`json-raw`, `json-zip`, …):** vermischt Kodierung des
   Containers mit der Bedeutung des Inhalts; die Verdichtung leistet `to_zip`.
+- **`Base` direkt, Inhalt in `data` (v1.1):** ohne neue Klasse ablegbar, aber
+  ohne Hash-Basis und Prüfung, Kennung `Base__…` (§1, Nachtrag).
+- **Metadatenattribut mit dtype `json` (v1.1):** für kleine Werte gedacht;
+  das Dokument wäre ein Attribut neben den Kennungsattributen.
 - **Inhalt als String statt als JSON-Wert:** lesbar, aber jeder Leser muss
   doppelt parsen und Diffs zeigen eine einzige Zeile.
 
@@ -112,3 +146,13 @@ dauerhaft ablegt (z. B. im Vault).
    Obergrenze), bei der Umsetzung entscheiden.
 2. **Schema-Prüfung.** `json_format` ist nur ein Bezeichner; eine Prüfung gegen
    ein JSON-Schema ist nicht vorgesehen.
+
+## Revisionen
+
+### v1.1 — 2026-11-06 — vorhandene JSON-Bausteine
+
+- **§1:** v1.0 nannte nur `Blob`. sdata hat den dtype `json` für Attribute
+  (`sdata/dtypes.py:413`) und das freie `Base.data` (`sdata/base.py:387-397`).
+  Nachtrag in §1, zwei Alternativen in §4; die Entscheidung bleibt.
+- **§2.1a neu:** `JsonDocument` trägt die vollständigen sdata-Metadaten;
+  fachliche Attribute stehen dort, nicht im Inhalt.
