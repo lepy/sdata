@@ -81,16 +81,18 @@ def test_uri_fsspec_none(monkeypatch, tmp_path):
     monkeypatch.setattr(blobmod, "fsspec", None)
     with pytest.raises(ImportError):
         _ = b.content_bytes
-    assert b.exists() is False
+    with pytest.raises(ImportError):                # RFC 0019: nicht mehr False
+        b.exists()
 
 
 def test_uri_bad_value_raises_and_exists_exception():
     b = Blob(content_type="uri", value="://broken", name="u")
     with pytest.raises(ValueError):
         _ = b.content_bytes
-    # unbekanntes Protokoll -> get_fs_token_paths wirft -> except-Zweig in exists()
+    # unbekanntes Protokoll -> exists() kann nicht prüfen -> wirft (RFC 0019)
     b2 = Blob(content_type="uri", value="weirdproto://x", name="u2")
-    assert b2.exists() is False
+    with pytest.raises(blobmod.ContentUnavailableError):
+        b2.exists()
 
 
 def test_sha1_md5_none_on_error():

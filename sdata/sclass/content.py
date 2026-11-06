@@ -30,6 +30,12 @@ class ContentIntegrityMixin:
                 break
             hash_obj.update(data)
 
+    def _content_hexdigest_strict(self, algo) -> str:
+        """Hex-Digest des Inhalts; Fehler aus ``content_bytes`` werden durchgereicht (RFC 0019)."""
+        hash_obj = algo()
+        self._update_hash(hash_obj)
+        return hash_obj.hexdigest()
+
     def _content_hexdigest(self, algo) -> Optional[str]:
         """Hex-Digest des Inhalts mit ``algo`` (z. B. ``hashlib.sha256``); ``None`` bei Fehler."""
         try:
@@ -64,12 +70,15 @@ class ContentIntegrityMixin:
             logger.error(f"Failed to determine size: {exp}")
             return None
 
-    def update_checksum(self) -> Optional[str]:
+    def update_checksum(self) -> str:
         """Store the SHA-256 of the content in the ``checksum`` metadata (``schema:sha256``).
 
-        :return: the stored SHA-256 hex digest (``None`` if the content is unavailable).
+        :return: the stored SHA-256 hex digest.
+        :raises Exception: whatever reading the content raises (e.g.
+          :class:`~sdata.sclass.blob.ContentUnavailableError`); the stored
+          checksum is then left unchanged (RFC 0019).
         """
-        digest = self.sha256
+        digest = self._content_hexdigest_strict(hashlib.sha256)
         self.metadata.set_attr("checksum", digest)
         return digest
 
@@ -77,11 +86,15 @@ class ContentIntegrityMixin:
         """Verify the content against the stored ``checksum`` (SHA-256) metadata.
 
         :return: ``True`` iff a checksum is stored and matches the current content;
-          ``False`` on mismatch or when no checksum has been stored yet.
+          ``False`` on mismatch or when no checksum has been stored yet (the
+          content is then not read).
+        :raises Exception: whatever reading the content raises (e.g.
+          :class:`~sdata.sclass.blob.ContentUnavailableError`) — an unreadable
+          content is not reported as a mismatch (RFC 0019).
         """
         attr = self.metadata.get("checksum")
         stored = attr.value if attr is not None else None
         if not stored:
             logger.warning("verify: no checksum stored (call update_checksum first)")
             return False
-        return stored == self.sha256
+        return stored == self._content_hexdigest_strict(hashlib.sha256)

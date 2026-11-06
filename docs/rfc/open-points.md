@@ -53,7 +53,9 @@ Arbeitsrunde.
   `io.BytesIO`/`driver="core"` in-memory — machbar geworden).
 * **RFC 0005 — weitere Bild-Träger.** BigTIFF (8-Byte-Offsets), JPEG Multi-Segment-
   `APP1` >64 KiB, PNG `zTXt`, WebP `VP8X+XMP`. Erweiterung der Handler-Registry.
-* **RFC 0003 — fsspec-Fehlerbilder vereinheitlichen** (`content_bytes`/`exists()`).
+* ~~**RFC 0003 — fsspec-Fehlerbilder vereinheitlichen**~~ — erledigt durch
+  RFC 0019 (2026-11-06). Folgepunkte dort in §5: `size`/Hash-Properties,
+  Cache und `verify()`.
 
 ## Offen — Semantik / Einheiten
 
