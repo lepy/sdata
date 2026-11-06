@@ -8,8 +8,10 @@ dynamic = ["version"]                 # Single Source: sdata/__init__.py:__versi
 description = "a structured data format"
 readme = "README.md"
 license = "MIT"                       # SPDX (PEP 639); RFC 0008 A7 / RFC 0013
-# Eigene Lizenz plus die Lizenzen der vendored contrib-Pakete im Wheel/sdist.
-license-files = ["LICENSE-MIT", "sdata/contrib/*/LICENSE*"]
+# Nur die eigene Lizenz: das einzige vendored Modul (sdata/contrib/sobol_seq.py,
+# MIT) trägt seinen Lizenztext im Dateikopf. Kein Muster ohne Treffer — setuptools
+# warnt sonst und lehnt solche Builds ab 2027-02-18 ab.
+license-files = ["LICENSE-MIT"]
 requires-python = ">=3.9"
 authors = [{ name = "Ingolf Lepenies", email = "lepy@tuta.io" }]
 maintainers = [{ name = "Ingolf Lepenies", email = "lepy@tuta.io" }]
