@@ -1,7 +1,6 @@
 import sys
 import os
 import uuid
-import six
 
 modulepath = os.path.dirname(__file__)
 
@@ -78,7 +77,7 @@ fixed_uuid = _fixed_uuid()
 
 def get_dummy_table(dim=(10, 3)):
     df = pd.DataFrame(np.random.random((10, 3)), columns=["a", "b", "c"])
-    table = sdata.Data(uuid=six.next(fixed_uuid))
+    table = sdata.Data(uuid=next(fixed_uuid))
     table.data = df
     table.metadata.set_attr(name="a", value="Column a", description="bar")
     table.metadata.set_attr(name="b", value="Column a", description="bar", unit="kN")
