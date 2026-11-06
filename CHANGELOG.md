@@ -39,6 +39,15 @@ All notable changes to **sdata** are documented here. The format is based on
   (`"[0.8 , 1.8]"`) and the form stored in metadata are unchanged. Code that used other
   parts of `ranger` (`RangeSet`, `RangeMap`, open/half-open ranges) must switch to the PyPI
   package `python-ranger`.
+- The vendored `sdata.contrib.sqlitedict` (Apache-2.0) is removed. The deprecated
+  `Data.to_sqlite`/`Data.from_sqlite` now use the standard library `sqlite3` and keep the
+  file format (table `unnamed`, pickled values), so files written by older sdata versions
+  stay readable and vice versa. `from_sqlite` raises `FileNotFoundError` for a missing file
+  instead of creating an empty database. Only open trusted files: values are unpickled, as
+  before.
+- With the contrib clean-up, all code shipped in sdata is MIT-licensed (own code, the
+  vendored `sobol_seq` and the embedded iso8601 parser in `sdata.timestamp`), so the
+  license expression `MIT` covers the whole package.
 
 ### Added
 

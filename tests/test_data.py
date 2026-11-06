@@ -164,17 +164,40 @@ def test_asciiname():
 
     assert sdata.Data(name="ö-ü-ä-Ö-Ü-Ä-?- -\\-/").asciiname == 'oe-ue-ae-Oe-Ue-Ae-?-_-_-_'
 
-def test_to_sqlite():
-    pytest.importorskip("sqlalchemy")  # to_sqlite nutzt pandas.to_sql -> SQLAlchemy (sdata[sql])
+def test_to_sqlite(tmp_path):
+    pytest.importorskip("pyarrow")  # Werte werden als Parquet-Bytes abgelegt
     df = pd.DataFrame({'a': ['x', 'y', '', 'z'], 'b': [1, 2, 2, 3.2]})
     data = sdata.Data(name="data", uuid="48b26864e7794f5182d38459bab8584d", table=df, description="abc")
-    sq = data.to_sqlite("/tmp/sq.sqlite")
-    # data2 = sdata.Data.from_json(s=js)
-    # print(data.name, data2.name)
-    # assert data.name==data2.name
-    # assert data.uuid==data2.uuid
-    # assert data.description==data2.description
-    # assert data.sha3_256==data2.sha3_256
+    path = str(tmp_path / "sq.sqlite")
+    data.to_sqlite(path)
+    data2 = sdata.Data.from_sqlite(path)
+    assert data2.name == data.name
+    assert data2.uuid == data.uuid
+    assert data2.description == data.description
+    assert data2.df.equals(data.df)
+
+
+def test_sqlite_file_format_is_sqlitedict_compatible(tmp_path):
+    """Dateiformat des früheren vendored sqlitedict: Tabelle "unnamed", Werte gepickelt."""
+    import pickle
+    import sqlite3
+    pytest.importorskip("pyarrow")
+    df = pd.DataFrame({'b': [1.0, 2.5]})
+    data = sdata.Data(name="data", uuid="48b26864e7794f5182d38459bab8584d", table=df, description="abc")
+    path = str(tmp_path / "sq.sqlite")
+    data.to_sqlite(path)
+    con = sqlite3.connect(path)
+    schema = con.execute("SELECT sql FROM sqlite_master WHERE name='unnamed'").fetchone()[0]
+    rows = dict(con.execute('SELECT key, value FROM "unnamed"').fetchall())
+    con.close()
+    assert schema == 'CREATE TABLE "unnamed" (key TEXT PRIMARY KEY, value BLOB)'
+    assert set(rows) == {"metadata", "table", "description"}
+    assert isinstance(pickle.loads(rows["table"]), bytes)
+
+
+def test_from_sqlite_missing_file(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        sdata.Data.from_sqlite(str(tmp_path / "missing.sqlite"))
 
 if __name__ == '__main__':
     test_data()
