@@ -197,3 +197,6 @@ Hilfsklasse, die Container **optional** einbinden, ohne die Basisklasse zu wechs
 * **`image.py`** ist experimentell/omit — Umbau erst nach Stabilisierung.
 * **fsspec-Fehlerbilder** (`content_bytes` wrappt in `ValueError`, `exists()` separat)
   bei der Streaming-API vereinheitlichen.
+  *(Nachtrag 2026-11-06: entschieden und umgesetzt in RFC 0019 —
+  `ContentUnavailableError` mit `ContentNotFoundError`/`ContentPermissionError`,
+  einheitlich in `content_bytes`, `open`, `exists`, `update_checksum`, `verify`.)*

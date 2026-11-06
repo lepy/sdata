@@ -8,6 +8,21 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Changed
 
+- **Breaking: uniform errors when accessing blob content (RFC 0019).** `Blob` (and
+  `FileReference`, `Image`) raise `sdata.sclass.blob.ContentUnavailableError` when URI
+  content cannot be read or checked; `ContentNotFoundError` and `ContentPermissionError`
+  are also `FileNotFoundError` and `PermissionError`, and all three are `ValueError`, so
+  `except ValueError` around `content_bytes` keeps working. The backend error is in
+  `__cause__`. Behaviour changes:
+  - `exists()` returns `False` only when the path is missing (or no content is set); if it
+    cannot check — missing backend such as s3fs, unknown protocol, fsspec not installed —
+    it raises instead of returning `False`.
+  - `verify()` and `update_checksum()` let read errors through instead of returning
+    `False` (indistinguishable from a checksum mismatch) or `None`; this also applies to
+    `DataFrame`. A stored checksum is left unchanged.
+  - `open()` opens a URI immediately; errors surface at the call, not when entering the
+    `with` block.
+
 - **Breaking: `dimension_of` returns seven values instead of five (RFC 0017).** The
   dimension vector gains two axes at the end, electric current `I` and amount of
   substance `N`: `(L, M, T, Theta, A, I, N)`. Indices 0-4 keep their meaning; code that
