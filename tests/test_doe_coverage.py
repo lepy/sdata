@@ -45,4 +45,7 @@ def test_to_data():
     data = doe.to_data("mydoe", df, uid=None)
     assert data.name == "mydoe"
     assert data.df.shape[0] == 4
+    # doe_id ist Spalte (nicht Index), damit sie die Serialisierung überlebt
+    assert list(data.df["doe_id"]) == [1, 2, 3, 4]
+    assert list(df.index) == [1, 2, 3, 4]  # Eingabe bleibt unverändert
     assert "sheet_thickness" in data.metadata.keys()
