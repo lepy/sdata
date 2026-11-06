@@ -59,3 +59,26 @@ def test_to_dict_roundtrip_keeps_column_value():
     back = DataFrame.from_dict(sdf.to_dict())
     assert back.get_column("F").value == "float64"
     assert back.get_column("F").unit == "kN"
+
+
+def test_legacy_column_metadata_object_with_declared_dtype(caplog):
+    """Wie oben, aber column_metadata als Metadata-Objekt (nicht als dict).
+
+    Der dict-Weg normalisiert dtype schon im Konstruktor; beim Metadata-Objekt
+    korrigiert erst der Abgleich mit den df-Spalten den Alt-dtype auf ``str``.
+    """
+    from sdata.metadata import Metadata
+
+    legacy = Metadata(name="column_metadata")
+    legacy.add("F", None, dtype="float", unit="N", label="Kraft")
+    assert legacy.get("F").dtype == "float"
+
+    with caplog.at_level(logging.WARNING):
+        sdf = DataFrame(pd.DataFrame({"F": [1.0, 2.0]}), column_metadata=legacy, name="t")
+    col = sdf.get_column("F")
+    assert col.dtype == "str"
+    assert col.value == "float64"
+    assert (col.unit, col.label) == ("N", "Kraft")
+    assert not [r for r in caplog.records if r.levelno >= logging.ERROR]
+    # Das übergebene Objekt bleibt unverändert (Konstruktor kopiert)
+    assert legacy.get("F").dtype == "float"
