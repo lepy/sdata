@@ -83,6 +83,14 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Fixed
 
+- `from_dict` on a `Base` subclass now returns that class. Before, `Base.from_dict` built a
+  new class of the same name that only inherited from `Base`, so e.g. `Blob.from_dict(...)`
+  had no `content_bytes`/`verify`. Affected were `Blob`, `FileReference`, `FileReferences`,
+  `Image`, `ZipFile` and the process classes (`ProcessData`, `ProcessNode`, …); `DataFrame`,
+  `DataFrameGroup` and the LCA classes have their own `from_dict` and were fine. A stored
+  subclass is honoured (`Blob.from_dict` on a `FileReference` dict gives a `FileReference`).
+  Generic loading via `Base.from_dict` is unchanged.
+
 - **Checksum over list cells survives a Parquet round trip.** Parquet returns list
   cells as `numpy.ndarray`, whose CSV text (`['a' 'b']`) differed from the list
   (`['a', 'b']`), so `verify()` failed after `to_parquet`/`from_parquet_bytes`.

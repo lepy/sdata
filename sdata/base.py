@@ -404,6 +404,26 @@ class Base:
             return spec
 
     @classmethod
+    def _class_for_spec(cls, class_spec: str) -> Optional[Type['Base']]:
+        """Konkrete Klasse für ``from_dict`` (``None`` = dynamische Klasse wie bisher).
+
+        Auf ``Base`` selbst aufgerufen bleibt das generische Verhalten. Auf einer
+        Unterklasse: die gespeicherte Klasse, wenn sie ``cls`` oder eine bereits
+        geladene Unterklasse davon ist (Abgleich über ``modul:Name``), sonst
+        ``cls``. Es wird nichts aus den Daten heraus importiert.
+        """
+        if cls is Base:
+            return None
+        module, _, name = class_spec.rpartition(":")
+        stack = [cls]
+        while stack:
+            k = stack.pop()
+            if k.__name__ == name and (not module or k.__module__ == module):
+                return k
+            stack.extend(k.__subclasses__())
+        return cls
+
+    @classmethod
     def from_dict(cls, d: Dict[str, Any], *, strict: bool = False) -> 'Base':
         """
         Create an instance from a dictionary.
@@ -417,7 +437,11 @@ class Base:
         metadata = Metadata.from_dict(d.get("metadata", {}))
         class_spec = metadata.get(cls.SDATA_CLASS).value or "sdata.base:Base"
         class_name = cls.classname_from_classspec(class_spec)
-        b = sdata_factory(class_name)
+        target = cls._class_for_spec(class_spec)
+        if target is None:
+            b = sdata_factory(class_name)
+        else:
+            b = target(name=metadata.get(cls.SDATA_NAME).value or class_name)
         b.metadata = metadata
         b.data = d.get("data", {})
         b.description = d.get("description", "")
