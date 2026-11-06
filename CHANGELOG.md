@@ -34,6 +34,11 @@ All notable changes to **sdata** are documented here. The format is based on
   imported nowhere) is removed together with its only dependency, the vendored
   `sdata.contrib.piexif`. Use `sdata.sclass.image.Image` (RFC 0003) instead; for EXIF access
   outside sdata use the PyPI package `piexif`.
+- The vendored `sdata.contrib.ranger` (BSD) is removed. `sdata.doe` now has its own small
+  `Range` (closed interval with `closed`, `min`, `max`, `length`); value, `str`/`repr`
+  (`"[0.8 , 1.8]"`) and the form stored in metadata are unchanged. Code that used other
+  parts of `ranger` (`RangeSet`, `RangeMap`, open/half-open ranges) must switch to the PyPI
+  package `python-ranger`.
 
 ### Added
 

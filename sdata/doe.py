@@ -3,11 +3,48 @@
 
 import collections
 import sdata
-from sdata.contrib.ranger import Range
 import sdata.contrib.sobol_seq
 from sdata.contrib.sobol_seq import Sobol
 import pandas as pd
 from sdata.sclass.dataframe import DataFrame
+
+
+class Range:
+    """Geschlossenes Intervall ``[min, max]`` eines DoE-Parameters.
+
+    Ersetzt das früher vendorte ``ranger.Range`` (BSD); sdata nutzt davon nur
+    :meth:`closed`, :attr:`min`, :attr:`max`, :attr:`length` und die Textform
+    ``"[min , max]"``, die so auch in den Metadaten landet.
+    """
+
+    __slots__ = ("min", "max")
+
+    def __init__(self, lower, upper):
+        if lower > upper:
+            raise ValueError("Lower bound cannot be greater than upper bound")
+        self.min = lower
+        self.max = upper
+
+    @classmethod
+    def closed(cls, lower, upper):
+        return cls(lower, upper)
+
+    @property
+    def length(self):
+        return self.max - self.min
+
+    def __eq__(self, other):
+        if not isinstance(other, Range):
+            return NotImplemented
+        return (self.min, self.max) == (other.min, other.max)
+
+    def __hash__(self):
+        return hash((self.min, self.max))
+
+    def __repr__(self):
+        return f"[{self.min!r} , {self.max!r}]"
+
+    __str__ = __repr__
 
 
 class DOE():
