@@ -30,6 +30,10 @@ All notable changes to **sdata** are documented here. The format is based on
   PyPI package `sortedcontainers`.
 - The vendored `sdata.contrib.timeflake` and its self-test are removed; nothing in sdata
   used it (RFC 0013 §4.3: no importers). Use the PyPI package `timeflake` instead.
+- `sdata.experiments.image_old` (an experimental `Image(Data)` on the deprecated `sdata.Data`,
+  imported nowhere) is removed together with its only dependency, the vendored
+  `sdata.contrib.piexif`. Use `sdata.sclass.image.Image` (RFC 0003) instead; for EXIF access
+  outside sdata use the PyPI package `piexif`.
 
 ### Added
 
