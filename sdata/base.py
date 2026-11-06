@@ -12,6 +12,7 @@ from sdata.format import CURRENT_FORMAT_VERSION, ensure_compatible
 from sdata.sclass import register
 from sdata.suuid import SUUID
 from sdata.metadata import Metadata, Attribute, extract_name_unit
+from sdata.dtypes import json_default
 from sdata.timestamp import now_utc_str, now_local_str, today_str
 import sdata.sclass
 import gzip
@@ -459,12 +460,12 @@ class Base:
         data_dict = self.to_dict()
         if filepath:
             with open(filepath, "w") as fh:
-                json.dump(data_dict, fh, indent=4)
+                json.dump(data_dict, fh, indent=4, default=json_default)
             if sidecar:
                 self.write_sidecar(os.path.dirname(filepath) or ".")
             return None
         else:
-            return json.dumps(data_dict, indent=4)
+            return json.dumps(data_dict, indent=4, default=json_default)
 
     @classmethod
     def from_json(cls, s: str) -> 'Base':

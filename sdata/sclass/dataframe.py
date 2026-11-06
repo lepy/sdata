@@ -647,9 +647,13 @@ class DataFrame(ContentIntegrityMixin, Base):
         _require_parquet(engine)
 
         df = self.df.copy()
-        df.attrs["_sdata"] = {"metadata": self.metadata.to_dict(),
-                              "column_metadata": self.column_metadata.to_dict(),
-                              "description": self.description}
+        # pandas legt df.attrs per json.dumps ohne Encoder ab -> vorab JSON-nativ
+        # machen, sonst gehen timestamp/date/bytes/... still verloren
+        df.attrs["_sdata"] = json.loads(json.dumps(
+            {"metadata": self.metadata.to_dict(),
+             "column_metadata": self.column_metadata.to_dict(),
+             "description": self.description},
+            default=dtypes.json_default))
 
         if filename is None and path is not None:
             filename = self.sname + ".spq"
@@ -860,7 +864,7 @@ class DataFrame(ContentIntegrityMixin, Base):
             "metadata": self.metadata.to_dict(),
             "column_metadata": self.column_metadata.to_dict(),
             "description": self.description,
-        }).encode("utf-8")
+        }, default=dtypes.json_default).encode("utf-8")
         new_schema = pa.schema(fields, metadata=schema_meta)
         return pa.Table.from_arrays(list(table.columns), schema=new_schema)
 
@@ -1056,10 +1060,11 @@ class DataFrame(ContentIntegrityMixin, Base):
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.writestr(data_path, data_bytes)
-            zf.writestr("datapackage.json", json.dumps(descriptor, indent=2))
+            zf.writestr("datapackage.json", json.dumps(descriptor, indent=2, default=dtypes.json_default))
             if sidecar:
                 zf.writestr(f"{self.sname}.meta.jsonld",
-                            json.dumps(self.to_jsonld(), indent=2))
+                            json.dumps(self.to_jsonld(), indent=2,
+                                       default=dtypes.json_default))
         payload = buffer.getvalue()
 
         if filename is None and path is not None:
@@ -1155,7 +1160,7 @@ class DataFrame(ContentIntegrityMixin, Base):
                 "metadata": self.metadata.to_dict(),
                 "column_metadata": self.column_metadata.to_dict(),
                 "description": self.description,
-            })
+            }, default=dtypes.json_default)
             grp.attrs["_columns"] = json.dumps(columns)
             idx = self.df.index
             default_index = (isinstance(idx, pd.RangeIndex)
