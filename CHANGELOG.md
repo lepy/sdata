@@ -6,6 +6,8 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-06
+
 ### Fixed
 
 - **Metadata with non-native dtypes can be serialized again.** An attribute of dtype
@@ -379,7 +381,8 @@ native, format-agnostic metadata embedding for images. Core dependencies remain
   dependencies reduced to `numpy`/`pandas`/`suuid` (stdlib `zoneinfo`); warning-free
   test suite.
 
-[Unreleased]: https://github.com/lepy/sdata/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/lepy/sdata/compare/v1.6.1...HEAD
+[1.6.1]: https://github.com/lepy/sdata/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/lepy/sdata/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/lepy/sdata/releases/tag/v1.5.0
 [1.4.0]: https://github.com/lepy/sdata/compare/v1.2.0...v1.4.0
