@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Tests für JsonDocument (RFC 0018)."""
 import io
+import time
 import json
 import zipfile
 
@@ -191,3 +192,54 @@ def test_list_root():
     back = JsonDocument.from_dict(d.to_dict())
     assert back.content == [1, {"a": None}, "x"]
     assert back.verify()
+
+
+def test_cycles_rejected():
+    d = {}
+    d["x"] = d
+    li = [1]
+    li.append(li)
+    nested = {"a": [{"b": []}]}
+    nested["a"][0]["b"].append(nested)
+    for cyc in (d, li, nested):
+        with pytest.raises(ValueError, match="zyklisch"):
+            JsonDocument(cyc)
+    doc = JsonDocument({})
+    with pytest.raises(ValueError, match="zyklisch"):
+        doc.content = d
+    ok = JsonDocument({"a": 1})
+    ok.content["self"] = ok.content     # Mutation nach dem Setzen
+    with pytest.raises(ValueError, match="zyklisch"):
+        ok.content_bytes
+
+
+def test_shared_subobject_allowed():
+    shared = [1]
+    doc = JsonDocument({"a": shared, "b": shared})
+    assert doc.content_bytes == b'{"a":[1],"b":[1]}'
+
+
+def test_deep_check_is_fast():
+    deep = _nest(100000)
+    start = time.perf_counter()
+    JsonDocument(deep)
+    assert time.perf_counter() - start < 5
+
+
+def test_error_message_short_and_path_truncated():
+    value = float("nan")
+    for _ in range(5000):
+        value = {"k" * 100: value}
+    with pytest.raises(ValueError) as exc:
+        JsonDocument(value)
+    msg = str(exc.value)
+    assert len(msg) < 1000
+    assert "…" in msg and "NaN" in msg
+
+
+def test_error_message_list_index_and_long_key():
+    with pytest.raises(ValueError, match=r"\$\.a\[1\]"):
+        JsonDocument({"a": [0, object()]})
+    with pytest.raises(ValueError) as exc:
+        JsonDocument({"a": {10 ** 60: 1}})
+    assert len(str(exc.value)) < 200

@@ -16,6 +16,31 @@ from sdata.metadata import Metadata
 from sdata.sclass.content import ContentIntegrityMixin
 
 
+_EXIT = object()          # Marke im Stack: Container verlassen (Zyklenerkennung)
+_MAX_SEGMENTS = 10        # Pfad in Fehlermeldungen: höchstens die letzten Segmente
+_MAX_KEY = 40             # Schlüssel in Fehlermeldungen kürzen
+
+
+def _path_of(entry: tuple) -> str:
+    """Baue den Pfad eines Stack-Eintrags erst im Fehlerfall (nur letzte Segmente).
+
+    Ein Eintrag ist ``(wert, eltern_eintrag, schlüssel_oder_index)``; die
+    Elternkette kostet je Knoten O(1) statt eines wachsenden Pfad-Strings.
+    """
+    segments = []
+    while entry is not None and entry[1] is not None:
+        if len(segments) == _MAX_SEGMENTS:
+            return "$…" + "".join(reversed(segments))
+        key = entry[2]
+        if isinstance(key, int):
+            segments.append(f"[{key}]")
+        else:
+            text = key if len(key) <= _MAX_KEY else key[:_MAX_KEY] + "…"
+            segments.append(f".{text}")
+        entry = entry[1]
+    return "$" + "".join(reversed(segments))
+
+
 def _check_json(value: Any) -> None:
     """Prüfe, dass ``value`` ein reiner JSON-Wert ist (iterativ, beliebige Tiefe).
 
@@ -23,30 +48,46 @@ def _check_json(value: Any) -> None:
     ``float`` (endlich), ``bool`` und ``None``. ``json.dumps`` allein genügt nicht:
     es wandelt int-Schlüssel und Tupel still um, sodass der Inhalt nach einer
     Rundreise ein anderer wäre. Die Prüfung nutzt einen expliziten Stack, damit
-    tiefe Strukturen kein ``RecursionError`` auslösen.
+    tiefe Strukturen kein ``RecursionError`` auslösen, und erkennt Zyklen über die
+    ``id()`` der Container auf dem aktuellen Ast (geteilte, nicht-zyklische
+    Teilobjekte bleiben erlaubt).
 
     :param value: der zu prüfende Wert.
-    :raises ValueError: bei NaN/Infinity, Nicht-String-Schlüsseln oder Nicht-JSON-Typen.
+    :raises ValueError: bei NaN/Infinity, Nicht-String-Schlüsseln, Zyklen oder
+      Nicht-JSON-Typen.
     """
-    stack = [(value, "$")]
+    stack = [(value, None, None)]
+    active = set()
     while stack:
-        item, path = stack.pop()
+        entry = stack.pop()
+        item = entry[0]
+        if item is _EXIT:
+            active.discard(entry[1])
+            continue
         if item is None or isinstance(item, (str, bool, int)):
             continue
         if isinstance(item, float):
             if not math.isfinite(item):
-                raise ValueError(f"JsonDocument: {path}: NaN/Infinity ist kein JSON-Wert")
-        elif isinstance(item, list):
-            stack.extend((v, f"{path}[{i}]") for i, v in enumerate(item))
-        elif isinstance(item, dict):
-            for key, v in item.items():
-                if not isinstance(key, str):
-                    raise ValueError(
-                        f"JsonDocument: {path}: Schlüssel {key!r} ist kein str")
-                stack.append((v, f"{path}.{key}"))
+                raise ValueError(
+                    f"JsonDocument: {_path_of(entry)}: NaN/Infinity ist kein JSON-Wert")
+        elif isinstance(item, (list, dict)):
+            if id(item) in active:
+                raise ValueError(
+                    f"JsonDocument: {_path_of(entry)}: zyklische Struktur ist kein JSON-Wert")
+            active.add(id(item))
+            stack.append((_EXIT, id(item), None))
+            if isinstance(item, list):
+                stack.extend((v, entry, i) for i, v in enumerate(item))
+            else:
+                for key, v in item.items():
+                    if not isinstance(key, str):
+                        short = key if len(repr(key)) <= _MAX_KEY else type(key).__name__
+                        raise ValueError(
+                            f"JsonDocument: {_path_of(entry)}: Schlüssel {short!r} ist kein str")
+                    stack.append((v, entry, key))
         else:
             raise ValueError(
-                f"JsonDocument: {path}: Typ {type(item).__name__} ist kein JSON-Wert")
+                f"JsonDocument: {_path_of(entry)}: Typ {type(item).__name__} ist kein JSON-Wert")
 
 
 class JsonDocument(ContentIntegrityMixin, Base):
