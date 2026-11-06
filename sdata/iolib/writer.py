@@ -28,6 +28,8 @@ from typing import Any, Dict, Optional, Protocol, Tuple, runtime_checkable, TYPE
 
 import pandas as pd
 
+from sdata import dtypes
+
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -358,7 +360,7 @@ class SqlWriter(BaseDataFrameWriter):
         try:
             self._conn.execute(
                 _SQL_META_INSERT,
-                (suuid, sdf.sname, self.table, json.dumps(sdf.to_dict(), default=str)))
+                (suuid, sdf.sname, self.table, json.dumps(sdf.to_dict(), default=dtypes.json_default)))
             sdf.df.to_sql(self.table, self._conn, if_exists=self.if_exists, index=False)
         except Exception:
             self._conn.rollback()

@@ -39,7 +39,7 @@ def _expected(dtype):
 
 
 def _frame(dtype):
-    sdf = DataFrame(df=pd.DataFrame({"t": [1.0, 2.0], "T": [2.4, 5.2]}),
+    sdf = DataFrame(df=pd.DataFrame({"time": [1.0, 2.0], "temperature": [2.4, 5.2]}),
                     name="dtype-probe")
     sdf.metadata.add("probe", CASES[dtype][0], dtype=dtype)
     return sdf
@@ -119,3 +119,42 @@ def test_arrow_roundtrip(dtype):
     pytest.importorskip("pyarrow")
     sdf = _frame(dtype)
     _check(DataFrame.from_arrow(sdf.to_arrow()), dtype)
+
+
+@pytest.mark.parametrize("dtype", DTYPES)
+def test_store_writer_roundtrip(dtype, tmp_path):
+    from sdata.iolib.reader import StoreReader
+    from sdata.iolib.writer import StoreWriter
+    sdf = _frame(dtype)
+    db = str(tmp_path / "store.db")
+    writer = StoreWriter(db)
+    writer.write(sdf)
+    writer.close()
+    reader = StoreReader(db)
+    try:
+        _check(reader.read(sdf.sname), dtype)
+    finally:
+        reader.close()
+
+
+@pytest.mark.parametrize("dtype", DTYPES)
+def test_sql_writer_roundtrip(dtype):
+    import sqlite3
+    from sdata.iolib.reader import SqlReader
+    from sdata.iolib.writer import SqlWriter
+    sdf = _frame(dtype)
+    conn = sqlite3.connect(":memory:")
+    writer = SqlWriter(conn, table="probe")
+    writer.write(sdf)
+    writer.flush()
+    _check(SqlReader(conn).read(sdf.sname), dtype)
+
+
+def test_json1_store_accepts_dtype_values(tmp_path):
+    from sdata.iolib.json1sqlitestore import JSON1SQLiteStore
+    with JSON1SQLiteStore(str(tmp_path / "s.db")) as store:
+        rid = store.insert({"d": datetime.date(2026, 11, 6)})
+        store.set_path(rid, "$.b", b"\x00\x01")
+        store.insert_path(rid, "$.t", datetime.time(9, 30))
+        store.replace_path(rid, "$.d", Decimal("1.5"))
+        assert store.get(rid) == {"d": "1.5", "b": "AAE=", "t": "09:30:00"}
