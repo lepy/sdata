@@ -550,5 +550,5 @@ class JSON1SQLiteStore:
             query += f" WHERE {filter_str}"
 
         df = pd.read_sql_query(query, self.conn)
-        df.set_index("id", inplace=True)
+        df = df.set_index("id")
         return df

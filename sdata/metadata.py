@@ -527,10 +527,11 @@ class Metadata(object):
     @classmethod
     def from_dataframe(cls, df):
         """create metadata from dataframe"""
-        df["unit"] = df.unit.fillna("")
-        df["label"] =df.label.fillna("")
-        df["description"] =df.description.fillna("")
-        df["symbol"] = df["symbol"].fillna("") if "symbol" in df.columns else ""
+        # astype(object): leere Spalten liest pandas als float64 (NaN); ein
+        # String-Fill auf float64 ist deprecated (pandas ≥ 3.1).
+        for key in ("unit", "label", "description"):
+            df[key] = df[key].astype(object).fillna("")
+        df["symbol"] = df["symbol"].astype(object).fillna("") if "symbol" in df.columns else ""
         d = df.to_dict(orient='index')
         metadata = cls.from_dict(d)
         return metadata
@@ -574,7 +575,7 @@ class Metadata(object):
         # Index nach Spalte "name" (Spalte behalten). Kein df.name.values, da das
         # in neueren pandas-Versionen ein StringArray ist, den set_index als
         # unhashbaren Key behandelt (TypeError).
-        df.set_index("name", drop=False, inplace=True)
+        df = df.set_index("name", drop=False)
         metadata = cls.from_dataframe(df)
         return metadata
 

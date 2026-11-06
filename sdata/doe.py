@@ -56,7 +56,7 @@ class DOE():
         X = S.i4_sobol_generate(dim_num=self.dim_num, n=n, skip=1)
         df = pd.DataFrame(X, columns=self._ranges.keys())
         df["doe_id"] = range(1, len(X)+1)
-        df.set_index("doe_id", inplace=True)
+        df = df.set_index("doe_id")
         return df
 
     def gen_sobol(self, n=1):
@@ -64,7 +64,7 @@ class DOE():
         X = S.i4_sobol_generate(dim_num=self.dim_num, n=n, skip=1)
         df = pd.DataFrame(X, columns=self._ranges.keys())
         df["doe_id"] = range(1, len(X)+1)
-        df.set_index("doe_id", inplace=True)
+        df = df.set_index("doe_id")
         for param_name, r in self._ranges.items():
             df[param_name] *= r.length
             df[param_name] += r.min
