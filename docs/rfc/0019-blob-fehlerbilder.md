@@ -2,7 +2,7 @@
 
 | Feld        | Wert                                                                                     |
 |-------------|------------------------------------------------------------------------------------------|
-| Status      | Vorschlag                                                                                 |
+| Status      | Angenommen                                                                                |
 | Datum       | 2026-11-06                                                                                |
 | Autor       | lepy <lepy@tuta.io>                                                                       |
 | Komponente  | `sdata/sclass/blob.py` (`content_bytes`, `exists`, `open`), `sdata/sclass/content.py` (`update_checksum`, `verify`), Tests `tests/test_sclass_blob_*.py` |
