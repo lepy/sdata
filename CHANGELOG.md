@@ -17,6 +17,11 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Added
 
+- **`JsonDocument` (RFC 0018).** New `sdata.sclass.json_document.JsonDocument` stores a JSON
+  value inline in `data['content']` (no base64, no `uri` path). `content_bytes` is the
+  canonical form (sorted keys, compact, UTF-8) behind `sha256`/`verify`; NaN/Infinity,
+  non-string keys and non-JSON types raise `ValueError`. Optional `json_format`
+  attribute names the content schema; the SUUID class part is `JsonDocument`.
 - Unit systems now label converted electrical and amount-of-substance columns with SI
   symbols (`V`, `ohm`, `A`, `C`, `mol`).
 - **Electrical units and amount of substance (RFC 0017).** `A`, `mA`, `kA` (`current`),
