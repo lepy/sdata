@@ -6,6 +6,14 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-06
+
+Contains breaking changes despite the minor version bump (the package is classified
+as Alpha): `dimension_of` returns seven values (RFC 0017), `DOE.to_data` returns a
+`sclass.DataFrame`, blob content access raises `ContentUnavailableError` and friends
+(RFC 0019), and the vendored `sdata.contrib` packages except `sobol_seq` are gone. See
+the *Breaking* entries below.
+
 ### Changed
 
 - **Breaking: uniform errors when accessing blob content (RFC 0019).** `Blob` (and
@@ -359,7 +367,8 @@ native, format-agnostic metadata embedding for images. Core dependencies remain
   dependencies reduced to `numpy`/`pandas`/`suuid` (stdlib `zoneinfo`); warning-free
   test suite.
 
-[Unreleased]: https://github.com/lepy/sdata/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/lepy/sdata/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/lepy/sdata/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/lepy/sdata/releases/tag/v1.5.0
 [1.4.0]: https://github.com/lepy/sdata/compare/v1.2.0...v1.4.0
 [1.2.0]: https://github.com/lepy/sdata/releases/tag/v1.2.0
