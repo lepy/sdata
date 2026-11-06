@@ -411,19 +411,23 @@ class LCATableGroup(DataFrameGroup):
         :return: eine Instanz der aufrufenden Klasse.
         """
         import pandas as pd
+
+        # Ab pandas 3.1 liest der Default-Parser float64 exakt zurück und
+        # ``float_precision`` ist deprecated; davor braucht es "round_trip".
+        major, minor = (int(p) for p in pd.__version__.split(".")[:2])
+        precision = {} if (major, minor) >= (3, 1) else {"float_precision": "round_trip"}
         group = cls(name=name)
         for key in cls.TABLE_ORDER:
             filepath = os.path.join(path, f"{key}.csv")
             if os.path.exists(filepath):
-                # float_precision="round_trip": der Default-Parser von read_csv
-                # verliert bei vollpräzisen float64 Stellen (pandas ≥ 3), sodass die
-                # content_checksum nach dem Roundtrip nicht mehr stimmte. Der
-                # round_trip-Parser liest das kürzeste round-trippable repr **exakt**
-                # zurück — Teil des Dialekt-Vertrags, damit die Prüfsummen-Garantie
-                # auch für MC-Ergebnisfloats (LCAResults) hält.
+                # Floats müssen **exakt** zurückgelesen werden — Teil des
+                # Dialekt-Vertrags, damit die content_checksum-Garantie auch für
+                # MC-Ergebnisfloats (LCAResults) hält. pandas 3.0 verliert mit dem
+                # Default-Parser Stellen, daher dort float_precision="round_trip"
+                # (siehe ``precision`` oben).
                 group.set_table(key, pd.read_csv(
                     filepath, sep=CSV_DIALECT["sep"], decimal=CSV_DIALECT["decimal"],
-                    encoding=CSV_DIALECT["encoding"], float_precision="round_trip"))
+                    encoding=CSV_DIALECT["encoding"], **precision))
         return group
 
 
