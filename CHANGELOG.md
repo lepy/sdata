@@ -22,6 +22,12 @@ All notable changes to **sdata** are documented here. The format is based on
 - Packaging: license metadata uses the PEP 639 SPDX form (`license = "MIT"`,
   `License-Expression` in the wheel); the license files of the vendored `sdata/contrib`
   packages are now shipped in the wheel. Building requires `setuptools>=77`.
+- The vendored `sdata.contrib.sortedcontainers` (Apache-2.0) is removed. `Metadata` now uses
+  a small built-in `sdata.metadata.SortedDict` (a `dict` that iterates in key order); it
+  keeps the sorted iteration, `repr`, equality and copying. Code that imported
+  `sdata.contrib.sortedcontainers` directly or relied on its extra methods (`peekitem`,
+  `irange`, `bisect_*`, positional view indexing via `SortedKeysView`) must switch to the
+  PyPI package `sortedcontainers`. sdata is now MIT-only throughout.
 
 ### Added
 
