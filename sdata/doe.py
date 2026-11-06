@@ -7,6 +7,9 @@ from sdata.contrib.ranger import Range
 import sdata.contrib.sobol_seq
 from sdata.contrib.sobol_seq import Sobol
 import pandas as pd
+from sdata.sclass.dataframe import DataFrame
+
+
 class DOE():
     """
     DoE Generator
@@ -71,12 +74,30 @@ class DOE():
         return df
 
     def to_data(self, name, df_doe, uid=None):
-        """
+        """Design-Tabelle als :class:`~sdata.sclass.dataframe.DataFrame` verpacken.
 
-        :param df_doe: design table
-        :return: sdata.Data
+        Die Parameterbereiche landen in den Objekt-Metadaten (je Parameter ein
+        Attribut mit dem Bereich als Wert).
+
+        :param name: Name des Datenobjekts.
+        :param df_doe: Design-Tabelle (z. B. aus :meth:`gen_sobol`).
+        :param uid: optionale Identität — eine :class:`~sdata.suuid.SUUID` oder
+          ein UUID-Hex-String; ohne Angabe wird die SUUID deterministisch aus
+          Klasse und ``name`` abgeleitet.
+        :return: sdata.sclass.dataframe.DataFrame
         """
-        data = sdata.Data(name=name, uuid=uid, table=df_doe, description="my DoE")
+        kwargs = {}
+        if isinstance(uid, sdata.SUUID):
+            kwargs["suuid"] = uid
+        elif uid is not None:
+            # Fremd vorgegebene UUID: nicht aus dem Namen ableitbar → mode "random".
+            kwargs["suuid"] = sdata.SUUID(DataFrame.__name__, name, huuid=str(uid).replace("-", ""),
+                                          mode="random")
+        # Benannten Index (z. B. "doe_id") zur Spalte machen: DataFrame
+        # serialisiert ohne Index, die Versuchs-ID ginge sonst verloren.
+        if df_doe.index.name is not None and df_doe.index.name not in df_doe.columns:
+            df_doe = df_doe.reset_index()
+        data = DataFrame(df=df_doe, name=name, description="my DoE", **kwargs)
         for parameter_name, r in self.ranges.items():
             data.metadata.add(parameter_name, r, unit="?", description=f"parameter range {parameter_name}",
                               label=rf"${parameter_name}$")

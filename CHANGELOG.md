@@ -14,6 +14,11 @@ All notable changes to **sdata** are documented here. The format is based on
   compares results with fixed 5-tuples must append `, 0, 0`. Saved `UnitSystem`s (RFC 0014)
   store base units and stay readable. The bare symbol `C` is now the coulomb (`charge`,
   `unit:C`) instead of unknown; it is still not Celsius.
+- **Breaking: `DOE.to_data` returns a `sdata.sclass.dataframe.DataFrame` instead of the
+  deprecated `sdata.Data` (RFC 0012).** The design table is available as `.df` (was
+  `.table`) with `doe_id` as a regular column instead of the index, so it survives
+  serialization; the parameter ranges stay in `.metadata`. `uid` accepts a `SUUID` or a UUID
+  hex string; without it the SUUID is derived from class and name.
 
 ### Added
 
