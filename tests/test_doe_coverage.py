@@ -2,6 +2,7 @@
 """Abdeckung für sdata.doe.DOE."""
 import pandas as pd
 
+import sdata
 from sdata.doe import DOE
 
 
@@ -49,3 +50,27 @@ def test_to_data():
     assert list(data.df["doe_id"]) == [1, 2, 3, 4]
     assert list(df.index) == [1, 2, 3, 4]  # Eingabe bleibt unverändert
     assert "sheet_thickness" in data.metadata.keys()
+
+
+def test_to_data_uid_hex_string():
+    doe = _doe()
+    hexuid = "48b26864e7794f5182d38459bab8584d"
+    data = doe.to_data("mydoe", doe.gen_sobol(n=2), uid=hexuid)
+    assert data.suuid.huuid == hexuid
+    # Bindestrich-Form ergibt dieselbe Identität
+    dashed = "48b26864-e779-4f51-82d3-8459bab8584d"
+    assert doe.to_data("mydoe", doe.gen_sobol(n=2), uid=dashed).suuid.huuid == hexuid
+
+
+def test_to_data_uid_suuid_passthrough():
+    doe = _doe()
+    sid = sdata.SUUID.random("DataFrame", "mydoe")
+    data = doe.to_data("mydoe", doe.gen_sobol(n=2), uid=sid)
+    assert data.suuid.sname == sid.sname
+
+
+def test_to_data_uid_default_is_deterministic():
+    doe = _doe()
+    a = doe.to_data("mydoe", doe.gen_sobol(n=2))
+    b = doe.to_data("mydoe", doe.gen_sobol(n=2))
+    assert a.suuid.sname == b.suuid.sname

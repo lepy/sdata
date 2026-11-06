@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=64.0.0", "wheel"]
+requires = ["setuptools>=77.0.0", "wheel"]  # >=77: PEP-639-Lizenzfelder
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,9 @@ name = "sdata"
 dynamic = ["version"]                 # Single Source: sdata/__init__.py:__version__
 description = "a structured data format"
 readme = "README.md"
-license = { text = "MIT" }            # RFC 0008 A7 / RFC 0013
+license = "MIT"                       # SPDX (PEP 639); RFC 0008 A7 / RFC 0013
+# Eigene Lizenz plus die Lizenzen der vendored contrib-Pakete im Wheel/sdist.
+license-files = ["LICENSE-MIT", "sdata/contrib/*/LICENSE*"]
 requires-python = ">=3.9"
 authors = [{ name = "Ingolf Lepenies", email = "lepy@tuta.io" }]
 maintainers = [{ name = "Ingolf Lepenies", email = "lepy@tuta.io" }]
@@ -18,7 +20,6 @@ dependencies = ["numpy", "pandas", "suuid>=0.2.0"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.9",

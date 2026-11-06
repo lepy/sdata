@@ -90,9 +90,8 @@ class DOE():
         if isinstance(uid, sdata.SUUID):
             kwargs["suuid"] = uid
         elif uid is not None:
-            # Fremd vorgegebene UUID: nicht aus dem Namen ableitbar → mode "random".
-            kwargs["suuid"] = sdata.SUUID(DataFrame.__name__, name, huuid=str(uid).replace("-", ""),
-                                          mode="random")
+            # Fremd vorgegebene UUID (Hex, mit oder ohne Bindestriche) übernehmen.
+            kwargs["suuid"] = sdata.SUUID(DataFrame.__name__, name, huuid=str(uid).replace("-", ""))
         # Benannten Index (z. B. "doe_id") zur Spalte machen: DataFrame
         # serialisiert ohne Index, die Versuchs-ID ginge sonst verloren.
         if df_doe.index.name is not None and df_doe.index.name not in df_doe.columns:
