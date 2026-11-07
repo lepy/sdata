@@ -6,6 +6,8 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-11-07
+
 ### Fixed
 
 - **`strict=True` is honoured when updating an existing attribute.** `Metadata.add` /
@@ -13,11 +15,6 @@ All notable changes to **sdata** are documented here. The format is based on
   was only logged and dropped instead of raising `DtypeError`. `strict` now applies to
   that call; afterwards the attribute keeps its own mode (an attribute created with
   `strict=True` can be updated leniently with an explicit `strict=False`).
-
-## [1.6.2] - 2026-11-07
-
-### Fixed
-
 - **`StoreWriter` and `SqlWriter` keep metadata with non-native dtypes.** The fix in
   1.6.1 missed the persistence writers: `StoreWriter` (via `JSON1SQLiteStore`) failed
   with `TypeError` on attributes of dtype `timestamp`, `date`, `time`, `duration`,
