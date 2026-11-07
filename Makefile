@@ -1,10 +1,11 @@
 # Lokale CI/Tests für sdata — bewusst OHNE GitHub Actions / Online-CI.
 #
 #   make ci        # komplette lokale CI: venv anlegen, installieren, alle Tests + Coverage
+#   make ci-full   # zusätzlich: alle Tests mit allen optionalen Extras (ohne Coverage)
 #   make did-test  # nur die DID-Tests
 #   make test      # alle Tests (setzt eine via `make ci` eingerichtete venv voraus)
 #   make clean-ci  # venv + Coverage-Artefakte entfernen
-.PHONY: ci test did-test clean-ci help
+.PHONY: ci ci-full test did-test clean-ci help
 
 VENV ?= .venv-ci
 PYBIN := $(VENV)/bin/python
@@ -15,6 +16,9 @@ help:
 ci: ## komplette lokale CI (venv, install, alle Tests + Coverage)
 	./ci/local-ci.sh
 
+ci-full: ## alle Tests mit allen optionalen Extras (eigene venv .venv-ci-full)
+	CI_MODE=full ./ci/local-ci.sh
+
 did-test: ## nur die DID-Tests
 	./ci/local-ci.sh tests/test_did.py -q
 
@@ -22,7 +26,7 @@ test: ## alle Tests (benötigt eingerichtete venv aus `make ci`)
 	$(PYBIN) -m pytest tests/
 
 clean-ci: ## venv + Coverage-Artefakte entfernen
-	rm -rf $(VENV) .coverage
+	rm -rf $(VENV) .venv-ci-full .coverage
 
 # --- leporis-docs: 1.6.1 -------------------------------------
 # Von /leporis-docs:init eingefügt. Port ist repo-fest vergeben (politik.json).
