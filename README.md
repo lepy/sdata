@@ -150,8 +150,10 @@ schema = TableSchema("TensileTable", [
 report = sdf.validate_table(schema)            # ValidationReport (truthy if ok)
 ```
 
-Arrow/Feather/Parquet need `pip install "sdata[parquet]"`, HDF5 `sdata[hdf]`; CSV,
-dict, JSON-LD and the (CSV) Data Package work with the core install. See the
+Arrow/Feather/Parquet need `pip install "sdata[parquet]"`, HDF5 `sdata[hdf]`. So do
+`to_dict`/`to_json` (they embed the table as Parquet) and therefore `StoreWriter` and
+`SqlWriter`. CSV, JSON-LD, `to_dataframe` and the (CSV) Data Package work with the
+core install. See the
 [Tabular data docs](https://lepy.github.io/sdata/usage/dataframe/)
 ([`docs/usage/dataframe.md`](docs/usage/dataframe.md)) for the full reference.
 
