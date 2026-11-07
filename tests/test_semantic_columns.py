@@ -48,8 +48,9 @@ def test_to_jsonld_columns_none_and_empty():
     assert "columns" not in semantic.to_jsonld(m, columns=[])  # leer
 
 
-def test_dataframe_turtle_and_sidecar(tmp_path):
+def test_dataframe_turtle_and_sidecar(tmp_path, monkeypatch):
     sdf = _sdf()
+    monkeypatch.setattr(semantic, "_rdflib", None)
     # Turtle-Fallback (kein rdflib) = JSON-LD mit columns
     ttl = sdf.to_turtle()
     assert "columns" in json.loads(ttl)

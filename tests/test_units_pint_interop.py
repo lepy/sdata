@@ -32,6 +32,10 @@ class _FakePint:
         "mole": ({"[substance]": 1}, 1.0, 0.0, False),
         "candela": ({"[luminosity]": 1}, 1.0, 0.0, False),  # Achse außerhalb -> nicht darstellbar
         "degF": ({"[temperature]": 1}, 5.0 / 9.0, 255.3722222, True),
+        # in pint dimensionslos: Winkel, logarithmische Einheiten, ppm
+        "grad": ({}, 0.015707963, 0.0, False),
+        "dB":   ({}, 1.2589254, 0.0, False),
+        "ppm":  ({}, 1e-6, 0.0, False),
     }
 
     class _Unit:
@@ -78,9 +82,9 @@ def fake_pint(monkeypatch):
 
 # ------------------------------------------------------------------ ohne pint
 
-def test_without_pint_unknown_stays_unknown():
-    # Grundzustand: _pint is None -> nicht kuratierte Einheit bleibt unbekannt
-    assert units._pint is None
+def test_without_pint_unknown_stays_unknown(monkeypatch):
+    # Grundzustand ohne pint -> nicht kuratierte Einheit bleibt unbekannt
+    monkeypatch.setattr(units, "_pint", None)
     assert units.dimension_of("psi") is None
     with pytest.raises(units.UnitConversionError):
         units.convert(1.0, "psi", "MPa")
@@ -146,3 +150,21 @@ def test_pint_dimvector_fractional_exponent(fake_pint):
     from fractions import Fraction
     vec = units._pint_dimvector({"[length]": Fraction(1, 2)})
     assert vec == (Fraction(1, 2), 0, 0, 0, 0, 0, 0)
+
+
+@pytest.mark.parametrize("symbol", ["grad", "dB", "ppm"])
+def test_pint_dimensionless_is_not_taken_over(fake_pint, symbol):
+    # pint wirft Winkel und logarithmische Einheiten mit dimensionslos zusammen;
+    # eigene dimensionslose Einheiten stehen kuratiert in der Tabelle (-, %).
+    assert units.dimension_of(symbol) is None
+    with pytest.raises(units.UnitConversionError):
+        units.convert(1.0, symbol, "-")
+
+
+@pytest.mark.parametrize("a, b", [("dB", "-"), ("grad", "%"), ("arcminute", "-")])
+def test_real_pint_does_not_convert_angle_or_log_to_dimensionless(a, b):
+    pytest.importorskip("pint")
+    if units._pint is None:
+        pytest.skip("pint-Registry nicht geladen")
+    with pytest.raises(units.UnitConversionError):
+        units.convert(1.0, a, b)

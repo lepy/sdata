@@ -16,7 +16,7 @@ def test_quantity_of():
     assert units.quantity_of("degC") == "temperature"
     assert units.quantity_of("-") is None          # dimensionslos
     assert units.quantity_of(None) is None          # _norm_convert(None) -> "-"
-    assert units.quantity_of("furlong") is None      # unbekannt
+    assert units.quantity_of("no_such_unit") is None      # unbekannt
 
 
 def test_convert_scalar():
@@ -54,9 +54,9 @@ def test_convert_aliases():
 
 def test_convert_unknown_units_raise():
     with pytest.raises(units.UnitConversionError, match="source"):
-        units.convert(1, "furlong", "mm")
+        units.convert(1, "no_such_unit", "mm")
     with pytest.raises(units.UnitConversionError, match="target"):
-        units.convert(1, "mm", "furlong")
+        units.convert(1, "mm", "no_such_unit")
 
 
 def test_convert_incompatible_raises():
@@ -88,7 +88,7 @@ def test_unit_system_base_units():
     assert sys.target_for("s") == "ms"
     assert sys.target_for("mm") == "mm"
     assert sys.target_for("-") is None                # dimensionslos
-    assert sys.target_for("furlong") is None          # unbekannt
+    assert sys.target_for("no_such_unit") is None          # unbekannt
     assert repr(sys) == "UnitSystem(['kN', 'mm', 'ms'])"
 
 
@@ -120,7 +120,7 @@ def test_unit_system_uncovered_and_unknown():
     sys = units.UnitSystem(["kN", "mm", "ms"])        # keine Temperatur-Dimension
     assert sys.target_for("degC") is None             # Dimension nicht aufgespannt
     assert sys.convert_value(25.0, "degC") is None
-    assert sys.convert_value(1.0, "furlong") is None  # unbekannte Quell-Einheit
+    assert sys.convert_value(1.0, "no_such_unit") is None  # unbekannte Quell-Einheit
     assert sys.unit_for("nonsense") is None            # unbekannte Größe
 
 
@@ -153,7 +153,7 @@ def test_unit_system_offset_base_rejected():
 
 def test_unit_system_unknown_unit_raises():
     with pytest.raises(units.UnitConversionError, match="unknown unit in system"):
-        units.UnitSystem(["kN", "furlong"])
+        units.UnitSystem(["kN", "no_such_unit"])
 
 
 def test_compose_and_canonical_helpers():
@@ -172,7 +172,7 @@ def test_compose_and_canonical_helpers():
 def test_dimension_of():
     assert units.dimension_of("MPa") == (-1, 1, -2, 0, 0, 0, 0)
     assert units.dimension_of("kN") == (1, 1, -2, 0, 0, 0, 0)
-    assert units.dimension_of("furlong") is None
+    assert units.dimension_of("no_such_unit") is None
     assert units.dimension_of(None) == (0, 0, 0, 0, 0, 0, 0)   # -> "-"
 
 

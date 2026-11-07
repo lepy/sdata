@@ -6,6 +6,17 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+
+- **With pint installed (`sdata[units]`), angles and logarithmic units no longer
+  pass as dimensionless.** pint treats angles (`grad`, `arcminute`, …) and
+  logarithmic units (`dB`) as dimensionless, and the pint fallback took that over:
+  `convert(1, "dB", "-")` returned `1.2589`, and `convert(1, "grad", "%")` returned
+  `1.5708`. The fallback now rejects units that pint reports as dimensionless; such
+  units come only from the curated table (`-`, `%`), angles via their own axis
+  (`rad`/`deg`/`gon`). Consequence: pint-only dimensionless units such as `ppm` are
+  now unknown instead of converted.
+
 ## [1.6.2] - 2026-11-07
 
 ### Fixed
