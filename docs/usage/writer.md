@@ -145,14 +145,16 @@ GraphWriter("out/run42.jsonld", fmt="json-ld").write(sdf)
 | Writer | Target | Metadata lands in | Needs |
 |--------|--------|-------------------|-------|
 | [`ParquetWriter`][sdata.iolib.writer.ParquetWriter] | fsspec URI (`.spq`) | embedded `_sdata` schema blob | `sdata[parquet,blob]` |
-| [`StoreWriter`][sdata.iolib.writer.StoreWriter] | `JSON1SQLiteStore` / db path | flattened `_sdata_*` columns + `sdata` payload | — (stdlib `sqlite3`) |
-| [`SqlWriter`][sdata.iolib.writer.SqlWriter] | DBAPI connection | shared `sdata_dataframe_meta` table | — (stdlib `sqlite3`) |
+| [`StoreWriter`][sdata.iolib.writer.StoreWriter] | `JSON1SQLiteStore` / db path | flattened `_sdata_*` columns + `sdata` payload | `sdata[parquet]` (stdlib `sqlite3`) |
+| [`SqlWriter`][sdata.iolib.writer.SqlWriter] | DBAPI connection | shared `sdata_dataframe_meta` table | `sdata[parquet]` (stdlib `sqlite3`) |
 | [`GraphWriter`][sdata.iolib.writer.GraphWriter] | Turtle/JSON-LD file | the RDF itself (QUDT/PROV-O/CSVW) | rdflib only for `named_graphs` |
 
 !!! note "Optional backends"
     `ParquetWriter` needs pyarrow + fsspec (`pip install "sdata[parquet,blob]"`).
-    `StoreWriter` and `SqlWriter` run on the stdlib `sqlite3`; `SqlWriter` also accepts
-    a SQLAlchemy connection (`sdata[sql]`). `GraphWriter`'s single-file mode works on
+    `StoreWriter` and `SqlWriter` run on the stdlib `sqlite3` but store the lossless
+    `DataFrame.to_dict()` payload, which embeds the table as Parquet, so they need
+    pyarrow too (`sdata[parquet]`); `SqlWriter` also accepts a SQLAlchemy connection
+    (`sdata[sql]`). `GraphWriter`'s single-file mode works on
     the core install; only named-graph accumulation needs `sdata[rdf]`. A missing
     backend raises a clear `ImportError` pointing at the extra.
 
