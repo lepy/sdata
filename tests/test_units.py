@@ -27,7 +27,8 @@ def test_unit_node():
     assert units.unit_node(None) == {"symbol": ""}
 
 
-def test_validate_unit_pure():
+def test_validate_unit_pure(monkeypatch):
+    monkeypatch.setattr(units, "_pint", None)
     assert units.validate_unit("mm") is True
     assert units.validate_unit("furlong") is False         # ohne pint
 

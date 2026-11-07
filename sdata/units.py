@@ -360,6 +360,12 @@ def _pint_entry(symbol):
     dim = _pint_dimvector(unit.dimensionality)
     if dim is None:
         return None
+    if not any(dim):
+        # pint führt Winkel (grad, arcminute) und logarithmische Einheiten (dB) als
+        # dimensionslos; übernommen ergäbe das z. B. grad -> % oder einen linearen
+        # Faktor für dB. Dimensionslose Einheiten kommen nur aus der kuratierten
+        # Tabelle (-, %), Winkel über die eigene Achse (rad/deg/gon).
+        return None
     try:
         factor = float(_pint.Quantity(1.0, unit).to_base_units().magnitude)
         offset = 0.0
