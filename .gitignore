@@ -3,6 +3,7 @@
 .cache/
 .coverage
 .venv-ci/
+.venv-ci-full/
 .pytest_cache/
 .idea/
 .vscode/
