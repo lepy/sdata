@@ -8,14 +8,26 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ### Fixed
 
-- **With pint installed (`sdata[units]`), angles and logarithmic units no longer
-  pass as dimensionless.** pint treats angles (`grad`, `arcminute`, …) and
-  logarithmic units (`dB`) as dimensionless, and the pint fallback took that over:
-  `convert(1, "dB", "-")` returned `1.2589`, and `convert(1, "grad", "%")` returned
-  `1.5708`. The fallback now rejects units that pint reports as dimensionless; such
-  units come only from the curated table (`-`, `%`), angles via their own axis
-  (`rad`/`deg`/`gon`). Consequence: pint-only dimensionless units such as `ppm` are
-  now unknown instead of converted.
+- **The pint fallback (`sdata[units]`) converts correctly for angles, temperatures
+  and logarithmic units.** Units outside the curated table go through pint; four
+  cases produced wrong numbers:
+  - `degF` was off by orders of magnitude with pint 0.25: `convert(32, "degF",
+    "degC")` returned `7916.5` instead of `0`. pint no longer raises
+    `OffsetUnitCalculusError` there. Factor and offset are now measured at three
+    points, and the result must be linear.
+  - Angles lost their axis because pint treats them as dimensionless:
+    `convert(1, "rpm", "Hz")` returned `0.1047` (that is rad/s), and
+    `convert(1, "arcminute", "%")` converted. Angles now land on sdata's angle axis
+    (read from pint's root unit `radian`): `arcminute`, `turn` → A, `sr` → A², `rpm`
+    and `rad/s` → A·T⁻¹, so `rpm` → `Hz` is rejected.
+  - Logarithmic units (`dB`, `Np`, `dBm`) are not linear. They were converted with a
+    linear factor (`convert(1, "dB", "-")` → `1.2589`) and are now rejected.
+  - Units without a pint dimension of their own (`count`, `bit`) passed as
+    dimensionless and are now rejected.
+
+  Genuinely dimensionless pint units such as `ppm` still convert (`1e4 ppm` → `1 %`).
+  `grad` stays unmapped even with pint (gradian vs. German „Grad" = degree), as it
+  already is in the curated aliases.
 
 ## [1.6.2] - 2026-11-07
 

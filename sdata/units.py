@@ -322,10 +322,23 @@ def _norm_convert(symbol):
 
 
 #: pint-Dimensionsname -> Index in unserem ``(L, M, T, Θ, A, I, N)``-Vektor. Achsen
-#: außerhalb (Lichtstärke) sind nicht darstellbar; der Winkel ist in pint
-#: dimensionslos (dafür die kuratierten rad/deg/gon nutzen).
+#: außerhalb (Lichtstärke) sind nicht darstellbar. Den Winkel führt pint nicht als
+#: Dimension; er wird aus den Root-Einheiten (``radian``) gelesen, siehe ``_pint_entry``.
 _PINT_AXIS = {"[length]": 0, "[mass]": 1, "[time]": 2, "[temperature]": 3,
               "[current]": 5, "[substance]": 6}
+
+#: Index der Winkel-Achse im Dimensionsvektor.
+_ANGLE_AXIS = 4
+
+#: Root-Einheiten, die unser Modell kennt. Andere (``count``, ``bit``) haben in pint
+#: keine Dimension, wären hier aber fälschlich dimensionslos.
+_PINT_ROOT_OK = {"meter", "gram", "second", "kelvin", "ampere", "mole", "radian"}
+
+_TEMPERATURE = (0, 0, 0, 1, 0, 0, 0)
+
+#: Symbole, die auch pint nicht auflösen darf: „grad" ist mehrdeutig (engl. gradian
+#: = gon vs. dt. „Grad" = deg) und bleibt wie in ``_CONVERT_ALIASES`` ungemappt.
+_PINT_DENY = {"grad"}
 
 
 def _pint_dimvector(dimensionality):
@@ -343,15 +356,55 @@ def _pint_dimvector(dimensionality):
     return tuple(vec)
 
 
+def _pint_root_units(unit):
+    """Root-Einheiten einer pint-Einheit als ``{name: exponent}``, oder ``None``."""
+    try:
+        root = _pint.Quantity(1.0, unit).to_root_units().units
+        return dict(root._units)
+    except Exception:
+        return None
+
+
+def _pint_affine(unit, dim):
+    """``(factor, offset)`` in die SI-kohärente Einheit, oder ``None`` (nicht linear).
+
+    Gemessen an drei Stützpunkten statt aus pints Fehlerverhalten abgeleitet: pint 0.25
+    rechnet ``degF`` ohne ``OffsetUnitCalculusError`` in Kelvin um, und logarithmische
+    Einheiten (``dB``, ``dBm``) liefern Werte, die nicht auf einer Geraden liegen.
+    """
+    def base(v):
+        q = _pint.Quantity(v, unit)
+        if dim == _TEMPERATURE:
+            return float(q.to("kelvin").magnitude)
+        return float(q.to_base_units().magnitude)
+
+    try:
+        v0, v1, v2 = base(0.0), base(1.0), base(2.0)
+    except Exception:
+        return None
+    factor, offset = v1 - v0, v0
+    if factor == 0 or not math.isclose(v2 - v0, 2.0 * factor, rel_tol=1e-9):
+        return None
+    if offset and dim != _TEMPERATURE:
+        return None
+    return factor, offset
+
+
 def _pint_entry(symbol):
     """``(dimvektor, factor, offset)`` einer **nicht kuratierten** Einheit via pint.
 
-    ``None``, wenn pint fehlt, das Symbol nicht parsebar ist oder seine Dimension
-    außerhalb der sieben Achsen liegt. ``factor`` überführt in die SI-kohärente Einheit
-    (pints Basiseinheiten sind m/kg/s/K/A/mol – deckungsgleich mit der kuratierten Tabelle);
-    affine Einheiten (nur Temperatur, z. B. ``degF``) liefern zusätzlich den Offset.
+    ``None``, wenn pint fehlt, das Symbol nicht parsebar ist, seine Dimension außerhalb
+    der sieben Achsen liegt, es nicht linear ist (``dB``) oder als dimensionslos nur
+    durchgeht, weil pint die Größe nicht als Dimension führt (``count``, ``bit``).
+
+    Winkel kommen auf die eigene Achse: pint führt sie als dimensionslos, ihre
+    Root-Einheit ist aber ``radian`` – ``arcminute`` wird so zu A, ``rpm`` zu A·T⁻¹
+    (und ist damit nicht mehr in ``Hz`` umrechenbar). ``factor`` überführt in die
+    SI-kohärente Einheit (m/kg/s/K/rad/A/mol, deckungsgleich mit der kuratierten
+    Tabelle); affine Einheiten (nur Temperatur, z. B. ``degF``) liefern den Offset.
+    Gesperrt bleiben die mehrdeutigen Symbole aus ``_PINT_DENY`` (``grad``).
     """
-    if _pint is None:
+    if _pint is None or str(symbol).strip().lower() in _PINT_DENY:
         return None
     try:
         unit = _pint.Unit(str(symbol).strip())
@@ -360,21 +413,18 @@ def _pint_entry(symbol):
     dim = _pint_dimvector(unit.dimensionality)
     if dim is None:
         return None
-    if not any(dim):
-        # pint führt Winkel (grad, arcminute) und logarithmische Einheiten (dB) als
-        # dimensionslos; übernommen ergäbe das z. B. grad -> % oder einen linearen
-        # Faktor für dB. Dimensionslose Einheiten kommen nur aus der kuratierten
-        # Tabelle (-, %), Winkel über die eigene Achse (rad/deg/gon).
+    root = _pint_root_units(unit)
+    if root is None or not set(root) <= _PINT_ROOT_OK:
         return None
-    try:
-        factor = float(_pint.Quantity(1.0, unit).to_base_units().magnitude)
-        offset = 0.0
-    except _pint.OffsetUnitCalculusError:
-        # affine Einheit: zwei Stützpunkte in Kelvin -> (Steigung, Offset)
-        k0 = float(_pint.Quantity(0.0, unit).to("kelvin").magnitude)
-        k1 = float(_pint.Quantity(1.0, unit).to("kelvin").magnitude)
-        factor, offset = k1 - k0, k0
-    return dim, factor, offset
+    angle = root.get("radian", 0)
+    if angle:
+        vec = list(dim)
+        vec[_ANGLE_AXIS] = int(angle) if float(angle).is_integer() else angle
+        dim = tuple(vec)
+    affine = _pint_affine(unit, dim)
+    if affine is None:
+        return None
+    return (dim,) + affine
 
 
 def _lookup(symbol):
