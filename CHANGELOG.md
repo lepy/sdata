@@ -6,6 +6,8 @@ All notable changes to **sdata** are documented here. The format is based on
 
 ## [Unreleased]
 
+## [1.6.3] - 2026-11-07
+
 ### Fixed
 
 - **The pint fallback (`sdata[units]`) converts correctly for angles, temperatures
@@ -28,6 +30,12 @@ All notable changes to **sdata** are documented here. The format is based on
   Genuinely dimensionless pint units such as `ppm` still convert (`1e4 ppm` → `1 %`).
   `grad` stays unmapped even with pint (gradian vs. German „Grad" = degree), as it
   already is in the curated aliases.
+
+### Docs
+
+- README and `docs/usage/writer.md` state correctly that `to_dict`/`to_json`,
+  `StoreWriter` and `SqlWriter` need pyarrow (`sdata[parquet]`), because the table is
+  embedded as Parquet.
 
 ## [1.6.2] - 2026-11-07
 
@@ -421,7 +429,8 @@ native, format-agnostic metadata embedding for images. Core dependencies remain
   dependencies reduced to `numpy`/`pandas`/`suuid` (stdlib `zoneinfo`); warning-free
   test suite.
 
-[Unreleased]: https://github.com/lepy/sdata/compare/v1.6.2...HEAD
+[Unreleased]: https://github.com/lepy/sdata/compare/v1.6.3...HEAD
+[1.6.3]: https://github.com/lepy/sdata/compare/v1.6.2...v1.6.3
 [1.6.2]: https://github.com/lepy/sdata/compare/v1.6.1...v1.6.2
 [1.6.1]: https://github.com/lepy/sdata/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/lepy/sdata/compare/v1.5.0...v1.6.0
