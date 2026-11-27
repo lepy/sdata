@@ -1,6 +1,0 @@
-# Documentation toolchain (MkDocs Material + mkdocstrings).
-# The package itself is installed separately by the docs workflow so that
-# mkdocstrings can import and introspect it.
-mkdocs>=1.6
-mkdocs-material>=9.5
-mkdocstrings[python]>=0.26
